@@ -114,10 +114,9 @@ function DroppableColumn({
         <div
           ref={setNodeRef}
           className={cn(
-            "flex min-h-[220px] flex-1 flex-col gap-2.5 rounded-2xl border border-border/40 p-2 ring-1 transition-all",
+            "flex min-h-[220px] flex-1 flex-col gap-2.5 rounded-2xl border border-border/40 p-2 transition-all",
             c.bg,
-            c.ring,
-            isOver && "border-primary/60 bg-primary/[0.06] ring-primary/40",
+            isOver && "border-primary/60 bg-primary/[0.06]",
           )}
         >
           {items.length === 0 ? (

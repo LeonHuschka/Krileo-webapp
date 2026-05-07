@@ -13,7 +13,6 @@ export type Json =
 export type UserRole = "owner" | "admin" | "member";
 
 export type OrderStatus =
-  | "lead"
   | "angebot"
   | "aktiv"
   | "review"

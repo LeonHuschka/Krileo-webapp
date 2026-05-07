@@ -27,9 +27,11 @@ export default async function AppLayout({
   return (
     <div className="flex min-h-screen">
       <AppSidebar user={profile} />
-      <div className="flex flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col">
         <TopBar user={profile} />
-        <main className="flex-1 overflow-auto pb-16 md:pb-0">{children}</main>
+        <main className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto pb-16 md:pb-0">
+          {children}
+        </main>
         <MobileBottomNav />
       </div>
     </div>

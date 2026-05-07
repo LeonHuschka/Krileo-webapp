@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
@@ -26,9 +27,14 @@ export function AppSidebar({ user }: { user: UserProfileRow }) {
   return (
     <aside className="hidden w-60 shrink-0 border-r border-sidebar-border bg-sidebar md:flex md:flex-col">
       <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-5">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground font-bold">
-          K
-        </div>
+        <Image
+          src="/krileo-icon.png"
+          alt={APP_NAME}
+          width={36}
+          height={36}
+          className="h-9 w-9"
+          priority
+        />
         <div>
           <div className="font-semibold leading-tight text-sidebar-foreground">
             {APP_NAME}

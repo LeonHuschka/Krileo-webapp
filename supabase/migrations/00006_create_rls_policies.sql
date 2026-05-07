@@ -2,7 +2,7 @@
 -- Helper functions (security definer to bypass RLS)
 -- =============================================
 
-create or replace function public.current_role()
+create or replace function public.current_app_role()
 returns text
 language sql
 security definer set search_path = ''
@@ -11,13 +11,14 @@ as $$
   select role from public.user_profiles where id = (select auth.uid());
 $$;
 
+
 create or replace function public.is_owner()
 returns boolean
 language sql
 security definer set search_path = ''
 stable
 as $$
-  select coalesce(public.current_role() = 'owner', false);
+  select coalesce(public.current_app_role() = 'owner', false);
 $$;
 
 create or replace function public.is_admin_or_owner()
@@ -26,7 +27,7 @@ language sql
 security definer set search_path = ''
 stable
 as $$
-  select coalesce(public.current_role() in ('owner', 'admin'), false);
+  select coalesce(public.current_app_role() in ('owner', 'admin'), false);
 $$;
 
 -- =============================================

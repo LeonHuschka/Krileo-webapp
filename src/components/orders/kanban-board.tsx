@@ -44,7 +44,6 @@ interface KanbanProps {
 }
 
 const COLUMN_DOT: Record<OrderStatus, string> = {
-  lead: "bg-zinc-400",
   angebot: "bg-blue-400",
   aktiv: "bg-violet-400",
   review: "bg-amber-400",
@@ -94,7 +93,7 @@ function DroppableColumn({
   );
 
   return (
-    <div className="flex w-72 min-w-[288px] shrink-0 flex-col">
+    <div className="flex min-w-0 flex-1 flex-col">
       <div className="mb-3 flex items-center gap-2.5 px-1">
         <div className={`h-2.5 w-2.5 rounded-full ${COLUMN_DOT[status]}`} />
         <h3 className="text-sm font-medium">{label}</h3>
@@ -139,7 +138,7 @@ export function OrdersKanban({ orders, members }: KanbanProps) {
   const [items, setItems] = useState<OrderRow[]>(orders);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overColumnId, setOverColumnId] = useState<OrderStatus | null>(null);
-  const [mobileCol, setMobileCol] = useState<OrderStatus>("lead");
+  const [mobileCol, setMobileCol] = useState<OrderStatus>("angebot");
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -317,7 +316,7 @@ export function OrdersKanban({ orders, members }: KanbanProps) {
           onDragEnd={handleDragEnd}
           onDragCancel={handleDragCancel}
         >
-          <div className="-mx-6 flex gap-4 overflow-x-auto px-6 pb-4">
+          <div className="flex gap-3 pb-4">
             {grouped.map((column) => (
               <DroppableColumn
                 key={column.status}

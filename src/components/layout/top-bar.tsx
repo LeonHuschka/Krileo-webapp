@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   DropdownMenu,
@@ -39,9 +40,14 @@ export function TopBar({ user }: { user: UserProfileRow }) {
     <header className="flex h-16 items-center justify-between border-b border-border bg-background px-4 md:px-6">
       <div className="md:hidden">
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground text-sm font-bold">
-            K
-          </div>
+          <Image
+            src="/krileo-icon.png"
+            alt="Krileo"
+            width={32}
+            height={32}
+            className="h-8 w-8"
+            priority
+          />
           <span className="font-semibold">Krileo</span>
         </div>
       </div>

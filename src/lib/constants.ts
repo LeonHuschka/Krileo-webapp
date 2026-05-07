@@ -7,7 +7,6 @@ import type {
 } from "@/lib/types/database";
 
 export const ORDER_STATUSES: { value: OrderStatus; label: string }[] = [
-  { value: "lead", label: "Lead" },
   { value: "angebot", label: "Angebot" },
   { value: "aktiv", label: "Aktiv" },
   { value: "review", label: "Review" },
@@ -45,7 +44,6 @@ export const USER_ROLES: { value: UserRole; label: string }[] = [
 ];
 
 export const ORDER_STATUS_COLORS: Record<OrderStatus, string> = {
-  lead: "bg-zinc-500/20 text-zinc-200 border-zinc-500/40",
   angebot: "bg-blue-500/20 text-blue-200 border-blue-500/40",
   aktiv: "bg-violet-500/20 text-violet-200 border-violet-500/40",
   review: "bg-amber-500/20 text-amber-200 border-amber-500/40",

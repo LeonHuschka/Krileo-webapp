@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 const ORDER_STATUSES = [
-  "lead",
   "angebot",
   "aktiv",
   "review",

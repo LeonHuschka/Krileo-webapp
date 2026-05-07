@@ -42,7 +42,7 @@ const NONE = "__none__";
 export function CreateOrderDialog({
   contacts,
   members,
-  defaultStatus = "lead",
+  defaultStatus = "angebot",
 }: {
   contacts: ContactRow[];
   members: UserProfileRow[];

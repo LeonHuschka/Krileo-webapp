@@ -51,7 +51,9 @@ export function OrderCard({
   const inner = (
     <Card className="cursor-pointer space-y-2 border-border/50 bg-card p-3 transition-colors hover:border-border hover:bg-card/80">
       <div className="flex items-start justify-between gap-2">
-        <div className="text-sm font-medium leading-tight">{order.title}</div>
+        <div className="min-w-0 break-words text-sm font-medium leading-tight">
+          {order.title}
+        </div>
         <Badge
           variant="outline"
           className={cn(
@@ -63,13 +65,15 @@ export function OrderCard({
         </Badge>
       </div>
       {order.client_name && (
-        <div className="text-xs text-muted-foreground">{order.client_name}</div>
+        <div className="truncate text-xs text-muted-foreground">
+          {order.client_name}
+        </div>
       )}
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
         <Badge variant="secondary" className="rounded text-[10px]">
           {typeLabel}
         </Badge>
-        {value && <span className="font-medium">{value}</span>}
+        {value && <span className="truncate font-medium">{value}</span>}
       </div>
       <div className="flex items-center justify-between pt-1">
         {due ? (

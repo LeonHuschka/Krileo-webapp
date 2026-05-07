@@ -30,7 +30,7 @@ export default async function OrderDetailPage({
   if (!order) notFound();
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 p-6">
+    <div className="mx-auto max-w-4xl space-y-6 p-4 md:p-6">
       <Link
         href="/orders"
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"

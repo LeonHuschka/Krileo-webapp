@@ -77,7 +77,6 @@ export default async function DashboardPage() {
   const wonContacts = allContacts.filter((c) => c.status === "won").length;
 
   const counts: Record<OrderStatus, number> = {
-    lead: 0,
     angebot: 0,
     aktiv: 0,
     review: 0,
@@ -88,10 +87,10 @@ export default async function DashboardPage() {
     counts[o.status] += 1;
   });
   const totalForBar =
-    counts.lead + counts.angebot + counts.aktiv + counts.review;
+    counts.angebot + counts.aktiv + counts.review;
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-4 md:p-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -159,25 +158,20 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex h-2 overflow-hidden rounded-full bg-muted">
-              {(["lead", "angebot", "aktiv", "review"] as OrderStatus[]).map(
-                (s) => {
-                  const pct = totalForBar
-                    ? (counts[s] / totalForBar) * 100
-                    : 0;
-                  return (
-                    <div
-                      key={s}
-                      style={{ width: `${pct}%` }}
-                      className={cn(
-                        s === "lead" && "bg-zinc-500",
-                        s === "angebot" && "bg-blue-500",
-                        s === "aktiv" && "bg-violet-500",
-                        s === "review" && "bg-amber-500",
-                      )}
-                    />
-                  );
-                },
-              )}
+              {(["angebot", "aktiv", "review"] as OrderStatus[]).map((s) => {
+                const pct = totalForBar ? (counts[s] / totalForBar) * 100 : 0;
+                return (
+                  <div
+                    key={s}
+                    style={{ width: `${pct}%` }}
+                    className={cn(
+                      s === "angebot" && "bg-blue-500",
+                      s === "aktiv" && "bg-violet-500",
+                      s === "review" && "bg-amber-500",
+                    )}
+                  />
+                );
+              })}
             </div>
             <div className="grid grid-cols-2 gap-y-1 text-xs sm:grid-cols-3">
               {ORDER_STATUSES.map((s) => (

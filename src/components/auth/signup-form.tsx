@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createClient } from "@/lib/supabase/client";
 import { signupSchema, type SignupFormData } from "@/lib/validations/auth";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -68,9 +69,14 @@ export function SignupForm() {
   return (
     <div className="space-y-8">
       <div className="text-center">
-        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-primary-foreground text-2xl font-bold">
-          K
-        </div>
+        <Image
+          src="/krileo-logo.png"
+          alt={APP_NAME}
+          width={180}
+          height={180}
+          className="mx-auto mb-4 h-32 w-auto"
+          priority
+        />
         <h1 className="text-2xl font-semibold tracking-tight">
           {APP_NAME} Account erstellen
         </h1>

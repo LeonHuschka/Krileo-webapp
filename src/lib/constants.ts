@@ -59,6 +59,49 @@ export const ORDER_STATUS_DOTS: Record<OrderStatus, string> = {
   archiv: "bg-zinc-500",
 };
 
+export const ORDER_STATUS_COLUMN: Record<
+  OrderStatus,
+  { ring: string; bg: string; accent: string; bar: string }
+> = {
+  angebot: {
+    ring: "ring-sky-500/30",
+    bg: "bg-sky-500/[0.04]",
+    accent: "text-sky-300",
+    bar: "from-sky-400 to-sky-500",
+  },
+  aktiv: {
+    ring: "ring-violet-500/30",
+    bg: "bg-violet-500/[0.04]",
+    accent: "text-violet-300",
+    bar: "from-violet-400 to-violet-500",
+  },
+  review: {
+    ring: "ring-amber-500/30",
+    bg: "bg-amber-500/[0.04]",
+    accent: "text-amber-300",
+    bar: "from-amber-400 to-amber-500",
+  },
+  geliefert: {
+    ring: "ring-emerald-500/30",
+    bg: "bg-emerald-500/[0.04]",
+    accent: "text-emerald-300",
+    bar: "from-emerald-400 to-emerald-500",
+  },
+  archiv: {
+    ring: "ring-zinc-500/20",
+    bg: "bg-zinc-500/[0.03]",
+    accent: "text-zinc-400",
+    bar: "from-zinc-500 to-zinc-600",
+  },
+};
+
+export const ORDER_TYPE_COLORS: Record<OrderType, string> = {
+  website: "bg-sky-500/15 text-sky-300 border-sky-500/40",
+  website_plus: "bg-violet-500/15 text-violet-300 border-violet-500/40",
+  automation: "bg-emerald-500/15 text-emerald-300 border-emerald-500/40",
+  other: "bg-zinc-500/15 text-zinc-300 border-zinc-500/40",
+};
+
 export const PRIORITY_COLORS: Record<OrderPriority, string> = {
   high: "bg-rose-500/15 text-rose-300 border-rose-500/40",
   medium: "bg-amber-500/15 text-amber-300 border-amber-500/40",

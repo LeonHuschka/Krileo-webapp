@@ -30,7 +30,8 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { OrderCard } from "@/components/orders/order-card";
-import { ORDER_STATUSES } from "@/lib/constants";
+import { ORDER_STATUSES, ORDER_STATUS_COLUMN } from "@/lib/constants";
+import { cn } from "@/lib/utils";
 import { updateOrderPosition } from "@/app/(app)/orders/actions";
 import type {
   OrderRow,
@@ -42,14 +43,6 @@ interface KanbanProps {
   orders: OrderRow[];
   members: UserProfileRow[];
 }
-
-const COLUMN_DOT: Record<OrderStatus, string> = {
-  angebot: "bg-blue-400",
-  aktiv: "bg-violet-400",
-  review: "bg-amber-400",
-  geliefert: "bg-emerald-400",
-  archiv: "bg-zinc-600",
-};
 
 function SortableCard({
   order,
@@ -92,14 +85,27 @@ function DroppableColumn({
     [members],
   );
 
+  const c = ORDER_STATUS_COLUMN[status];
   return (
     <div className="flex min-w-0 flex-1 flex-col">
-      <div className="mb-3 flex items-center gap-2.5 px-1">
-        <div className={`h-2.5 w-2.5 rounded-full ${COLUMN_DOT[status]}`} />
-        <h3 className="text-sm font-medium">{label}</h3>
+      <div className="mb-3 flex items-center gap-2 px-1">
+        <div
+          className={cn("h-1.5 flex-1 rounded-full bg-gradient-to-r", c.bar)}
+        />
+        <h3
+          className={cn(
+            "shrink-0 text-xs font-semibold uppercase tracking-wider",
+            c.accent,
+          )}
+        >
+          {label}
+        </h3>
         <Badge
-          variant="secondary"
-          className="ml-auto h-5 min-w-[20px] justify-center px-1.5 text-[10px]"
+          variant="outline"
+          className={cn(
+            "h-5 min-w-[22px] shrink-0 justify-center border-border/60 bg-card px-1.5 text-[10px] font-semibold",
+            c.accent,
+          )}
         >
           {items.length}
         </Badge>
@@ -107,15 +113,18 @@ function DroppableColumn({
       <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
         <div
           ref={setNodeRef}
-          className={`flex min-h-[200px] flex-1 flex-col gap-2.5 rounded-xl border p-2.5 transition-colors ${
-            isOver
-              ? "border-primary/50 bg-primary/5"
-              : "border-border/30 bg-muted/30"
-          }`}
+          className={cn(
+            "flex min-h-[220px] flex-1 flex-col gap-2.5 rounded-2xl border border-border/40 p-2 ring-1 transition-all",
+            c.bg,
+            c.ring,
+            isOver && "border-primary/60 bg-primary/[0.06] ring-primary/40",
+          )}
         >
           {items.length === 0 ? (
             <div className="flex flex-1 items-center justify-center">
-              <p className="text-xs text-muted-foreground/60">Keine Aufträge</p>
+              <p className="text-xs text-muted-foreground/50">
+                Keine Aufträge
+              </p>
             </div>
           ) : (
             items.map((order) => (
@@ -274,7 +283,10 @@ export function OrdersKanban({ orders, members }: KanbanProps) {
               <SelectItem key={col.status} value={col.status}>
                 <span className="flex items-center gap-2">
                   <span
-                    className={`h-2 w-2 rounded-full ${COLUMN_DOT[col.status]}`}
+                    className={cn(
+                      "h-1.5 w-6 rounded-full bg-gradient-to-r",
+                      ORDER_STATUS_COLUMN[col.status].bar,
+                    )}
                   />
                   {col.label}
                   <span className="ml-1 text-xs text-muted-foreground">

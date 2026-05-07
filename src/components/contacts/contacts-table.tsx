@@ -23,6 +23,7 @@ import {
 import {
   CONTACT_STATUSES,
   CONTACT_STATUS_COLORS,
+  tagColor,
 } from "@/lib/constants";
 import type { ContactRow, ContactStatus } from "@/lib/types/database";
 import { cn } from "@/lib/utils";
@@ -163,8 +164,11 @@ export function ContactsTable({ contacts }: { contacts: ContactRow[] }) {
                       {c.tags.slice(0, 4).map((t) => (
                         <Badge
                           key={t}
-                          variant="secondary"
-                          className="text-[10px]"
+                          variant="outline"
+                          className={cn(
+                            "border text-[10px] font-medium",
+                            tagColor(t),
+                          )}
                         >
                           {t}
                         </Badge>

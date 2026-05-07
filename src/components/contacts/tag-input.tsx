@@ -4,6 +4,8 @@ import { useState, type KeyboardEvent } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { X } from "lucide-react";
+import { tagColor } from "@/lib/constants";
+import { cn } from "@/lib/utils";
 
 export function TagInput({
   value,
@@ -42,14 +44,17 @@ export function TagInput({
       {value.map((tag) => (
         <Badge
           key={tag}
-          variant="secondary"
-          className="gap-1 pl-2 pr-1 text-xs"
+          variant="outline"
+          className={cn(
+            "gap-1 border pl-2 pr-1 text-xs font-medium",
+            tagColor(tag),
+          )}
         >
           {tag}
           <button
             type="button"
             onClick={() => remove(tag)}
-            className="rounded hover:bg-muted-foreground/20"
+            className="rounded hover:bg-foreground/10"
           >
             <X className="h-3 w-3" />
           </button>

@@ -26,17 +26,18 @@ export function AppSidebar({ user }: { user: UserProfileRow }) {
   const pathname = usePathname();
   return (
     <aside className="hidden w-60 shrink-0 border-r border-sidebar-border bg-sidebar md:flex md:flex-col">
-      <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-5">
+      <div className="relative flex h-16 items-center gap-3 overflow-hidden border-b border-sidebar-border px-5">
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-primary/15 via-primary/5 to-transparent" />
         <Image
           src="/krileo-icon.png"
           alt={APP_NAME}
           width={36}
           height={36}
-          className="h-9 w-9"
+          className="relative h-9 w-9 drop-shadow-[0_0_12px_hsl(207_100%_60%/0.4)]"
           priority
         />
-        <div>
-          <div className="font-semibold leading-tight text-sidebar-foreground">
+        <div className="relative">
+          <div className="font-semibold leading-tight tracking-tight text-sidebar-foreground">
             {APP_NAME}
           </div>
           <div className="text-xs text-sidebar-foreground/60">Agency</div>

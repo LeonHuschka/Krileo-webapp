@@ -89,60 +89,86 @@ export default async function DashboardPage() {
   const totalForBar =
     counts.angebot + counts.aktiv + counts.review;
 
+  const kpis: {
+    label: string;
+    value: number;
+    icon: typeof ClipboardList;
+    accent: string;
+    iconBg: string;
+  }[] = [
+    {
+      label: "Offene Aufträge",
+      value: openOrders.length,
+      icon: ClipboardList,
+      accent: "from-sky-500/15 to-transparent",
+      iconBg: "bg-sky-500/15 text-sky-300",
+    },
+    {
+      label: "Meine",
+      value: myOpenOrders.length,
+      icon: ClipboardList,
+      accent: "from-violet-500/15 to-transparent",
+      iconBg: "bg-violet-500/15 text-violet-300",
+    },
+    {
+      label: "Neue Leads (Woche)",
+      value: newLeads.length,
+      icon: Users,
+      accent: "from-amber-500/15 to-transparent",
+      iconBg: "bg-amber-500/15 text-amber-300",
+    },
+    {
+      label: "Gewonnen",
+      value: wonContacts,
+      icon: CheckCircle2,
+      accent: "from-emerald-500/15 to-transparent",
+      iconBg: "bg-emerald-500/15 text-emerald-300",
+    },
+  ];
+
   return (
     <div className="space-y-6 p-4 md:p-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
+        <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
+          Dashboard
+        </h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Überblick über Aufträge, To-Dos und Acquisition
         </p>
       </div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">
-                Offene Aufträge
-              </span>
-              <ClipboardList className="h-4 w-4 text-muted-foreground" />
-            </div>
-            <div className="mt-2 text-2xl font-semibold">
-              {openOrders.length}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">Meine</span>
-              <ClipboardList className="h-4 w-4 text-muted-foreground" />
-            </div>
-            <div className="mt-2 text-2xl font-semibold">
-              {myOpenOrders.length}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">
-                Neue Leads (Woche)
-              </span>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </div>
-            <div className="mt-2 text-2xl font-semibold">{newLeads.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">Gewonnen</span>
-              <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-            </div>
-            <div className="mt-2 text-2xl font-semibold">{wonContacts}</div>
-          </CardContent>
-        </Card>
+        {kpis.map((k) => {
+          const Icon = k.icon;
+          return (
+            <Card
+              key={k.label}
+              className={cn(
+                "relative overflow-hidden border-border/60 bg-gradient-to-br",
+                k.accent,
+              )}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {k.label}
+                  </span>
+                  <div
+                    className={cn(
+                      "flex h-7 w-7 items-center justify-center rounded-lg",
+                      k.iconBg,
+                    )}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+                <div className="mt-2 text-3xl font-bold tracking-tight">
+                  {k.value}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

@@ -15,7 +15,9 @@ export default async function ContactsPage() {
     <div className="space-y-6 p-4 md:p-6">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Kontakte</h1>
+          <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
+            Kontakte
+          </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Acquisition & Lead-Pipeline für Krileo
           </p>

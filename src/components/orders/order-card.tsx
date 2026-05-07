@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { CalendarDays } from "lucide-react";
 import type { OrderRow, UserProfileRow } from "@/lib/types/database";
-import { ORDER_TYPES, ORDER_STATUS_COLORS } from "@/lib/constants";
+import { ORDER_TYPES, PRIORITY_COLORS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
 function initials(name: string | null | undefined) {
@@ -49,7 +49,7 @@ export function OrderCard({
   const value = formatValue(order.value_cents);
 
   const inner = (
-    <Card className="cursor-pointer space-y-2 border-border/50 bg-card p-3 transition-colors hover:border-border hover:bg-card/80">
+    <Card className="group cursor-pointer space-y-2 border-border/60 bg-card p-3 shadow-none transition-all hover:-translate-y-px hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 break-words text-sm font-medium leading-tight">
           {order.title}
@@ -57,8 +57,8 @@ export function OrderCard({
         <Badge
           variant="outline"
           className={cn(
-            "shrink-0 border text-[10px] uppercase",
-            ORDER_STATUS_COLORS[order.status],
+            "shrink-0 border text-[10px] font-semibold uppercase",
+            PRIORITY_COLORS[order.priority],
           )}
         >
           {order.priority}

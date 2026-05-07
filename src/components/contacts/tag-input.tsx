@@ -1,0 +1,73 @@
+"use client";
+
+import { useState, type KeyboardEvent } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { X } from "lucide-react";
+
+export function TagInput({
+  value,
+  onChange,
+  placeholder = "Tag + Enter",
+}: {
+  value: string[];
+  onChange: (next: string[]) => void;
+  placeholder?: string;
+}) {
+  const [draft, setDraft] = useState("");
+
+  function add(t: string) {
+    const tag = t.trim();
+    if (!tag) return;
+    if (value.includes(tag)) return;
+    onChange([...value, tag]);
+  }
+
+  function remove(t: string) {
+    onChange(value.filter((x) => x !== t));
+  }
+
+  function onKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      add(draft);
+      setDraft("");
+    } else if (e.key === "Backspace" && draft === "" && value.length) {
+      onChange(value.slice(0, -1));
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 rounded-md border border-input bg-background px-2 py-1.5">
+      {value.map((tag) => (
+        <Badge
+          key={tag}
+          variant="secondary"
+          className="gap-1 pl-2 pr-1 text-xs"
+        >
+          {tag}
+          <button
+            type="button"
+            onClick={() => remove(tag)}
+            className="rounded hover:bg-muted-foreground/20"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </Badge>
+      ))}
+      <Input
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={onKeyDown}
+        onBlur={() => {
+          if (draft.trim()) {
+            add(draft);
+            setDraft("");
+          }
+        }}
+        placeholder={placeholder}
+        className="h-7 min-w-[120px] flex-1 border-none p-0 text-sm shadow-none focus-visible:ring-0"
+      />
+    </div>
+  );
+}

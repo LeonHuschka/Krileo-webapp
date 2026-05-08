@@ -136,3 +136,6 @@ export function tagColor(tag: string): string {
 }
 
 export const APP_NAME = "Krileo";
+
+export const REVENUE_GOAL_CENTS = 100_000_00;
+export const SAFETY_BUFFER = 0.2;

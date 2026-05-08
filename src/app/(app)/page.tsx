@@ -6,13 +6,22 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, ClipboardList, Users, CheckCircle2 } from "lucide-react";
+import {
+  ArrowRight,
+  ClipboardList,
+  Users,
+  CheckCircle2,
+  Target,
+  TrendingUp,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import {
   CONTACT_STATUS_COLORS,
   CONTACT_STATUSES,
   ORDER_STATUSES,
   ORDER_STATUS_COLORS,
+  REVENUE_GOAL_CENTS,
+  SAFETY_BUFFER,
 } from "@/lib/constants";
 import type {
   ContactRow,
@@ -89,6 +98,39 @@ export default async function DashboardPage() {
   const totalForBar =
     counts.angebot + counts.aktiv + counts.review;
 
+  // ── Revenue goal ──────────────────────────────────────────
+  const closedOrders = allOrders.filter(
+    (o) => o.status === "geliefert" || o.status === "archiv",
+  );
+  const revenueCents = closedOrders.reduce(
+    (sum, o) => sum + (o.value_cents ?? 0),
+    0,
+  );
+  const goalProgress = Math.min(1, revenueCents / REVENUE_GOAL_CENTS);
+  const remainingCents = Math.max(0, REVENUE_GOAL_CENTS - revenueCents);
+
+  const ordersWithValue = allOrders.filter(
+    (o) => o.value_cents != null && o.value_cents > 0,
+  );
+  const avgValueCents =
+    ordersWithValue.length > 0
+      ? ordersWithValue.reduce((s, o) => s + (o.value_cents ?? 0), 0) /
+        ordersWithValue.length
+      : 0;
+  const safeAvgCents = avgValueCents * (1 - SAFETY_BUFFER);
+  const ordersNeeded =
+    safeAvgCents > 0 && remainingCents > 0
+      ? Math.ceil(remainingCents / safeAvgCents)
+      : 0;
+  const totalProjected = closedOrders.length + ordersNeeded;
+
+  const fmtEuro = (cents: number) =>
+    new Intl.NumberFormat("de-DE", {
+      style: "currency",
+      currency: "EUR",
+      maximumFractionDigits: 0,
+    }).format(cents / 100);
+
   const kpis: {
     label: string;
     value: number;
@@ -136,6 +178,104 @@ export default async function DashboardPage() {
           Überblick über Aufträge, To-Dos und Acquisition
         </p>
       </div>
+
+      <Card className="relative overflow-hidden border-border/60 bg-gradient-to-br from-primary/15 via-primary/5 to-transparent">
+        <div className="pointer-events-none absolute -right-20 -top-20 h-60 w-60 rounded-full bg-primary/20 blur-3xl" />
+        <CardContent className="relative space-y-4 p-5 md:p-6">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                <Target className="h-3.5 w-3.5" />
+                Umsatzziel 2026
+              </div>
+              <div className="mt-2 flex flex-wrap items-baseline gap-2">
+                <span className="text-4xl font-bold tracking-tight md:text-5xl">
+                  {fmtEuro(revenueCents)}
+                </span>
+                <span className="text-base font-medium text-muted-foreground">
+                  / {fmtEuro(REVENUE_GOAL_CENTS)}
+                </span>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-xs uppercase tracking-wider text-muted-foreground">
+                Fortschritt
+              </div>
+              <div className="text-3xl font-bold tracking-tight text-primary md:text-4xl">
+                {Math.round(goalProgress * 100)}%
+              </div>
+            </div>
+          </div>
+
+          <div className="relative h-3 overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-primary via-cyan-400 to-primary shadow-[0_0_20px_rgba(56,189,248,0.5)] transition-all"
+              style={{ width: `${goalProgress * 100}%` }}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="rounded-lg border border-border/40 bg-card/40 p-3">
+              <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                Abgeschlossen
+              </div>
+              <div className="mt-1 flex items-baseline gap-1">
+                <span className="text-xl font-bold">{closedOrders.length}</span>
+                {totalProjected > 0 && (
+                  <span className="text-sm text-muted-foreground">
+                    /&nbsp;{totalProjected}
+                  </span>
+                )}
+              </div>
+              <div className="mt-0.5 text-[11px] text-muted-foreground">
+                Aufträge bis zum Ziel
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-border/40 bg-card/40 p-3">
+              <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                Noch benötigt
+              </div>
+              <div className="mt-1 flex items-baseline gap-1">
+                <span className="text-xl font-bold">
+                  {ordersNeeded > 0 ? ordersNeeded : "—"}
+                </span>
+                <span className="text-sm text-muted-foreground">Aufträge</span>
+              </div>
+              <div className="mt-0.5 text-[11px] text-muted-foreground">
+                bei Ø {fmtEuro(safeAvgCents)} (–20% Safety)
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-border/40 bg-card/40 p-3">
+              <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                Ø Auftragswert
+              </div>
+              <div className="mt-1 flex items-baseline gap-1">
+                <span className="text-xl font-bold">
+                  {avgValueCents > 0 ? fmtEuro(avgValueCents) : "—"}
+                </span>
+              </div>
+              <div className="mt-0.5 text-[11px] text-muted-foreground">
+                aus {ordersWithValue.length} Aufträgen
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-border/40 bg-card/40 p-3">
+              <div className="flex items-center gap-1 text-[11px] uppercase tracking-wider text-muted-foreground">
+                <TrendingUp className="h-3 w-3" />
+                Restlich
+              </div>
+              <div className="mt-1 text-xl font-bold">
+                {fmtEuro(remainingCents)}
+              </div>
+              <div className="mt-0.5 text-[11px] text-muted-foreground">
+                bis 100k geknackt
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {kpis.map((k) => {

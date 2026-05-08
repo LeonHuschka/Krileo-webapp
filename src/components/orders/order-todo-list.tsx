@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, type KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
@@ -28,6 +28,48 @@ function initials(name: string | null | undefined) {
     .slice(0, 2)
     .map((p) => p[0]?.toUpperCase() ?? "")
     .join("");
+}
+
+function TodoTitleInput({
+  todo,
+  onSave,
+}: {
+  todo: OrderTodoRow;
+  onSave: (next: string) => void;
+}) {
+  const [draft, setDraft] = useState(todo.title);
+
+  function commit() {
+    const trimmed = draft.trim();
+    if (!trimmed) {
+      setDraft(todo.title);
+      return;
+    }
+    if (trimmed !== todo.title) onSave(trimmed);
+  }
+
+  function onKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      e.currentTarget.blur();
+    } else if (e.key === "Escape") {
+      setDraft(todo.title);
+      e.currentTarget.blur();
+    }
+  }
+
+  return (
+    <input
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={onKeyDown}
+      className={cn(
+        "min-w-0 flex-1 rounded border border-transparent bg-transparent px-1 py-0.5 text-sm outline-none transition-colors hover:border-border focus:border-primary/60 focus:bg-background",
+        todo.done && "text-muted-foreground line-through",
+      )}
+    />
+  );
 }
 
 export function OrderTodoList({
@@ -61,6 +103,17 @@ export function OrderTodoList({
     startTransition(async () => {
       try {
         await updateTodo(t.id, { done: !t.done });
+        router.refresh();
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Fehler");
+      }
+    });
+  }
+
+  function rename(t: OrderTodoRow, title: string) {
+    startTransition(async () => {
+      try {
+        await updateTodo(t.id, { title });
         router.refresh();
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Fehler");
@@ -140,14 +193,11 @@ export function OrderTodoList({
                   onCheckedChange={() => toggle(t)}
                   className="h-4 w-4"
                 />
-                <span
-                  className={cn(
-                    "min-w-0 flex-1 text-sm",
-                    t.done && "text-muted-foreground line-through",
-                  )}
-                >
-                  {t.title}
-                </span>
+                <TodoTitleInput
+                  key={`${t.id}-${t.updated_at}`}
+                  todo={t}
+                  onSave={(next) => rename(t, next)}
+                />
 
                 <Input
                   type="date"

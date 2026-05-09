@@ -38,14 +38,11 @@ export async function GET(
     return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
   }
 
-  const [{ data: order }, { data: me }] = await Promise.all([
-    supabase.from("orders").select("*").eq("id", params.id).maybeSingle(),
-    supabase
-      .from("user_profiles")
-      .select("full_name")
-      .eq("id", user.id)
-      .single(),
-  ]);
+  const { data: order } = await supabase
+    .from("orders")
+    .select("*")
+    .eq("id", params.id)
+    .maybeSingle();
 
   if (!order) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
@@ -74,6 +71,7 @@ export async function GET(
     order.description,
     order.title,
     order.value_cents ?? null,
+    order.order_type,
   );
   const totals = computeInvoiceTotals(items);
 
@@ -88,8 +86,8 @@ export async function GET(
 
     sender: {
       name: "Krileo",
-      addressLines: ["Krileo Agency", me?.full_name ?? ""].filter(Boolean),
-      email: user.email ?? undefined,
+      addressLines: [],
+      email: "info@krileo.com",
     },
     recipient: {
       name: recipientName,

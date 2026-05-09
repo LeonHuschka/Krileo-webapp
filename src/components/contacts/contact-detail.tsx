@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Trash2, History } from "lucide-react";
+import { Trash2, History, ExternalLink } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,6 +41,7 @@ export function ContactDetail({ contact }: { contact: ContactRow }) {
     location: contact.location ?? "",
     source: contact.source ?? "",
     notes: contact.notes ?? "",
+    demo_url: contact.demo_url ?? "",
   });
   const [tags, setTags] = useState<string[]>(contact.tags);
 
@@ -64,6 +65,7 @@ export function ContactDetail({ contact }: { contact: ContactRow }) {
       location: draft.location || null,
       source: draft.source || null,
       notes: draft.notes || null,
+      demo_url: draft.demo_url || null,
     });
   }
 
@@ -214,6 +216,39 @@ export function ContactDetail({ contact }: { contact: ContactRow }) {
               onChange={(e) => setDraft({ ...draft, location: e.target.value })}
               onBlur={saveTextFields}
             />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="demo_url">Demo-Link</Label>
+          <div className="flex gap-2">
+            <Input
+              id="demo_url"
+              type="url"
+              placeholder="https://demo.krileo.de/mustermann"
+              value={draft.demo_url}
+              onChange={(e) =>
+                setDraft({ ...draft, demo_url: e.target.value })
+              }
+              onBlur={saveTextFields}
+            />
+            {contact.demo_url && (
+              <Button
+                asChild
+                variant="outline"
+                size="icon"
+                className="shrink-0"
+                title="Demo öffnen"
+              >
+                <a
+                  href={contact.demo_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                </a>
+              </Button>
+            )}
           </div>
         </div>
 

@@ -72,6 +72,7 @@ export type Database = {
           source: string | null;
           location: string | null;
           notes: string | null;
+          demo_url: string | null;
           last_contacted_at: string | null;
           created_by: string;
           created_at: string;
@@ -88,6 +89,7 @@ export type Database = {
           source?: string | null;
           location?: string | null;
           notes?: string | null;
+          demo_url?: string | null;
           last_contacted_at?: string | null;
           created_by: string;
           created_at?: string;
@@ -104,6 +106,7 @@ export type Database = {
           source?: string | null;
           location?: string | null;
           notes?: string | null;
+          demo_url?: string | null;
           last_contacted_at?: string | null;
           created_by?: string;
           created_at?: string;

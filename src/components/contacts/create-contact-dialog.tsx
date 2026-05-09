@@ -50,6 +50,7 @@ export function CreateContactDialog() {
       source: "",
       location: "",
       notes: "",
+      demo_url: "",
     },
   });
 
@@ -164,6 +165,21 @@ export function CreateContactDialog() {
               placeholder="z. B. München, Hauptstr. 12"
               {...form.register("location")}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="demo_url">Demo-Link</Label>
+            <Input
+              id="demo_url"
+              type="url"
+              placeholder="https://demo.krileo.de/mustermann"
+              {...form.register("demo_url")}
+            />
+            {form.formState.errors.demo_url && (
+              <p className="text-xs text-destructive">
+                {form.formState.errors.demo_url.message}
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">

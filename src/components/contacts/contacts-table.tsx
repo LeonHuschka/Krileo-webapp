@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Search } from "lucide-react";
+import { ExternalLink, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -121,13 +121,14 @@ export function ContactsTable({ contacts }: { contacts: ContactRow[] }) {
               <TableHead>Tags</TableHead>
               <TableHead>Ort</TableHead>
               <TableHead>Letzter Kontakt</TableHead>
+              <TableHead className="w-10 text-right">Demo</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filtered.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={6}
+                  colSpan={7}
                   className="py-8 text-center text-sm text-muted-foreground"
                 >
                   Keine Kontakte gefunden.
@@ -185,6 +186,24 @@ export function ContactsTable({ contacts }: { contacts: ContactRow[] }) {
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {formatDate(c.last_contacted_at)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {c.demo_url ? (
+                      <a
+                        href={c.demo_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary/10"
+                        title={c.demo_url}
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </a>
+                    ) : (
+                      <span className="text-xs text-muted-foreground/50">
+                        —
+                      </span>
+                    )}
                   </TableCell>
                 </TableRow>
               ))

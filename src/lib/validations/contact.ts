@@ -23,6 +23,13 @@ export const contactCreateSchema = z.object({
   source: z.string().max(100).optional().nullable(),
   location: z.string().max(200).optional().nullable(),
   notes: z.string().max(10000).optional().nullable(),
+  demo_url: z
+    .string()
+    .url("Ungültige URL")
+    .max(500)
+    .optional()
+    .nullable()
+    .or(z.literal("").transform(() => null)),
 });
 
 export const contactUpdateSchema = contactCreateSchema.partial().extend({

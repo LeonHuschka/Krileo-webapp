@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Trash2 } from "lucide-react";
+import { Trash2, FileDown } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -113,16 +113,30 @@ export function OrderDetail({
             </Badge>
           </div>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={remove}
-          className="text-muted-foreground hover:text-destructive"
-          disabled={pending}
-          title="Auftrag löschen"
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            title="Rechnung als PDF herunterladen"
+          >
+            <a href={`/api/orders/${order.id}/invoice`} download>
+              <FileDown className="h-3.5 w-3.5" />
+              Rechnung
+            </a>
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={remove}
+            className="text-muted-foreground hover:text-destructive"
+            disabled={pending}
+            title="Auftrag löschen"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-5">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

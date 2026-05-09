@@ -75,7 +75,7 @@ export async function GET(
     order.title,
     order.value_cents ?? null,
   );
-  const totals = computeInvoiceTotals(items, 0.19);
+  const totals = computeInvoiceTotals(items);
 
   const today = new Date();
   const due = new Date(today);
@@ -85,7 +85,6 @@ export async function GET(
     invoiceNumber: `KR-${today.getFullYear()}-${shortId(order.id)}`,
     invoiceDate: today.toISOString(),
     dueDate: due.toISOString(),
-    vatRate: 0.19,
 
     sender: {
       name: "Krileo",
@@ -102,9 +101,7 @@ export async function GET(
     orderRef: shortId(order.id),
 
     items,
-    netCents: totals.netCents,
-    vatCents: totals.vatCents,
-    grossCents: totals.grossCents,
+    totalCents: totals.totalCents,
 
     logoSrc: await loadLogoDataUrl(),
   };

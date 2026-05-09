@@ -9,150 +9,194 @@ import {
 } from "@react-pdf/renderer";
 import type { InvoiceItem } from "@/lib/invoice/parse";
 
-// Brand color: Krileo blue
-const BRAND = "#2196F3";
-const FG = "#0F172A";
-const MUTED = "#64748B";
-const BORDER = "#E2E8F0";
+const BRAND = "#2196F3"; // Krileo blue
+const FG = "#0F1729";
+const MUTED = "#6B7280";
+const FAINT = "#9CA3AF";
+const HAIRLINE = "#E5E7EB";
 
 const styles = StyleSheet.create({
   page: {
-    padding: 48,
+    paddingTop: 56,
+    paddingBottom: 80,
+    paddingHorizontal: 56,
     fontSize: 10,
     fontFamily: "Helvetica",
     color: FG,
-    lineHeight: 1.4,
+    lineHeight: 1.5,
   },
+
+  // Header
   header: {
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 32,
+    marginBottom: 48,
   },
-  logo: { width: 64, height: 64 },
-  brand: {
-    fontSize: 22,
+  brandRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  logo: { width: 38, height: 38 },
+  brandName: {
+    fontSize: 18,
+    fontFamily: "Helvetica-Bold",
+    color: FG,
+    letterSpacing: 1.5,
+  },
+  invoiceLabel: {
+    fontSize: 9,
     fontFamily: "Helvetica-Bold",
     color: BRAND,
-    letterSpacing: 1,
-  },
-  brandSub: { fontSize: 9, color: MUTED, marginTop: 2 },
-  invoiceMeta: {
+    letterSpacing: 2,
     textAlign: "right",
   },
-  invoiceTitle: {
-    fontSize: 28,
+  invoiceNumber: {
+    fontSize: 14,
     fontFamily: "Helvetica-Bold",
     color: FG,
-    letterSpacing: 1,
-    marginBottom: 6,
+    marginTop: 2,
+    textAlign: "right",
   },
-  metaRow: { fontSize: 9, color: MUTED, marginBottom: 1 },
-  metaValue: { color: FG, fontFamily: "Helvetica-Bold" },
 
-  parties: {
+  // Meta strip
+  meta: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    gap: 32,
+    paddingTop: 14,
+    paddingBottom: 14,
+    borderTopWidth: 0.75,
+    borderBottomWidth: 0.75,
+    borderColor: HAIRLINE,
     marginBottom: 32,
   },
-  party: { flex: 1, paddingRight: 16 },
-  partyLabel: {
-    fontSize: 8,
-    color: MUTED,
+  metaCol: { flex: 1 },
+  metaLabel: {
+    fontSize: 7.5,
+    color: FAINT,
+    letterSpacing: 1.4,
     textTransform: "uppercase",
-    letterSpacing: 1.2,
-    marginBottom: 4,
+    marginBottom: 3,
   },
-  partyName: { fontSize: 11, fontFamily: "Helvetica-Bold", marginBottom: 2 },
-  partyLine: { fontSize: 10, color: FG, marginBottom: 1 },
+  metaValue: { fontSize: 10.5, color: FG, fontFamily: "Helvetica-Bold" },
 
-  table: {
-    marginBottom: 16,
-    borderTopWidth: 1,
-    borderTopColor: BORDER,
-  },
-  tableHead: {
+  // Parties
+  parties: {
     flexDirection: "row",
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: BORDER,
-    backgroundColor: "#F8FAFC",
+    gap: 32,
+    marginBottom: 36,
   },
-  tableRow: {
+  party: { flex: 1 },
+  partyHeader: {
+    fontSize: 7.5,
+    color: FAINT,
+    letterSpacing: 1.4,
+    textTransform: "uppercase",
+    marginBottom: 6,
+  },
+  partyName: {
+    fontSize: 12,
+    fontFamily: "Helvetica-Bold",
+    color: FG,
+    marginBottom: 2,
+  },
+  partyLine: { fontSize: 10, color: MUTED, marginBottom: 1 },
+
+  // Project subline
+  project: {
+    marginBottom: 24,
+  },
+  projectTitle: {
+    fontSize: 18,
+    fontFamily: "Helvetica-Bold",
+    color: FG,
+    letterSpacing: 0.2,
+  },
+
+  // Items table
+  itemsHead: {
     flexDirection: "row",
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: BORDER,
+    paddingTop: 8,
+    paddingBottom: 8,
+    borderTopWidth: 0.75,
+    borderBottomWidth: 0.75,
+    borderColor: HAIRLINE,
+  },
+  itemRow: {
+    flexDirection: "row",
+    paddingVertical: 12,
+    borderBottomWidth: 0.5,
+    borderBottomColor: HAIRLINE,
   },
   th: {
-    fontSize: 8,
-    fontFamily: "Helvetica-Bold",
-    color: MUTED,
+    fontSize: 7.5,
+    color: FAINT,
+    letterSpacing: 1.4,
     textTransform: "uppercase",
-    letterSpacing: 1,
-    paddingHorizontal: 6,
+    fontFamily: "Helvetica-Bold",
   },
-  td: {
-    fontSize: 10,
-    color: FG,
-    paddingHorizontal: 6,
-  },
-  colDesc: { flex: 5 },
-  colQty: { flex: 1, textAlign: "right" },
-  colUnit: { flex: 1.5, textAlign: "right" },
-  colTotal: { flex: 1.5, textAlign: "right" },
+  td: { fontSize: 10.5, color: FG },
+  desc: { flex: 5, paddingRight: 12 },
+  qty: { flex: 1, textAlign: "right", paddingRight: 12 },
+  unit: { flex: 1.5, textAlign: "right", paddingRight: 12 },
+  total: { flex: 1.5, textAlign: "right" },
 
+  // Totals
   totals: {
-    marginTop: 8,
     flexDirection: "row",
     justifyContent: "flex-end",
+    marginTop: 24,
   },
   totalsBox: {
     width: 240,
-  },
-  totalsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: 4,
-  },
-  totalsLabel: { fontSize: 10, color: MUTED },
-  totalsValue: { fontSize: 10, color: FG },
-  grandRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: 8,
-    marginTop: 4,
-    borderTopWidth: 2,
+    paddingTop: 14,
+    borderTopWidth: 1.5,
     borderTopColor: BRAND,
-    backgroundColor: "#EFF6FF",
-    paddingHorizontal: 8,
-    borderRadius: 4,
   },
-  grandLabel: { fontSize: 12, fontFamily: "Helvetica-Bold", color: FG },
-  grandValue: { fontSize: 14, fontFamily: "Helvetica-Bold", color: BRAND },
+  grandLabel: {
+    fontSize: 8,
+    color: FAINT,
+    letterSpacing: 1.4,
+    textTransform: "uppercase",
+    marginBottom: 4,
+    textAlign: "right",
+  },
+  grandValue: {
+    fontSize: 24,
+    fontFamily: "Helvetica-Bold",
+    color: FG,
+    textAlign: "right",
+  },
 
+  // Notes
   notes: {
-    marginTop: 36,
+    marginTop: 56,
     paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: BORDER,
+    borderTopWidth: 0.5,
+    borderTopColor: HAIRLINE,
     fontSize: 9,
     color: MUTED,
+    lineHeight: 1.6,
   },
-  notesLine: { marginBottom: 2 },
+  notesHeader: {
+    fontSize: 7.5,
+    color: FAINT,
+    letterSpacing: 1.4,
+    textTransform: "uppercase",
+    fontFamily: "Helvetica-Bold",
+    marginBottom: 6,
+  },
 
+  // Footer
   footer: {
     position: "absolute",
     bottom: 32,
-    left: 48,
-    right: 48,
+    left: 56,
+    right: 56,
     flexDirection: "row",
     justifyContent: "space-between",
+    paddingTop: 10,
+    borderTopWidth: 0.5,
+    borderTopColor: HAIRLINE,
     fontSize: 8,
-    color: MUTED,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: BORDER,
+    color: FAINT,
   },
 });
 
@@ -163,18 +207,23 @@ const fmtEuro = (cents: number) =>
     minimumFractionDigits: 2,
   }).format(cents / 100);
 
+const DE = (iso: string) =>
+  new Date(iso).toLocaleDateString("de-DE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+
 export type InvoiceData = {
   invoiceNumber: string;
-  invoiceDate: string; // ISO
-  dueDate: string; // ISO
-  vatRate: number;
+  invoiceDate: string;
+  dueDate: string;
 
   sender: {
     name: string;
     addressLines: string[];
     email?: string;
     phone?: string;
-    taxId?: string;
     iban?: string;
     bank?: string;
   };
@@ -189,19 +238,10 @@ export type InvoiceData = {
   orderRef?: string;
 
   items: InvoiceItem[];
-  netCents: number;
-  vatCents: number;
-  grossCents: number;
+  totalCents: number;
 
   logoSrc?: string;
 };
-
-const DE = (iso: string) =>
-  new Date(iso).toLocaleDateString("de-DE", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
 
 export function InvoiceDocument({ data }: { data: InvoiceData }) {
   return (
@@ -212,36 +252,36 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
       <Page size="A4" style={styles.page}>
         {/* Header */}
         <View style={styles.header}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-            {data.logoSrc && (
-              <Image src={data.logoSrc} style={styles.logo} />
-            )}
-            <View>
-              <Text style={styles.brand}>KRILEO</Text>
-              <Text style={styles.brandSub}>
-                Websites · Automations · Systeme
-              </Text>
-            </View>
+          <View style={styles.brandRow}>
+            {data.logoSrc && <Image src={data.logoSrc} style={styles.logo} />}
+            <Text style={styles.brandName}>KRILEO</Text>
           </View>
-          <View style={styles.invoiceMeta}>
-            <Text style={styles.invoiceTitle}>RECHNUNG</Text>
-            <Text style={styles.metaRow}>
-              Rechnungs-Nr.{" "}
-              <Text style={styles.metaValue}>{data.invoiceNumber}</Text>
-            </Text>
-            <Text style={styles.metaRow}>
-              Datum <Text style={styles.metaValue}>{DE(data.invoiceDate)}</Text>
-            </Text>
-            <Text style={styles.metaRow}>
-              Fällig <Text style={styles.metaValue}>{DE(data.dueDate)}</Text>
-            </Text>
+          <View>
+            <Text style={styles.invoiceLabel}>RECHNUNG</Text>
+            <Text style={styles.invoiceNumber}>{data.invoiceNumber}</Text>
+          </View>
+        </View>
+
+        {/* Meta strip */}
+        <View style={styles.meta}>
+          <View style={styles.metaCol}>
+            <Text style={styles.metaLabel}>Rechnungsdatum</Text>
+            <Text style={styles.metaValue}>{DE(data.invoiceDate)}</Text>
+          </View>
+          <View style={styles.metaCol}>
+            <Text style={styles.metaLabel}>Fällig am</Text>
+            <Text style={styles.metaValue}>{DE(data.dueDate)}</Text>
+          </View>
+          <View style={styles.metaCol}>
+            <Text style={styles.metaLabel}>Auftragsnummer</Text>
+            <Text style={styles.metaValue}>{data.orderRef ?? "—"}</Text>
           </View>
         </View>
 
         {/* Parties */}
         <View style={styles.parties}>
           <View style={styles.party}>
-            <Text style={styles.partyLabel}>Von</Text>
+            <Text style={styles.partyHeader}>Absender</Text>
             <Text style={styles.partyName}>{data.sender.name}</Text>
             {data.sender.addressLines.map((l, i) => (
               <Text key={i} style={styles.partyLine}>
@@ -256,7 +296,7 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
             )}
           </View>
           <View style={styles.party}>
-            <Text style={styles.partyLabel}>An</Text>
+            <Text style={styles.partyHeader}>Empfänger</Text>
             <Text style={styles.partyName}>{data.recipient.name}</Text>
             {data.recipient.addressLines.map((l, i) => (
               <Text key={i} style={styles.partyLine}>
@@ -269,81 +309,61 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
           </View>
         </View>
 
-        {/* Project subline */}
-        <View style={{ marginBottom: 12 }}>
-          <Text style={styles.partyLabel}>Projekt</Text>
-          <Text style={{ fontSize: 11, fontFamily: "Helvetica-Bold" }}>
-            {data.orderTitle}
-          </Text>
-          {data.orderRef && (
-            <Text style={{ fontSize: 9, color: MUTED }}>
-              Auftrag #{data.orderRef}
-            </Text>
-          )}
+        {/* Project headline */}
+        <View style={styles.project}>
+          <Text style={styles.partyHeader}>Projekt</Text>
+          <Text style={styles.projectTitle}>{data.orderTitle}</Text>
         </View>
 
         {/* Items table */}
-        <View style={styles.table}>
-          <View style={styles.tableHead}>
-            <Text style={[styles.th, styles.colDesc]}>Position</Text>
-            <Text style={[styles.th, styles.colQty]}>Menge</Text>
-            <Text style={[styles.th, styles.colUnit]}>Einzelpreis</Text>
-            <Text style={[styles.th, styles.colTotal]}>Gesamt</Text>
-          </View>
-          {data.items.map((it, i) => (
-            <View key={i} style={styles.tableRow}>
-              <Text style={[styles.td, styles.colDesc]}>{it.description}</Text>
-              <Text style={[styles.td, styles.colQty]}>{it.quantity}</Text>
-              <Text style={[styles.td, styles.colUnit]}>
-                {fmtEuro(it.unitCents)}
-              </Text>
-              <Text style={[styles.td, styles.colTotal]}>
-                {fmtEuro(it.totalCents)}
-              </Text>
-            </View>
-          ))}
+        <View style={styles.itemsHead}>
+          <Text style={[styles.th, styles.desc]}>Leistung</Text>
+          <Text style={[styles.th, styles.qty]}>Menge</Text>
+          <Text style={[styles.th, styles.unit]}>Einzelpreis</Text>
+          <Text style={[styles.th, styles.total]}>Betrag</Text>
         </View>
+        {data.items.map((it, i) => (
+          <View key={i} style={styles.itemRow}>
+            <Text style={[styles.td, styles.desc]}>{it.description}</Text>
+            <Text style={[styles.td, styles.qty]}>{it.quantity}</Text>
+            <Text style={[styles.td, styles.unit]}>
+              {fmtEuro(it.unitCents)}
+            </Text>
+            <Text style={[styles.td, styles.total]}>
+              {fmtEuro(it.totalCents)}
+            </Text>
+          </View>
+        ))}
 
-        {/* Totals */}
+        {/* Total */}
         <View style={styles.totals}>
           <View style={styles.totalsBox}>
-            <View style={styles.totalsRow}>
-              <Text style={styles.totalsLabel}>Zwischensumme (netto)</Text>
-              <Text style={styles.totalsValue}>{fmtEuro(data.netCents)}</Text>
-            </View>
-            <View style={styles.totalsRow}>
-              <Text style={styles.totalsLabel}>
-                MwSt. ({Math.round(data.vatRate * 100)}%)
-              </Text>
-              <Text style={styles.totalsValue}>{fmtEuro(data.vatCents)}</Text>
-            </View>
-            <View style={styles.grandRow}>
-              <Text style={styles.grandLabel}>Gesamtbetrag</Text>
-              <Text style={styles.grandValue}>{fmtEuro(data.grossCents)}</Text>
-            </View>
+            <Text style={styles.grandLabel}>Gesamtbetrag</Text>
+            <Text style={styles.grandValue}>{fmtEuro(data.totalCents)}</Text>
           </View>
         </View>
 
-        {/* Notes / payment */}
+        {/* Notes */}
         <View style={styles.notes}>
-          <Text style={styles.notesLine}>
+          <Text style={styles.notesHeader}>Zahlungsinformationen</Text>
+          <Text>
             Bitte überweise den Gesamtbetrag innerhalb von 14 Tagen unter
             Angabe der Rechnungsnummer{" "}
-            <Text style={{ fontFamily: "Helvetica-Bold" }}>
+            <Text style={{ fontFamily: "Helvetica-Bold", color: FG }}>
               {data.invoiceNumber}
             </Text>
             .
           </Text>
           {data.sender.iban && (
-            <Text style={styles.notesLine}>
+            <Text style={{ marginTop: 4 }}>
               IBAN: {data.sender.iban}
-              {data.sender.bank ? ` · ${data.sender.bank}` : ""}
+              {data.sender.bank ? `  ·  ${data.sender.bank}` : ""}
             </Text>
           )}
-          {data.sender.taxId && (
-            <Text style={styles.notesLine}>USt-IdNr.: {data.sender.taxId}</Text>
-          )}
-          <Text style={[styles.notesLine, { marginTop: 6 }]}>
+          <Text style={{ marginTop: 8 }}>
+            Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.
+          </Text>
+          <Text style={{ marginTop: 14, color: FG }}>
             Vielen Dank für deinen Auftrag.
           </Text>
         </View>
@@ -351,7 +371,7 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
         {/* Footer */}
         <View style={styles.footer} fixed>
           <Text>{data.sender.name}</Text>
-          <Text>{data.sender.email ?? ""}</Text>
+          {data.sender.email ? <Text>{data.sender.email}</Text> : <Text> </Text>}
           <Text>krileo.de</Text>
         </View>
       </Page>

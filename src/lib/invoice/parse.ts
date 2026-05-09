@@ -1,9 +1,11 @@
-// Tries to break an order description into invoice line items.
-// Each line in the description becomes one position. If a line contains
-// a price (e.g. "Setup 1.500€" or "Hosting: 49 EUR / Monat"), that price
-// is used. Lines without an explicit price split the remainder of the
-// total order value evenly. If no prices are found at all, the entire
-// total is distributed evenly across the lines.
+// Intelligent parsing of an order description into invoice line items.
+//
+// Rule of thumb:
+// - If the description is itemized (bullets, numbered list, or lines with
+//   explicit prices), each item becomes a position.
+// - If the description is just prose (full sentences without bullets or
+//   prices), we keep it as a SINGLE position with the order title and the
+//   full order value — the prose itself is too noisy to chop into pieces.
 
 export type InvoiceItem = {
   description: string;
@@ -13,7 +15,9 @@ export type InvoiceItem = {
 };
 
 const PRICE_RE =
-  /(\d{1,3}(?:[.\s]\d{3})*(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)\s*(?:€|EUR|eur)/i;
+  /(\d{1,3}(?:[.\s]\d{3})*(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)\s*(?:€|EUR|eur)\b/;
+
+const BULLET_RE = /^\s*(?:[-*•·–—→▪◦]|\d+[.)])\s+/;
 
 function parsePrice(s: string): number | null {
   const m = s.match(PRICE_RE);
@@ -31,8 +35,14 @@ function stripPrice(s: string): string {
   return s.replace(PRICE_RE, "").replace(/\s+[-:–•·]+\s*$/, "").trim();
 }
 
-function cleanLine(s: string): string {
-  return s.replace(/^\s*[-•*·–]\s*/, "").trim();
+function stripBullet(s: string): string {
+  return s.replace(BULLET_RE, "").trim();
+}
+
+function looksLikeProseLine(s: string): boolean {
+  // A "prose" line is a full sentence: more than ~8 words AND ends with .!?
+  const wordCount = s.trim().split(/\s+/).length;
+  return wordCount > 8 && /[.!?]$/.test(s.trim());
 }
 
 export function parseDescription(
@@ -40,14 +50,15 @@ export function parseDescription(
   fallbackTitle: string,
   totalCents: number | null,
 ): InvoiceItem[] {
-  const lines = (description ?? "")
+  const total = totalCents ?? 0;
+
+  const rawLines = (description ?? "")
     .split(/\r?\n/)
-    .map(cleanLine)
+    .map((l) => l.trim())
     .filter(Boolean);
 
-  // No description → single line item using the whole order total.
-  if (lines.length === 0) {
-    const total = totalCents ?? 0;
+  // No description at all → single position from the order title.
+  if (rawLines.length === 0) {
     return [
       {
         description: fallbackTitle,
@@ -58,23 +69,53 @@ export function parseDescription(
     ];
   }
 
-  const parsed = lines.map((line) => {
+  const bulletLines = rawLines.filter((l) => BULLET_RE.test(l));
+  const linesWithPrice = rawLines.filter((l) => parsePrice(l) != null);
+
+  const isItemized =
+    // Most lines are bullet-prefixed (clear list)
+    bulletLines.length >= Math.max(2, Math.ceil(rawLines.length * 0.6)) ||
+    // Or we have at least one explicit price (you wrote line items with prices)
+    linesWithPrice.length > 0;
+
+  if (!isItemized) {
+    // Single prose paragraph or short blurb → one position.
+    return [
+      {
+        description: fallbackTitle,
+        quantity: 1,
+        unitCents: total,
+        totalCents: total,
+      },
+    ];
+  }
+
+  // Itemized branch.
+  // Take only lines that look like items: bulletted OR priced OR short headings.
+  const itemLines = rawLines.filter((l) => {
+    if (BULLET_RE.test(l)) return true;
+    if (parsePrice(l) != null) return true;
+    // short heading-style line, not a full sentence
+    return !looksLikeProseLine(l);
+  });
+
+  const finalLines = itemLines.length > 0 ? itemLines : rawLines;
+
+  const parsed = finalLines.map((line) => {
     const price = parsePrice(line);
-    const text = price != null ? stripPrice(line) : line;
-    return { text: text || line, price };
+    const stripped = price != null ? stripPrice(line) : line;
+    const text = stripBullet(stripped);
+    return { text: text || stripBullet(line), price };
   });
 
   const explicitTotal = parsed
     .filter((p) => p.price != null)
     .reduce((sum, p) => sum + (p.price ?? 0), 0);
 
-  const unpriced = parsed.filter((p) => p.price == null);
-
-  let perUnpriced = 0;
-  if (unpriced.length > 0 && totalCents != null) {
-    const remaining = Math.max(0, totalCents - explicitTotal);
-    perUnpriced = Math.floor(remaining / unpriced.length);
-  }
+  const unpricedCount = parsed.filter((p) => p.price == null).length;
+  const remaining = Math.max(0, total - explicitTotal);
+  const perUnpriced =
+    unpricedCount > 0 ? Math.floor(remaining / unpricedCount) : 0;
 
   const items: InvoiceItem[] = parsed.map((p) => {
     const cents = p.price ?? perUnpriced;
@@ -86,11 +127,12 @@ export function parseDescription(
     };
   });
 
-  // If totals don't reconcile (rounding), adjust the last item.
-  if (totalCents != null) {
+  // Reconcile rounding so positions sum exactly to the order total
+  // (only if every position has a value; otherwise leave as-is).
+  if (total > 0 && items.every((it) => it.totalCents > 0)) {
     const sum = items.reduce((s, it) => s + it.totalCents, 0);
-    const diff = totalCents - sum;
-    if (diff !== 0 && items.length > 0) {
+    const diff = total - sum;
+    if (diff !== 0) {
       const last = items[items.length - 1];
       last.totalCents += diff;
       last.unitCents = last.totalCents;
@@ -100,11 +142,10 @@ export function parseDescription(
   return items;
 }
 
-export function computeInvoiceTotals(
-  items: InvoiceItem[],
-  vatRate = 0.19,
-): { netCents: number; vatCents: number; grossCents: number } {
-  const netCents = items.reduce((s, it) => s + it.totalCents, 0);
-  const vatCents = Math.round(netCents * vatRate);
-  return { netCents, vatCents, grossCents: netCents + vatCents };
+export function computeInvoiceTotals(items: InvoiceItem[]): {
+  totalCents: number;
+} {
+  return {
+    totalCents: items.reduce((s, it) => s + it.totalCents, 0),
+  };
 }

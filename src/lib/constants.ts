@@ -136,6 +136,14 @@ export function tagColor(tag: string): string {
   return TAG_COLORS[Math.abs(hash) % TAG_COLORS.length];
 }
 
+export const GROWTH_CATEGORIES = [
+  "Marketing",
+  "Sales",
+  "Akquise",
+  "Ops",
+  "Systems",
+] as const;
+
 export const GROWTH_STATUSES: { value: GrowthStatus; label: string }[] = [
   { value: "ideen", label: "Ideen" },
   { value: "todo", label: "To Do" },

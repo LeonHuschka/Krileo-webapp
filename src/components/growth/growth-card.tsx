@@ -3,17 +3,13 @@
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { CalendarDays, ListChecks, Trash2 } from "lucide-react";
+import { ListChecks, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import {
-  GROWTH_STATUS_COLUMN,
-  PRIORITY_COLORS,
-  tagColor,
-} from "@/lib/constants";
+import { GROWTH_STATUS_COLUMN, PRIORITY_COLORS } from "@/lib/constants";
 import {
   deleteGrowthTask,
   updateGrowthTask,
@@ -31,14 +27,6 @@ function initials(name: string | null | undefined) {
     .join("");
 }
 
-function formatDate(d: string | null) {
-  if (!d) return null;
-  return new Date(d).toLocaleDateString("de-DE", {
-    day: "2-digit",
-    month: "short",
-  });
-}
-
 export function GrowthCard({
   task,
   assignee,
@@ -52,7 +40,6 @@ export function GrowthCard({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const due = formatDate(task.due_date);
   const col = GROWTH_STATUS_COLUMN[task.status];
   const isDone = task.status === "done" || task.status === "archiv";
   const subtasks = task.subtasks ?? [];
@@ -136,38 +123,18 @@ export function GrowthCard({
       </div>
 
       {task.category && (
-        <div className="pl-6 text-xs text-muted-foreground">
-          {task.category}
-        </div>
-      )}
-
-      {task.tags.length > 0 && (
-        <div className="flex flex-wrap gap-1 pl-6">
-          {task.tags.slice(0, 4).map((t) => (
-            <Badge
-              key={t}
-              variant="outline"
-              className={cn("border text-[10px] font-medium", tagColor(t))}
-            >
-              {t}
-            </Badge>
-          ))}
-          {task.tags.length > 4 && (
-            <span className="text-xs text-muted-foreground">
-              +{task.tags.length - 4}
-            </span>
-          )}
+        <div className="pl-6">
+          <Badge
+            variant="outline"
+            className="border-border/60 bg-card text-[10px] font-medium text-muted-foreground"
+          >
+            {task.category}
+          </Badge>
         </div>
       )}
 
       <div className="flex items-center justify-between gap-2 pl-6 pt-1">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          {due && (
-            <div className="flex items-center gap-1">
-              <CalendarDays className="h-3 w-3" />
-              {due}
-            </div>
-          )}
           {subtasks.length > 0 && (
             <div
               className={cn(

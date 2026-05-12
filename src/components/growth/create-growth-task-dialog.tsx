@@ -31,15 +31,17 @@ import {
   type GrowthCreateData,
 } from "@/lib/validations/growth";
 import { createGrowthTask } from "@/app/(app)/growth/actions";
-import { TagInput } from "@/components/contacts/tag-input";
+import { CategoryCombobox } from "@/components/growth/category-combobox";
 import type { UserProfileRow } from "@/lib/types/database";
 
 const NONE = "__none__";
 
 export function CreateGrowthTaskDialog({
   members,
+  extraCategories = [],
 }: {
   members: UserProfileRow[];
+  extraCategories?: string[];
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -52,7 +54,7 @@ export function CreateGrowthTaskDialog({
       description: "",
       status: "todo",
       priority: "medium",
-      category: "",
+      category: null,
       tags: [],
       due_date: null,
       assigned_to: null,
@@ -99,7 +101,7 @@ export function CreateGrowthTaskDialog({
             )}
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>Status</Label>
               <Controller
@@ -142,23 +144,21 @@ export function CreateGrowthTaskDialog({
                 )}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="due_date">Fällig</Label>
-              <Input
-                id="due_date"
-                type="date"
-                {...form.register("due_date")}
-              />
-            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label htmlFor="category">Kategorie</Label>
-              <Input
-                id="category"
-                placeholder="Marketing, Sales, Ops, …"
-                {...form.register("category")}
+              <Label>Kategorie</Label>
+              <Controller
+                control={form.control}
+                name="category"
+                render={({ field }) => (
+                  <CategoryCombobox
+                    value={field.value ?? null}
+                    onChange={field.onChange}
+                    extra={extraCategories}
+                  />
+                )}
               />
             </div>
             <div className="space-y-2">
@@ -186,20 +186,6 @@ export function CreateGrowthTaskDialog({
                 )}
               />
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Tags</Label>
-            <Controller
-              control={form.control}
-              name="tags"
-              render={({ field }) => (
-                <TagInput
-                  value={field.value ?? []}
-                  onChange={field.onChange}
-                />
-              )}
-            />
           </div>
 
           <div className="space-y-2">

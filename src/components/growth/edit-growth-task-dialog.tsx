@@ -28,7 +28,7 @@ import {
   deleteGrowthTask,
   updateGrowthTask,
 } from "@/app/(app)/growth/actions";
-import { TagInput } from "@/components/contacts/tag-input";
+import { CategoryCombobox } from "@/components/growth/category-combobox";
 import type {
   GrowthStatus,
   GrowthTaskRow,
@@ -43,11 +43,13 @@ const NONE = "__none__";
 export function EditGrowthTaskDialog({
   task,
   members,
+  extraCategories = [],
   open,
   onOpenChange,
 }: {
   task: GrowthTaskRow | null;
   members: UserProfileRow[];
+  extraCategories?: string[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
@@ -56,12 +58,10 @@ export function EditGrowthTaskDialog({
   const [draft, setDraft] = useState({
     title: "",
     description: "",
-    category: "",
-    due_date: null as string | null,
+    category: null as string | null,
     status: "todo" as GrowthStatus,
     priority: "medium" as OrderPriority,
     assigned_to: null as string | null,
-    tags: [] as string[],
     subtasks: [] as Subtask[],
   });
   const [newSubtask, setNewSubtask] = useState("");
@@ -71,12 +71,10 @@ export function EditGrowthTaskDialog({
     setDraft({
       title: task.title,
       description: task.description ?? "",
-      category: task.category ?? "",
-      due_date: task.due_date,
+      category: task.category,
       status: task.status,
       priority: task.priority,
       assigned_to: task.assigned_to,
-      tags: task.tags,
       subtasks: task.subtasks ?? [],
     });
     setNewSubtask("");
@@ -139,12 +137,10 @@ export function EditGrowthTaskDialog({
         await updateGrowthTask(task.id, {
           title: draft.title,
           description: draft.description || null,
-          category: draft.category || null,
-          due_date: draft.due_date || null,
+          category: draft.category,
           status: draft.status,
           priority: draft.priority,
           assigned_to: draft.assigned_to,
-          tags: draft.tags,
           subtasks: cleanedSubtasks,
         });
         toast.success("Gespeichert");
@@ -186,7 +182,7 @@ export function EditGrowthTaskDialog({
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>Status</Label>
               <Select
@@ -227,27 +223,15 @@ export function EditGrowthTaskDialog({
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>Fällig</Label>
-              <Input
-                type="date"
-                value={draft.due_date ?? ""}
-                onChange={(e) =>
-                  setDraft({ ...draft, due_date: e.target.value || null })
-                }
-              />
-            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>Kategorie</Label>
-              <Input
+              <CategoryCombobox
                 value={draft.category}
-                onChange={(e) =>
-                  setDraft({ ...draft, category: e.target.value })
-                }
-                placeholder="Marketing, Sales, Ops, …"
+                onChange={(c) => setDraft({ ...draft, category: c })}
+                extra={extraCategories}
               />
             </div>
             <div className="space-y-2">
@@ -274,14 +258,6 @@ export function EditGrowthTaskDialog({
                 </SelectContent>
               </Select>
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Tags</Label>
-            <TagInput
-              value={draft.tags}
-              onChange={(tags) => setDraft({ ...draft, tags })}
-            />
           </div>
 
           <div className="space-y-2">

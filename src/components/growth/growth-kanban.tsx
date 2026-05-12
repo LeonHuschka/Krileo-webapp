@@ -155,9 +155,11 @@ function DroppableColumn({
 export function GrowthKanban({
   tasks,
   members,
+  extraCategories = [],
 }: {
   tasks: GrowthTaskRow[];
   members: UserProfileRow[];
+  extraCategories?: string[];
 }) {
   const [items, setItems] = useState<GrowthTaskRow[]>(tasks);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -390,6 +392,7 @@ export function GrowthKanban({
       <EditGrowthTaskDialog
         task={editing}
         members={members}
+        extraCategories={extraCategories}
         open={!!editing}
         onOpenChange={(o) => !o && setEditing(null)}
       />

@@ -9,6 +9,7 @@ import {
   Users,
   UserCog,
   Settings,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { APP_NAME } from "@/lib/constants";
@@ -17,6 +18,7 @@ import type { UserProfileRow } from "@/lib/types/database";
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/orders", label: "Aufträge", icon: ClipboardList },
+  { href: "/growth", label: "Growth", icon: Sparkles },
   { href: "/contacts", label: "Kontakte", icon: Users },
   { href: "/team", label: "Team", icon: UserCog },
   { href: "/settings", label: "Settings", icon: Settings },

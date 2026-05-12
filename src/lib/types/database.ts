@@ -30,6 +30,13 @@ export type ContactStatus =
   | "won"
   | "lost";
 
+export type GrowthStatus =
+  | "ideen"
+  | "todo"
+  | "in_progress"
+  | "done"
+  | "archiv";
+
 export type Database = {
   public: {
     Tables: {
@@ -204,6 +211,54 @@ export type Database = {
         };
         Relationships: [];
       };
+      growth_tasks: {
+        Row: {
+          id: string;
+          title: string;
+          description: string | null;
+          status: GrowthStatus;
+          priority: OrderPriority;
+          category: string | null;
+          tags: string[];
+          due_date: string | null;
+          assigned_to: string | null;
+          created_by: string;
+          position: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          title: string;
+          description?: string | null;
+          status?: GrowthStatus;
+          priority?: OrderPriority;
+          category?: string | null;
+          tags?: string[];
+          due_date?: string | null;
+          assigned_to?: string | null;
+          created_by: string;
+          position?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          title?: string;
+          description?: string | null;
+          status?: GrowthStatus;
+          priority?: OrderPriority;
+          category?: string | null;
+          tags?: string[];
+          due_date?: string | null;
+          assigned_to?: string | null;
+          created_by?: string;
+          position?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       activity_log: {
         Row: {
           id: string;
@@ -243,6 +298,7 @@ export type Database = {
       order_type: OrderType;
       order_priority: OrderPriority;
       contact_status: ContactStatus;
+      growth_status: GrowthStatus;
     };
     CompositeTypes: Record<string, never>;
   };
@@ -252,4 +308,6 @@ export type UserProfileRow = Database["public"]["Tables"]["user_profiles"]["Row"
 export type OrderRow = Database["public"]["Tables"]["orders"]["Row"];
 export type OrderTodoRow = Database["public"]["Tables"]["order_todos"]["Row"];
 export type ContactRow = Database["public"]["Tables"]["contacts"]["Row"];
+export type GrowthTaskRow =
+  Database["public"]["Tables"]["growth_tasks"]["Row"];
 export type ActivityLogRow = Database["public"]["Tables"]["activity_log"]["Row"];

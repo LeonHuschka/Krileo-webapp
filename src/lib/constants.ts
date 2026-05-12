@@ -1,5 +1,6 @@
 import type {
   ContactStatus,
+  GrowthStatus,
   OrderPriority,
   OrderStatus,
   OrderType,
@@ -134,6 +135,45 @@ export function tagColor(tag: string): string {
   }
   return TAG_COLORS[Math.abs(hash) % TAG_COLORS.length];
 }
+
+export const GROWTH_STATUSES: { value: GrowthStatus; label: string }[] = [
+  { value: "ideen", label: "Ideen" },
+  { value: "todo", label: "To Do" },
+  { value: "in_progress", label: "In Arbeit" },
+  { value: "done", label: "Erledigt" },
+  { value: "archiv", label: "Archiv" },
+];
+
+export const GROWTH_STATUS_COLUMN: Record<
+  GrowthStatus,
+  { bg: string; accent: string; bar: string }
+> = {
+  ideen: {
+    bg: "bg-fuchsia-500/[0.04]",
+    accent: "text-fuchsia-300",
+    bar: "from-fuchsia-400 to-fuchsia-500",
+  },
+  todo: {
+    bg: "bg-sky-500/[0.04]",
+    accent: "text-sky-300",
+    bar: "from-sky-400 to-sky-500",
+  },
+  in_progress: {
+    bg: "bg-violet-500/[0.04]",
+    accent: "text-violet-300",
+    bar: "from-violet-400 to-violet-500",
+  },
+  done: {
+    bg: "bg-emerald-500/[0.04]",
+    accent: "text-emerald-300",
+    bar: "from-emerald-400 to-emerald-500",
+  },
+  archiv: {
+    bg: "bg-zinc-500/[0.03]",
+    accent: "text-zinc-400",
+    bar: "from-zinc-500 to-zinc-600",
+  },
+};
 
 export const APP_NAME = "Krileo";
 

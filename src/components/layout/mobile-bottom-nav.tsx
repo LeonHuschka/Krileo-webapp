@@ -2,12 +2,19 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, ClipboardList, Users, Settings } from "lucide-react";
+import {
+  LayoutDashboard,
+  ClipboardList,
+  Sparkles,
+  Users,
+  Settings,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const ITEMS = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/orders", label: "Aufträge", icon: ClipboardList },
+  { href: "/growth", label: "Growth", icon: Sparkles },
   { href: "/contacts", label: "Kontakte", icon: Users },
   { href: "/settings", label: "Mehr", icon: Settings },
 ];

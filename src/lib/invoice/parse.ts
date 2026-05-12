@@ -1,17 +1,17 @@
 // Build invoice line items from an order's description + type + value.
 //
-// Approach:
-// 1. If the description contains explicit prices (e.g. "Setup 1.500€"),
-//    those are taken at face value and the rest of the order value is
-//    allocated to one final "Übrige Leistungen" line.
-// 2. Otherwise we build a realistic breakdown using a template per
-//    `order_type`, then "boost" the template with positions that the
-//    description's keywords imply (e.g. mentions of "Buchung" add a
-//    "Buchungssystem"-Position). Weights are normalized and money is
-//    rounded to clean €50 chunks; the last position absorbs rounding.
+// Branches in order:
+//   1. Explicit prices in the description (e.g. "Setup 1.500€") → use them
+//      verbatim and put the remainder of the order value on an
+//      "Übrige Leistungen" line. Skips the LLM entirely.
+//   2. LLM-generated positions (caller passes `llmPositions`) → distribute
+//      the order total proportionally according to the LLM's weights,
+//      rounded to clean €50/€100 steps.
+//   3. Template fallback (heuristic) → per-order-type template + a
+//      keyword scan for common add-ons (Buchungssystem, Shop, …).
 //
-// The output is plausible-looking, sums exactly to the order total, and
-// scales sensibly with the order value.
+// Whichever branch runs, the resulting items always sum exactly to the
+// order's total (rounding diff lands on the largest line).
 
 import type { OrderType } from "@/lib/types/database";
 
@@ -21,6 +21,8 @@ export type InvoiceItem = {
   unitCents: number;
   totalCents: number;
 };
+
+export type WeightedPosition = { label: string; weight: number };
 
 const PRICE_RE =
   /(\d{1,3}(?:[.\s]\d{3})*(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)\s*(?:€|EUR|eur)\b/g;
@@ -54,31 +56,25 @@ function findExplicitPrices(
   return hits;
 }
 
-// ── Template per order type ──────────────────────────────────────────────
-type TemplateItem = { label: string; weight: number };
-
-const TEMPLATES: Record<OrderType, TemplateItem[]> = {
+// ── Heuristic fallback: per-type template + keyword-driven add-ons ────────
+const TEMPLATES: Record<OrderType, WeightedPosition[]> = {
   website: [
-    { label: "Konzept & Strategie", weight: 15 },
-    { label: "Design & UI", weight: 25 },
-    { label: "Entwicklung & Umsetzung", weight: 40 },
-    { label: "Hosting & technisches Setup", weight: 10 },
-    { label: "Schulung & Übergabe", weight: 10 },
-  ],
-  website_plus: [
-    { label: "Konzept & Strategie", weight: 12 },
-    { label: "Design & UI", weight: 22 },
-    { label: "Entwicklung & Umsetzung", weight: 35 },
-    { label: "Backend & Integrationen", weight: 15 },
-    { label: "Hosting & technisches Setup", weight: 8 },
+    { label: "Implementierung Webdesign", weight: 35 },
+    { label: "Backend & Integrationen", weight: 25 },
+    { label: "Datenbank & Hosting", weight: 12 },
     { label: "Schulung & Übergabe", weight: 8 },
   ],
+  website_plus: [
+    { label: "Implementierung Webdesign", weight: 30 },
+    { label: "Backend & Integrationen", weight: 25 },
+    { label: "Datenbank & Hosting", weight: 10 },
+    { label: "Schulung & Übergabe", weight: 5 },
+  ],
   automation: [
-    { label: "Anforderungsanalyse", weight: 15 },
-    { label: "Workflow-Konzept", weight: 20 },
+    { label: "Anforderungsanalyse & Workflow-Konzept", weight: 25 },
     { label: "Implementierung", weight: 45 },
-    { label: "Integrationen & Tests", weight: 12 },
-    { label: "Übergabe & Schulung", weight: 8 },
+    { label: "Integrationen & Tests", weight: 20 },
+    { label: "Übergabe & Schulung", weight: 10 },
   ],
   other: [
     { label: "Konzept", weight: 25 },
@@ -87,49 +83,23 @@ const TEMPLATES: Record<OrderType, TemplateItem[]> = {
   ],
 };
 
-// ── Keyword-driven add-ons ───────────────────────────────────────────────
-type AddOn = {
-  label: string;
-  weight: number;
-  // matches if any RegExp tests true on the lowercased description
-  patterns: RegExp[];
-};
+type AddOn = { label: string; weight: number; patterns: RegExp[] };
 
 const ADDONS: AddOn[] = [
   {
-    label: "Buchungs- & Terminsystem",
+    label: "Implementierung Buchungssystem",
+    weight: 18,
+    patterns: [/buchung/i, /termin/i, /reserv/i, /booking/i, /calendly/i],
+  },
+  {
+    label: "Implementierung Benachrichtigungssystem",
     weight: 12,
-    patterns: [/buchung/i, /termin/i, /reserv/i, /calendly/i, /booking/i],
+    patterns: [/whatsapp/i, /sms/i, /benachrichtig/i, /notification/i],
   },
   {
     label: "Shop / E-Commerce",
-    weight: 15,
-    patterns: [/shop/i, /ecommerce|e-commerce/i, /checkout/i, /warenkorb/i, /produkt/i],
-  },
-  {
-    label: "Branding & Logo",
-    weight: 8,
-    patterns: [/branding/i, /logo/i, /\bci\b/i, /corporate identity/i],
-  },
-  {
-    label: "Mehrsprachigkeit",
-    weight: 8,
-    patterns: [/mehrsprach/i, /multilang/i, /\bi18n\b/i, /englische version/i, /französisch/i],
-  },
-  {
-    label: "SEO-Grundlagen",
-    weight: 6,
-    patterns: [/\bseo\b/i, /suchmaschinen/i, /google ranking/i],
-  },
-  {
-    label: "Blog / Content-Bereich",
-    weight: 5,
-    patterns: [/\bblog\b/i, /\bnews\b/i, /artikel/i, /redaktion/i],
-  },
-  {
-    label: "DSGVO & Rechtstexte",
-    weight: 4,
-    patterns: [/dsgvo/i, /datenschutz/i, /impressum/i, /\bagb\b/i, /cookie/i],
+    weight: 18,
+    patterns: [/shop/i, /e-?commerce/i, /checkout/i, /warenkorb/i],
   },
   {
     label: "CRM-Anbindung",
@@ -137,44 +107,25 @@ const ADDONS: AddOn[] = [
     patterns: [/\bcrm\b/i, /hubspot/i, /pipedrive/i, /salesforce/i],
   },
   {
-    label: "Newsletter-Integration",
-    weight: 4,
-    patterns: [/newsletter/i, /mailchimp/i, /brevo/i, /sendgrid/i],
-  },
-  {
-    label: "Foto- & Bildmaterial",
-    weight: 6,
-    patterns: [/fotoshooting/i, /fotograf/i, /bildmaterial/i],
-  },
-  {
-    label: "API-Integration",
-    weight: 10,
-    patterns: [/\bapi\b/i, /webhook/i, /integration/i, /schnittstelle/i],
-  },
-  {
     label: "Zahlungs-Integration",
-    weight: 6,
-    patterns: [/stripe/i, /paypal/i, /klarna/i, /sepa/i, /zahlung/i],
-  },
-  {
-    label: "Wartung & Support (3 Monate)",
     weight: 8,
-    patterns: [/wartung/i, /support/i, /pflege/i],
+    patterns: [/stripe/i, /paypal/i, /klarna/i],
   },
   {
-    label: "Performance-Optimierung",
+    label: "Newsletter-Integration",
     weight: 5,
-    patterns: [/performance/i, /ladezeit/i, /pagespeed/i, /optimier/i],
+    patterns: [/newsletter/i, /mailchimp/i, /brevo/i, /sendgrid/i],
   },
 ];
 
-function pickAddOns(text: string, present: Set<string>): TemplateItem[] {
-  const found: TemplateItem[] = [];
-  const seen = new Set<string>();
+function pickAddOns(
+  text: string,
+  alreadyPresent: Set<string>,
+): WeightedPosition[] {
+  const found: WeightedPosition[] = [];
   for (const addon of ADDONS) {
-    if (seen.has(addon.label) || present.has(addon.label)) continue;
+    if (alreadyPresent.has(addon.label)) continue;
     if (addon.patterns.some((p) => p.test(text))) {
-      seen.add(addon.label);
       found.push({ label: addon.label, weight: addon.weight });
     }
   }
@@ -186,32 +137,30 @@ function roundToStep(cents: number, stepCents: number): number {
   return Math.round(cents / stepCents) * stepCents;
 }
 
-function distribute(
-  template: TemplateItem[],
+export function distributeWeighted(
+  positions: WeightedPosition[],
   totalCents: number,
 ): InvoiceItem[] {
-  const totalWeight = template.reduce((s, t) => s + t.weight, 0) || 1;
+  const totalWeight = positions.reduce((s, p) => s + p.weight, 0) || 1;
 
-  // Choose rounding step based on order size for clean numbers.
   const step =
-    totalCents >= 1_000_000 // ≥ 10.000 €
+    totalCents >= 1_000_000
       ? 10_000 // 100 €
-      : totalCents >= 100_000 // ≥ 1.000 €
+      : totalCents >= 100_000
         ? 5_000 // 50 €
         : 1_000; // 10 €
 
-  const raw = template.map((t) => (t.weight / totalWeight) * totalCents);
+  const raw = positions.map((p) => (p.weight / totalWeight) * totalCents);
   const rounded = raw.map((c) => roundToStep(c, step));
 
-  // Reconcile: difference goes onto the largest line (so prices stay clean).
   const diff = totalCents - rounded.reduce((s, c) => s + c, 0);
   if (diff !== 0 && rounded.length > 0) {
     const idx = rounded.indexOf(Math.max(...rounded));
     rounded[idx] += diff;
   }
 
-  return template.map((t, i) => ({
-    description: t.label,
+  return positions.map((p, i) => ({
+    description: p.label,
     quantity: 1,
     unitCents: rounded[i],
     totalCents: rounded[i],
@@ -219,16 +168,16 @@ function distribute(
 }
 
 // ── Main entry ────────────────────────────────────────────────────────────
-export function parseDescription(
+export function buildInvoiceItems(
   description: string | null,
   fallbackTitle: string,
   totalCents: number | null,
-  orderType: OrderType = "website",
+  orderType: OrderType,
+  llmPositions: WeightedPosition[] | null = null,
 ): InvoiceItem[] {
   const total = Math.max(0, totalCents ?? 0);
   const desc = (description ?? "").trim();
 
-  // No total at all → single placeholder line.
   if (total === 0) {
     return [
       {
@@ -240,7 +189,7 @@ export function parseDescription(
     ];
   }
 
-  // ── Branch 1: explicit prices in the description ──
+  // Branch 1: explicit prices in the description
   const explicit = desc ? findExplicitPrices(desc) : [];
   if (explicit.length > 0) {
     const sumExplicit = explicit.reduce((s, e) => s + e.cents, 0);
@@ -259,7 +208,6 @@ export function parseDescription(
         totalCents: remaining,
       });
     } else if (remaining < 0) {
-      // Explicit prices exceed total → bump the last line down.
       const last = items[items.length - 1];
       last.totalCents += remaining;
       last.unitCents = last.totalCents;
@@ -267,13 +215,16 @@ export function parseDescription(
     return items;
   }
 
-  // ── Branch 2: build template + keyword-derived add-ons ──
-  const baseTemplate = TEMPLATES[orderType] ?? TEMPLATES.other;
-  const presentLabels = new Set(baseTemplate.map((t) => t.label));
-  const addOns = desc ? pickAddOns(desc, presentLabels) : [];
-  const merged = [...baseTemplate, ...addOns];
+  // Branch 2: LLM-derived positions
+  if (llmPositions && llmPositions.length > 0) {
+    return distributeWeighted(llmPositions, total);
+  }
 
-  return distribute(merged, total);
+  // Branch 3: heuristic template + keyword-driven add-ons
+  const base = TEMPLATES[orderType] ?? TEMPLATES.other;
+  const present = new Set(base.map((t) => t.label));
+  const addons = desc ? pickAddOns(desc, present) : [];
+  return distributeWeighted([...base, ...addons], total);
 }
 
 export function computeInvoiceTotals(items: InvoiceItem[]): {

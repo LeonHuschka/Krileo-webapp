@@ -4,9 +4,10 @@ import path from "path";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { createClient } from "@/lib/supabase/server";
 import {
+  buildInvoiceItems,
   computeInvoiceTotals,
-  parseDescription,
 } from "@/lib/invoice/parse";
+import { generateInvoicePositionsLLM } from "@/lib/invoice/llm";
 import { InvoiceDocument, type InvoiceData } from "@/lib/invoice/document";
 
 export const dynamic = "force-dynamic";
@@ -67,11 +68,17 @@ export async function GET(
     }
   }
 
-  const items = parseDescription(
+  const llmPositions = await generateInvoicePositionsLLM({
+    title: order.title,
+    orderType: order.order_type,
+    description: order.description,
+  });
+  const items = buildInvoiceItems(
     order.description,
     order.title,
     order.value_cents ?? null,
     order.order_type,
+    llmPositions,
   );
   const totals = computeInvoiceTotals(items);
 

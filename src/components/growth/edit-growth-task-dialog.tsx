@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useTransition, type KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Trash2 } from "lucide-react";
+import { Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -32,8 +33,10 @@ import type {
   GrowthStatus,
   GrowthTaskRow,
   OrderPriority,
+  Subtask,
   UserProfileRow,
 } from "@/lib/types/database";
+import { cn } from "@/lib/utils";
 
 const NONE = "__none__";
 
@@ -59,7 +62,9 @@ export function EditGrowthTaskDialog({
     priority: "medium" as OrderPriority,
     assigned_to: null as string | null,
     tags: [] as string[],
+    subtasks: [] as Subtask[],
   });
+  const [newSubtask, setNewSubtask] = useState("");
 
   useEffect(() => {
     if (!task) return;
@@ -72,13 +77,63 @@ export function EditGrowthTaskDialog({
       priority: task.priority,
       assigned_to: task.assigned_to,
       tags: task.tags,
+      subtasks: task.subtasks ?? [],
     });
+    setNewSubtask("");
   }, [task]);
+
+  function addSubtask() {
+    const title = newSubtask.trim();
+    if (!title) return;
+    const next: Subtask = {
+      id:
+        typeof crypto !== "undefined" && "randomUUID" in crypto
+          ? crypto.randomUUID()
+          : `st_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      title,
+      done: false,
+    };
+    setDraft((d) => ({ ...d, subtasks: [...d.subtasks, next] }));
+    setNewSubtask("");
+  }
+
+  function toggleSubtask(id: string) {
+    setDraft((d) => ({
+      ...d,
+      subtasks: d.subtasks.map((s) =>
+        s.id === id ? { ...s, done: !s.done } : s,
+      ),
+    }));
+  }
+
+  function renameSubtask(id: string, title: string) {
+    setDraft((d) => ({
+      ...d,
+      subtasks: d.subtasks.map((s) => (s.id === id ? { ...s, title } : s)),
+    }));
+  }
+
+  function removeSubtask(id: string) {
+    setDraft((d) => ({
+      ...d,
+      subtasks: d.subtasks.filter((s) => s.id !== id),
+    }));
+  }
+
+  function onNewSubtaskKey(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addSubtask();
+    }
+  }
 
   if (!task) return null;
 
   function save() {
     if (!task) return;
+    const cleanedSubtasks = draft.subtasks
+      .map((s) => ({ ...s, title: s.title.trim() }))
+      .filter((s) => s.title.length > 0);
     startTransition(async () => {
       try {
         await updateGrowthTask(task.id, {
@@ -90,6 +145,7 @@ export function EditGrowthTaskDialog({
           priority: draft.priority,
           assigned_to: draft.assigned_to,
           tags: draft.tags,
+          subtasks: cleanedSubtasks,
         });
         toast.success("Gespeichert");
         onOpenChange(false);
@@ -226,6 +282,70 @@ export function EditGrowthTaskDialog({
               value={draft.tags}
               onChange={(tags) => setDraft({ ...draft, tags })}
             />
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>Unteraufgaben</Label>
+              {draft.subtasks.length > 0 && (
+                <span className="text-xs text-muted-foreground">
+                  {draft.subtasks.filter((s) => s.done).length} /{" "}
+                  {draft.subtasks.length} erledigt
+                </span>
+              )}
+            </div>
+            {draft.subtasks.length > 0 && (
+              <ul className="space-y-1">
+                {draft.subtasks.map((s) => (
+                  <li
+                    key={s.id}
+                    className="group flex items-center gap-2 rounded-md border border-border/40 bg-card/60 px-2 py-1.5"
+                  >
+                    <Checkbox
+                      checked={s.done}
+                      onCheckedChange={() => toggleSubtask(s.id)}
+                      className="h-4 w-4"
+                    />
+                    <Input
+                      value={s.title}
+                      onChange={(e) => renameSubtask(s.id, e.target.value)}
+                      className={cn(
+                        "h-7 flex-1 border-none bg-transparent px-1 text-sm shadow-none focus-visible:bg-background focus-visible:ring-1",
+                        s.done && "text-muted-foreground line-through",
+                      )}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeSubtask(s.id)}
+                      className="h-6 w-6 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="flex gap-2">
+              <Input
+                value={newSubtask}
+                onChange={(e) => setNewSubtask(e.target.value)}
+                onKeyDown={onNewSubtaskKey}
+                placeholder="Neue Unteraufgabe…"
+                className="h-9 text-sm"
+              />
+              <Button
+                type="button"
+                onClick={addSubtask}
+                disabled={!newSubtask.trim()}
+                size="icon"
+                variant="outline"
+                className="h-9 w-9"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
 
           <div className="space-y-2">

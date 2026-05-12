@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -164,6 +164,21 @@ export function GrowthKanban({
   const [overColumnId, setOverColumnId] = useState<GrowthStatus | null>(null);
   const [mobileCol, setMobileCol] = useState<GrowthStatus>("todo");
   const [editing, setEditing] = useState<GrowthTaskRow | null>(null);
+
+  // Sync local state with server data when not actively dragging
+  useEffect(() => {
+    if (activeId) return;
+    setItems(tasks);
+  }, [tasks, activeId]);
+
+  // Refresh the currently-edited task when fresh server data arrives
+  useEffect(() => {
+    if (!editing) return;
+    const fresh = tasks.find((t) => t.id === editing.id);
+    if (fresh && fresh.updated_at !== editing.updated_at) {
+      setEditing(fresh);
+    }
+  }, [tasks, editing]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),

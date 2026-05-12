@@ -9,6 +9,12 @@ const GROWTH_STATUSES = [
 ] as const;
 const PRIORITIES = ["low", "medium", "high"] as const;
 
+export const subtaskSchema = z.object({
+  id: z.string().min(1),
+  title: z.string().min(1).max(300),
+  done: z.boolean(),
+});
+
 export const growthCreateSchema = z.object({
   title: z.string().min(1, "Titel erforderlich").max(300),
   description: z.string().max(5000).optional().nullable(),
@@ -16,6 +22,7 @@ export const growthCreateSchema = z.object({
   priority: z.enum(PRIORITIES),
   category: z.string().max(100).optional().nullable(),
   tags: z.array(z.string().min(1)),
+  subtasks: z.array(subtaskSchema).optional(),
   due_date: z.string().optional().nullable(),
   assigned_to: z.string().uuid().optional().nullable(),
 });

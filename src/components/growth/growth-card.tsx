@@ -3,7 +3,7 @@
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { CalendarDays, Trash2 } from "lucide-react";
+import { CalendarDays, ListChecks, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -55,6 +55,9 @@ export function GrowthCard({
   const due = formatDate(task.due_date);
   const col = GROWTH_STATUS_COLUMN[task.status];
   const isDone = task.status === "done" || task.status === "archiv";
+  const subtasks = task.subtasks ?? [];
+  const doneCount = subtasks.filter((s) => s.done).length;
+  const allSubsDone = subtasks.length > 0 && doneCount === subtasks.length;
 
   function toggleDone() {
     startTransition(async () => {
@@ -157,15 +160,27 @@ export function GrowthCard({
         </div>
       )}
 
-      <div className="flex items-center justify-between pl-6 pt-1">
-        {due ? (
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <CalendarDays className="h-3 w-3" />
-            {due}
-          </div>
-        ) : (
-          <span />
-        )}
+      <div className="flex items-center justify-between gap-2 pl-6 pt-1">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          {due && (
+            <div className="flex items-center gap-1">
+              <CalendarDays className="h-3 w-3" />
+              {due}
+            </div>
+          )}
+          {subtasks.length > 0 && (
+            <div
+              className={cn(
+                "flex items-center gap-1 font-medium",
+                allSubsDone && "text-emerald-400",
+              )}
+              title={`${doneCount} von ${subtasks.length} erledigt`}
+            >
+              <ListChecks className="h-3 w-3" />
+              {doneCount}/{subtasks.length}
+            </div>
+          )}
+        </div>
         <div className="flex items-center gap-1">
           <Button
             variant="ghost"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -147,6 +147,12 @@ export function OrdersKanban({ orders, members }: KanbanProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overColumnId, setOverColumnId] = useState<OrderStatus | null>(null);
   const [mobileCol, setMobileCol] = useState<OrderStatus>("angebot");
+
+  // Sync local state with server data when not actively dragging
+  useEffect(() => {
+    if (activeId) return;
+    setItems(orders);
+  }, [orders, activeId]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),

@@ -37,6 +37,8 @@ export type GrowthStatus =
   | "done"
   | "archiv";
 
+export type Subtask = { id: string; title: string; done: boolean };
+
 export type Database = {
   public: {
     Tables: {
@@ -220,6 +222,7 @@ export type Database = {
           priority: OrderPriority;
           category: string | null;
           tags: string[];
+          subtasks: Subtask[];
           due_date: string | null;
           assigned_to: string | null;
           created_by: string;
@@ -235,6 +238,7 @@ export type Database = {
           priority?: OrderPriority;
           category?: string | null;
           tags?: string[];
+          subtasks?: Subtask[];
           due_date?: string | null;
           assigned_to?: string | null;
           created_by: string;
@@ -250,6 +254,7 @@ export type Database = {
           priority?: OrderPriority;
           category?: string | null;
           tags?: string[];
+          subtasks?: Subtask[];
           due_date?: string | null;
           assigned_to?: string | null;
           created_by?: string;

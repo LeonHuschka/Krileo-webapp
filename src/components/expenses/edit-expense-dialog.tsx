@@ -26,6 +26,7 @@ import {
   BILLING_CYCLES,
   EXPENSE_CATEGORIES,
   EXPENSE_STATUSES,
+  PAYMENT_METHODS,
 } from "@/lib/constants";
 import {
   deleteExpense,
@@ -36,16 +37,23 @@ import type {
   BillingCycle,
   ExpenseRow,
   ExpenseStatus,
+  UserProfileRow,
 } from "@/lib/types/database";
+
+const NONE = "__none__";
 
 export function EditExpenseDialog({
   expense,
+  members,
   extraCategories = [],
+  extraPaymentMethods = [],
   open,
   onOpenChange,
 }: {
   expense: ExpenseRow | null;
+  members: UserProfileRow[];
   extraCategories?: string[];
+  extraPaymentMethods?: string[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
@@ -62,6 +70,8 @@ export function EditExpenseDialog({
     started_at: null as string | null,
     url: "",
     notes: "",
+    paid_by: null as string | null,
+    payment_method: null as string | null,
   });
 
   useEffect(() => {
@@ -77,6 +87,8 @@ export function EditExpenseDialog({
       started_at: expense.started_at,
       url: expense.url ?? "",
       notes: expense.notes ?? "",
+      paid_by: expense.paid_by,
+      payment_method: expense.payment_method,
     });
   }, [expense]);
 
@@ -97,6 +109,8 @@ export function EditExpenseDialog({
           started_at: draft.started_at || null,
           url: draft.url || null,
           notes: draft.notes || null,
+          paid_by: draft.paid_by,
+          payment_method: draft.payment_method,
         });
         toast.success("Gespeichert");
         onOpenChange(false);
@@ -224,6 +238,43 @@ export function EditExpenseDialog({
                 placeholder="https://…"
                 value={draft.url}
                 onChange={(e) => setDraft({ ...draft, url: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label>Kostenträger</Label>
+              <Select
+                value={draft.paid_by ?? NONE}
+                onValueChange={(v) =>
+                  setDraft({
+                    ...draft,
+                    paid_by: v === NONE ? null : v,
+                  })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="— niemand —" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE}>— niemand —</SelectItem>
+                  {members.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.full_name || m.id.slice(0, 6)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Zahlungsart</Label>
+              <CategoryCombobox
+                value={draft.payment_method}
+                onChange={(m) => setDraft({ ...draft, payment_method: m })}
+                predefined={PAYMENT_METHODS}
+                extra={extraPaymentMethods}
+                placeholder="— Zahlungsart —"
               />
             </div>
           </div>

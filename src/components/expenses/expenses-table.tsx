@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { ExternalLink, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Table,
   TableBody,
@@ -26,8 +27,22 @@ import {
   monthlyCents,
 } from "@/lib/constants";
 import { EditExpenseDialog } from "@/components/expenses/edit-expense-dialog";
-import type { ExpenseRow, ExpenseStatus } from "@/lib/types/database";
+import type {
+  ExpenseRow,
+  ExpenseStatus,
+  UserProfileRow,
+} from "@/lib/types/database";
 import { cn } from "@/lib/utils";
+
+function initials(name: string | null | undefined) {
+  if (!name) return "?";
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase() ?? "")
+    .join("");
+}
 
 const ALL = "__all__";
 
@@ -49,10 +64,14 @@ const fmtDate = (d: string | null) =>
 
 export function ExpensesTable({
   expenses,
+  members,
   extraCategories,
+  extraPaymentMethods,
 }: {
   expenses: ExpenseRow[];
+  members: UserProfileRow[];
   extraCategories: string[];
+  extraPaymentMethods: string[];
 }) {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<ExpenseStatus | typeof ALL>(
@@ -66,6 +85,11 @@ export function ExpensesTable({
     expenses.forEach((e) => e.category && set.add(e.category));
     return Array.from(set).sort();
   }, [expenses]);
+
+  const memberMap = useMemo(
+    () => Object.fromEntries(members.map((m) => [m.id, m])),
+    [members],
+  );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -145,6 +169,7 @@ export function ExpensesTable({
               <TableHead>Zyklus</TableHead>
               <TableHead className="text-right">Monatlich</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Träger / Zahlung</TableHead>
               <TableHead>Nächste Abrechnung</TableHead>
               <TableHead className="w-10" />
             </TableRow>
@@ -153,7 +178,7 @@ export function ExpensesTable({
             {filtered.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={8}
+                  colSpan={9}
                   className="py-8 text-center text-sm text-muted-foreground"
                 >
                   Keine Kostenpunkte.
@@ -216,6 +241,29 @@ export function ExpensesTable({
                         {statusLabel}
                       </Badge>
                     </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {e.paid_by && memberMap[e.paid_by] ? (
+                          <Avatar
+                            className="h-6 w-6 ring-1 ring-border"
+                            title={memberMap[e.paid_by].full_name ?? ""}
+                          >
+                            <AvatarFallback className="bg-gradient-to-br from-primary/30 to-primary/10 text-[10px] font-semibold text-foreground">
+                              {initials(memberMap[e.paid_by].full_name)}
+                            </AvatarFallback>
+                          </Avatar>
+                        ) : (
+                          <span className="text-xs text-muted-foreground/40">
+                            —
+                          </span>
+                        )}
+                        {e.payment_method && (
+                          <span className="text-xs text-muted-foreground">
+                            {e.payment_method}
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {fmtDate(e.next_billing_date)}
                     </TableCell>
@@ -257,7 +305,9 @@ export function ExpensesTable({
 
       <EditExpenseDialog
         expense={editing}
+        members={members}
         extraCategories={extraCategories}
+        extraPaymentMethods={extraPaymentMethods}
         open={!!editing}
         onOpenChange={(o) => !o && setEditing(null)}
       />

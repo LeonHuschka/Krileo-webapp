@@ -27,6 +27,8 @@ export const expenseCreateSchema = z.object({
     .nullable()
     .or(z.literal("").transform(() => null)),
   notes: z.string().max(5000).optional().nullable(),
+  paid_by: z.string().uuid().optional().nullable(),
+  payment_method: z.string().max(100).optional().nullable(),
 });
 
 export const expenseUpdateSchema = expenseCreateSchema.partial();

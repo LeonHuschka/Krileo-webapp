@@ -16,6 +16,7 @@ import { CreateExpenseDialog } from "@/components/expenses/create-expense-dialog
 import { ExpensesTable } from "@/components/expenses/expenses-table";
 import {
   EXPENSE_CATEGORIES,
+  PAYMENT_METHODS,
   monthlyCents,
 } from "@/lib/constants";
 import type { ExpenseRow } from "@/lib/types/database";
@@ -32,11 +33,14 @@ const fmtEuro = (cents: number) =>
 
 export default async function BuchhaltungPage() {
   const supabase = await createClient();
-  const { data: expenses } = await supabase
-    .from("expenses")
-    .select("*")
-    .order("status", { ascending: true })
-    .order("amount_cents", { ascending: false });
+  const [{ data: expenses }, { data: members }] = await Promise.all([
+    supabase
+      .from("expenses")
+      .select("*")
+      .order("status", { ascending: true })
+      .order("amount_cents", { ascending: false }),
+    supabase.from("user_profiles").select("*").order("full_name"),
+  ]);
 
   const all = (expenses ?? []) as ExpenseRow[];
   const active = all.filter((e) => e.status === "active");
@@ -76,6 +80,15 @@ export default async function BuchhaltungPage() {
       all
         .map((e) => e.category)
         .filter((c): c is string => !!c && !predefined.has(c)),
+    ),
+  ).sort();
+
+  const predefinedMethods = new Set<string>(PAYMENT_METHODS);
+  const extraPaymentMethods = Array.from(
+    new Set(
+      all
+        .map((e) => e.payment_method)
+        .filter((m): m is string => !!m && !predefinedMethods.has(m)),
     ),
   ).sort();
 
@@ -132,7 +145,11 @@ export default async function BuchhaltungPage() {
             Laufende Kosten der Agentur
           </p>
         </div>
-        <CreateExpenseDialog extraCategories={extraCategories} />
+        <CreateExpenseDialog
+          members={members ?? []}
+          extraCategories={extraCategories}
+          extraPaymentMethods={extraPaymentMethods}
+        />
       </div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -214,7 +231,12 @@ export default async function BuchhaltungPage() {
         </Card>
       )}
 
-      <ExpensesTable expenses={all} extraCategories={extraCategories} />
+      <ExpensesTable
+        expenses={all}
+        members={members ?? []}
+        extraCategories={extraCategories}
+        extraPaymentMethods={extraPaymentMethods}
+      />
     </div>
   );
 }

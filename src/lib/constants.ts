@@ -197,6 +197,26 @@ export const EXPENSE_CATEGORIES = [
   "Sonstiges",
 ] as const;
 
+export const PAYMENT_METHODS = [
+  "Krileo-Karte",
+  "Privatkarte",
+  "PayPal",
+  "SEPA-Lastschrift",
+  "Rechnung",
+  "Bar",
+] as const;
+
+export const TOOL_CATEGORIES = [
+  "Development",
+  "Design",
+  "Marketing",
+  "Sales",
+  "Ops",
+  "Analytics",
+  "AI",
+  "Sonstiges",
+] as const;
+
 export const BILLING_CYCLES: { value: BillingCycle; label: string }[] = [
   { value: "weekly", label: "Wöchentlich" },
   { value: "monthly", label: "Monatlich" },

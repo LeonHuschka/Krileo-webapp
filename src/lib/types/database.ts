@@ -286,6 +286,8 @@ export type Database = {
           started_at: string | null;
           url: string | null;
           notes: string | null;
+          paid_by: string | null;
+          payment_method: string | null;
           created_by: string;
           created_at: string;
           updated_at: string;
@@ -302,6 +304,8 @@ export type Database = {
           started_at?: string | null;
           url?: string | null;
           notes?: string | null;
+          paid_by?: string | null;
+          payment_method?: string | null;
           created_by: string;
           created_at?: string;
           updated_at?: string;
@@ -317,6 +321,50 @@ export type Database = {
           next_billing_date?: string | null;
           started_at?: string | null;
           url?: string | null;
+          notes?: string | null;
+          paid_by?: string | null;
+          payment_method?: string | null;
+          created_by?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      tools: {
+        Row: {
+          id: string;
+          name: string;
+          category: string | null;
+          url: string | null;
+          login_email: string | null;
+          login_username: string | null;
+          login_password: string | null;
+          notes: string | null;
+          created_by: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          category?: string | null;
+          url?: string | null;
+          login_email?: string | null;
+          login_username?: string | null;
+          login_password?: string | null;
+          notes?: string | null;
+          created_by: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          category?: string | null;
+          url?: string | null;
+          login_email?: string | null;
+          login_username?: string | null;
+          login_password?: string | null;
           notes?: string | null;
           created_by?: string;
           created_at?: string;
@@ -376,4 +424,5 @@ export type ContactRow = Database["public"]["Tables"]["contacts"]["Row"];
 export type GrowthTaskRow =
   Database["public"]["Tables"]["growth_tasks"]["Row"];
 export type ExpenseRow = Database["public"]["Tables"]["expenses"]["Row"];
+export type ToolRow = Database["public"]["Tables"]["tools"]["Row"];
 export type ActivityLogRow = Database["public"]["Tables"]["activity_log"]["Row"];

@@ -29,6 +29,7 @@ import {
   BILLING_CYCLES,
   EXPENSE_CATEGORIES,
   EXPENSE_STATUSES,
+  PAYMENT_METHODS,
 } from "@/lib/constants";
 import {
   expenseCreateSchema,
@@ -36,11 +37,18 @@ import {
 } from "@/lib/validations/expense";
 import { createExpense } from "@/app/(app)/buchhaltung/actions";
 import { CategoryCombobox } from "@/components/shared/category-combobox";
+import type { UserProfileRow } from "@/lib/types/database";
+
+const NONE = "__none__";
 
 export function CreateExpenseDialog({
+  members,
   extraCategories = [],
+  extraPaymentMethods = [],
 }: {
+  members: UserProfileRow[];
   extraCategories?: string[];
+  extraPaymentMethods?: string[];
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -59,6 +67,8 @@ export function CreateExpenseDialog({
       started_at: null,
       url: "",
       notes: "",
+      paid_by: null,
+      payment_method: null,
     },
   });
 
@@ -203,6 +213,52 @@ export function CreateExpenseDialog({
                   {form.formState.errors.url.message}
                 </p>
               )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label>Kostenträger</Label>
+              <Controller
+                control={form.control}
+                name="paid_by"
+                render={({ field }) => (
+                  <Select
+                    value={field.value ?? NONE}
+                    onValueChange={(v) =>
+                      field.onChange(v === NONE ? null : v)
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="— niemand —" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NONE}>— niemand —</SelectItem>
+                      {members.map((m) => (
+                        <SelectItem key={m.id} value={m.id}>
+                          {m.full_name || m.id.slice(0, 6)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Zahlungsart</Label>
+              <Controller
+                control={form.control}
+                name="payment_method"
+                render={({ field }) => (
+                  <CategoryCombobox
+                    value={field.value ?? null}
+                    onChange={field.onChange}
+                    predefined={PAYMENT_METHODS}
+                    extra={extraPaymentMethods}
+                    placeholder="— Zahlungsart —"
+                  />
+                )}
+              />
             </div>
           </div>
 

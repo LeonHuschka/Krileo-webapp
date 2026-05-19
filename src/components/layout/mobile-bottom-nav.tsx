@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   ClipboardList,
   Sparkles,
+  Wrench,
   Receipt,
   Settings,
 } from "lucide-react";
@@ -15,6 +16,7 @@ const ITEMS = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/orders", label: "Aufträge", icon: ClipboardList },
   { href: "/growth", label: "Growth", icon: Sparkles },
+  { href: "/tools", label: "Tools", icon: Wrench },
   { href: "/buchhaltung", label: "Kosten", icon: Receipt },
   { href: "/settings", label: "Mehr", icon: Settings },
 ];

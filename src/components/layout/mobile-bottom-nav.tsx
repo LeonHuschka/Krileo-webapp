@@ -6,7 +6,7 @@ import {
   LayoutDashboard,
   ClipboardList,
   Sparkles,
-  Users,
+  Receipt,
   Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -15,7 +15,7 @@ const ITEMS = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/orders", label: "Aufträge", icon: ClipboardList },
   { href: "/growth", label: "Growth", icon: Sparkles },
-  { href: "/contacts", label: "Kontakte", icon: Users },
+  { href: "/buchhaltung", label: "Kosten", icon: Receipt },
   { href: "/settings", label: "Mehr", icon: Settings },
 ];
 

@@ -17,29 +17,31 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { GROWTH_CATEGORIES } from "@/lib/constants";
 
 export function CategoryCombobox({
   value,
   onChange,
+  predefined,
   extra = [],
+  placeholder = "— Kategorie —",
 }: {
   value: string | null;
   onChange: (next: string | null) => void;
-  /** Additional category names found in existing tasks. */
+  predefined: readonly string[];
+  /** Additional category names found in existing rows. */
   extra?: string[];
+  placeholder?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
 
   const merged = useMemo(() => {
-    const predefined = GROWTH_CATEGORIES as readonly string[];
     const known = new Set(predefined);
     const extras = Array.from(new Set(extra))
       .filter((c) => c && !known.has(c))
       .sort();
     return [...predefined, ...extras];
-  }, [extra]);
+  }, [predefined, extra]);
 
   const trimmed = query.trim();
   const exists = merged.some(
@@ -60,7 +62,7 @@ export function CategoryCombobox({
           {value ? (
             <span>{value}</span>
           ) : (
-            <span className="text-muted-foreground">— Kategorie —</span>
+            <span className="text-muted-foreground">{placeholder}</span>
           )}
           <div className="ml-2 flex shrink-0 items-center gap-1">
             {value && (
@@ -79,7 +81,7 @@ export function CategoryCombobox({
                   }
                 }}
                 className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-                aria-label="Kategorie entfernen"
+                aria-label="Auswahl entfernen"
               >
                 <X className="h-3.5 w-3.5" />
               </span>

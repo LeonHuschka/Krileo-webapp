@@ -1,5 +1,7 @@
 import type {
+  BillingCycle,
   ContactStatus,
+  ExpenseStatus,
   GrowthStatus,
   OrderPriority,
   OrderStatus,
@@ -182,6 +184,54 @@ export const GROWTH_STATUS_COLUMN: Record<
     bar: "from-zinc-500 to-zinc-600",
   },
 };
+
+export const EXPENSE_CATEGORIES = [
+  "Software",
+  "Hosting",
+  "Domain",
+  "Tools",
+  "Marketing",
+  "Office",
+  "Lizenzen",
+  "Beratung",
+  "Sonstiges",
+] as const;
+
+export const BILLING_CYCLES: { value: BillingCycle; label: string }[] = [
+  { value: "weekly", label: "Wöchentlich" },
+  { value: "monthly", label: "Monatlich" },
+  { value: "quarterly", label: "Quartalsweise" },
+  { value: "yearly", label: "Jährlich" },
+  { value: "one_time", label: "Einmalig" },
+];
+
+export const EXPENSE_STATUSES: { value: ExpenseStatus; label: string }[] = [
+  { value: "active", label: "Aktiv" },
+  { value: "paused", label: "Pausiert" },
+  { value: "cancelled", label: "Gekündigt" },
+];
+
+export const EXPENSE_STATUS_COLORS: Record<ExpenseStatus, string> = {
+  active: "bg-emerald-500/15 text-emerald-300 border-emerald-500/40",
+  paused: "bg-amber-500/15 text-amber-300 border-amber-500/40",
+  cancelled: "bg-zinc-500/15 text-zinc-300 border-zinc-500/40",
+};
+
+/** Cycle multiplier to normalize amount to a monthly figure. */
+export const CYCLE_TO_MONTHLY: Record<BillingCycle, number> = {
+  weekly: 52 / 12,
+  monthly: 1,
+  quarterly: 1 / 3,
+  yearly: 1 / 12,
+  one_time: 0,
+};
+
+export function monthlyCents(
+  amountCents: number,
+  cycle: BillingCycle,
+): number {
+  return Math.round(amountCents * CYCLE_TO_MONTHLY[cycle]);
+}
 
 export const APP_NAME = "Krileo";
 

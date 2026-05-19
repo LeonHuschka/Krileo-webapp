@@ -39,6 +39,15 @@ export type GrowthStatus =
 
 export type Subtask = { id: string; title: string; done: boolean };
 
+export type BillingCycle =
+  | "weekly"
+  | "monthly"
+  | "quarterly"
+  | "yearly"
+  | "one_time";
+
+export type ExpenseStatus = "active" | "paused" | "cancelled";
+
 export type Database = {
   public: {
     Tables: {
@@ -264,6 +273,57 @@ export type Database = {
         };
         Relationships: [];
       };
+      expenses: {
+        Row: {
+          id: string;
+          name: string;
+          vendor: string | null;
+          category: string | null;
+          amount_cents: number;
+          billing_cycle: BillingCycle;
+          status: ExpenseStatus;
+          next_billing_date: string | null;
+          started_at: string | null;
+          url: string | null;
+          notes: string | null;
+          created_by: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          vendor?: string | null;
+          category?: string | null;
+          amount_cents: number;
+          billing_cycle?: BillingCycle;
+          status?: ExpenseStatus;
+          next_billing_date?: string | null;
+          started_at?: string | null;
+          url?: string | null;
+          notes?: string | null;
+          created_by: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          vendor?: string | null;
+          category?: string | null;
+          amount_cents?: number;
+          billing_cycle?: BillingCycle;
+          status?: ExpenseStatus;
+          next_billing_date?: string | null;
+          started_at?: string | null;
+          url?: string | null;
+          notes?: string | null;
+          created_by?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       activity_log: {
         Row: {
           id: string;
@@ -315,4 +375,5 @@ export type OrderTodoRow = Database["public"]["Tables"]["order_todos"]["Row"];
 export type ContactRow = Database["public"]["Tables"]["contacts"]["Row"];
 export type GrowthTaskRow =
   Database["public"]["Tables"]["growth_tasks"]["Row"];
+export type ExpenseRow = Database["public"]["Tables"]["expenses"]["Row"];
 export type ActivityLogRow = Database["public"]["Tables"]["activity_log"]["Row"];

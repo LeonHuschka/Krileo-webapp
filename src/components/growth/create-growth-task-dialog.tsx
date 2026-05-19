@@ -31,7 +31,8 @@ import {
   type GrowthCreateData,
 } from "@/lib/validations/growth";
 import { createGrowthTask } from "@/app/(app)/growth/actions";
-import { CategoryCombobox } from "@/components/growth/category-combobox";
+import { CategoryCombobox } from "@/components/shared/category-combobox";
+import { GROWTH_CATEGORIES } from "@/lib/constants";
 import type { UserProfileRow } from "@/lib/types/database";
 
 const NONE = "__none__";
@@ -156,6 +157,7 @@ export function CreateGrowthTaskDialog({
                   <CategoryCombobox
                     value={field.value ?? null}
                     onChange={field.onChange}
+                    predefined={GROWTH_CATEGORIES}
                     extra={extraCategories}
                   />
                 )}

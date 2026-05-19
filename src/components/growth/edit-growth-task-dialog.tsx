@@ -28,7 +28,8 @@ import {
   deleteGrowthTask,
   updateGrowthTask,
 } from "@/app/(app)/growth/actions";
-import { CategoryCombobox } from "@/components/growth/category-combobox";
+import { CategoryCombobox } from "@/components/shared/category-combobox";
+import { GROWTH_CATEGORIES } from "@/lib/constants";
 import type {
   GrowthStatus,
   GrowthTaskRow,
@@ -231,6 +232,7 @@ export function EditGrowthTaskDialog({
               <CategoryCombobox
                 value={draft.category}
                 onChange={(c) => setDraft({ ...draft, category: c })}
+                predefined={GROWTH_CATEGORIES}
                 extra={extraCategories}
               />
             </div>

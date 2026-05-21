@@ -15,61 +15,99 @@ import {
   ExternalLink,
   MapPin,
   Star,
+  Trophy,
+  Flame,
+  Sun,
+  Snowflake,
+  User,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { completeTask, skipTask, startTask, type CallOutcome } from "@/app/(app)/akquise/actions";
+import {
+  completeTask,
+  skipTask,
+  startTask,
+  updateLeadNotes,
+  updateLeadTier,
+  type CallOutcome,
+} from "@/app/(app)/akquise/actions";
+import { AppointmentDialog } from "@/components/akquise/appointment-dialog";
 import { cn } from "@/lib/utils";
-import type { DailyTask, Lead } from "@/lib/lead-engine/types";
+import type {
+  DailyTask,
+  Lead,
+  QualificationTier,
+} from "@/lib/lead-engine/types";
 
 type TaskWithLead = DailyTask & { lead: Lead | null };
 
-const OUTCOMES: Array<{
+const POSITIVE_OUTCOMES: Array<{
   value: CallOutcome;
   label: string;
   icon: typeof Phone;
-  variant: "default" | "outline" | "destructive";
   className?: string;
 }> = [
   {
     value: "interested",
     label: "Interessiert",
     icon: CheckCircle2,
-    variant: "default",
     className: "bg-emerald-600 hover:bg-emerald-700 text-white",
   },
-  {
-    value: "callback_requested",
-    label: "Rückruf",
-    icon: Repeat,
-    variant: "outline",
-  },
-  {
-    value: "no_answer",
-    label: "Nicht erreicht",
-    icon: PhoneOff,
-    variant: "outline",
-  },
-  {
-    value: "not_interested",
-    label: "Nein",
-    icon: XCircle,
-    variant: "outline",
-  },
-  {
-    value: "wrong_person",
-    label: "Falsche Person",
-    icon: XCircle,
-    variant: "outline",
-  },
+];
+
+const FOLLOWUP_OUTCOMES: Array<{
+  value: CallOutcome;
+  label: string;
+  icon: typeof Phone;
+}> = [
+  { value: "callback_requested", label: "Rückruf", icon: Repeat },
+  { value: "no_answer", label: "Nicht erreicht", icon: PhoneOff },
+];
+
+const NEGATIVE_OUTCOMES: Array<{
+  value: CallOutcome;
+  label: string;
+  icon: typeof Phone;
+  className?: string;
+}> = [
+  { value: "not_interested", label: "Nein", icon: XCircle },
+  { value: "wrong_person", label: "Falsche Person", icon: XCircle },
   {
     value: "do_not_contact",
     label: "DNC",
     icon: Ban,
-    variant: "outline",
     className: "text-rose-300 hover:bg-rose-500/10",
+  },
+];
+
+const TIER_BUTTONS: Array<{
+  value: QualificationTier;
+  label: string;
+  icon: typeof Phone;
+  className: string;
+}> = [
+  {
+    value: "hot",
+    label: "Hot",
+    icon: Flame,
+    className:
+      "border-rose-500/40 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20",
+  },
+  {
+    value: "warm",
+    label: "Warm",
+    icon: Sun,
+    className:
+      "border-amber-500/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20",
+  },
+  {
+    value: "cold",
+    label: "Cold",
+    icon: Snowflake,
+    className:
+      "border-sky-500/40 bg-sky-500/10 text-sky-300 hover:bg-sky-500/20",
   },
 ];
 
@@ -86,25 +124,70 @@ function tierColor(tier: string | null) {
   }
 }
 
-export function CallCard({ task }: { task: TaskWithLead }) {
-  const router = useRouter();
-  const [pending, startTransition] = useTransition();
-  const [notes, setNotes] = useState("");
-  const [showNotes, setShowNotes] = useState(false);
+function formatEur(amount: number | null | undefined) {
+  if (amount == null) return null;
+  return new Intl.NumberFormat("de-DE", {
+    style: "currency",
+    currency: "EUR",
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
 
-  const lead = task.lead;
-  if (!lead) {
+export function CallCard({ task }: { task: TaskWithLead }) {
+  if (!task.lead) {
     return (
       <Card className="border-dashed border-border/50 bg-card/40 p-4 text-sm text-muted-foreground">
         Task ohne Lead — Lead wurde gelöscht.
       </Card>
     );
   }
+  return <CallCardInner task={task} lead={task.lead} />;
+}
+
+function CallCardInner({
+  task,
+  lead,
+}: {
+  task: TaskWithLead;
+  lead: Lead;
+}) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [notes, setNotes] = useState(lead.notes ?? "");
+  const [tier, setTier] = useState<QualificationTier | null>(
+    lead.qualification_tier ?? null,
+  );
 
   const inProgress = task.status === "in_progress";
 
+  function persistNotes() {
+    if (notes === (lead.notes ?? "")) return;
+    startTransition(async () => {
+      try {
+        await updateLeadNotes(lead.id, notes);
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : "Notiz nicht gespeichert",
+        );
+      }
+    });
+  }
+
+  function setLeadTier(next: QualificationTier) {
+    setTier(next);
+    startTransition(async () => {
+      try {
+        await updateLeadTier(lead.id, next);
+        toast.success(`Tier auf ${next} gesetzt`);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Fehler");
+        setTier(lead.qualification_tier ?? null);
+      }
+    });
+  }
+
   function dial() {
-    if (!lead?.phone) return;
+    if (!lead.phone) return;
     if (task.status === "pending") {
       startTransition(async () => {
         try {
@@ -120,6 +203,9 @@ export function CallCard({ task }: { task: TaskWithLead }) {
   function pickOutcome(outcome: CallOutcome) {
     startTransition(async () => {
       try {
+        if (notes !== (lead.notes ?? "")) {
+          await updateLeadNotes(lead.id, notes);
+        }
         await completeTask(task.id, outcome, notes || undefined);
         toast.success("Outcome gespeichert");
         router.refresh();
@@ -142,6 +228,11 @@ export function CallCard({ task }: { task: TaskWithLead }) {
     });
   }
 
+  const priceRange =
+    lead.suggested_price_min_eur != null && lead.suggested_price_max_eur != null
+      ? `${formatEur(lead.suggested_price_min_eur)}–${formatEur(lead.suggested_price_max_eur)}`
+      : null;
+
   return (
     <Card
       className={cn(
@@ -152,6 +243,12 @@ export function CallCard({ task }: { task: TaskWithLead }) {
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
+          {lead.owner_name && (
+            <div className="flex items-center gap-1.5 text-xs font-medium text-primary">
+              <User className="h-3 w-3" />
+              {lead.owner_name}
+            </div>
+          )}
           <Link
             href={`/akquise/leads/${lead.id}`}
             className="block break-words text-base font-semibold leading-tight hover:underline"
@@ -179,10 +276,10 @@ export function CallCard({ task }: { task: TaskWithLead }) {
             variant="outline"
             className={cn(
               "border text-[10px] font-semibold uppercase tracking-wide",
-              tierColor(lead.qualification_tier),
+              tierColor(tier),
             )}
           >
-            {lead.qualification_tier ?? "—"}
+            {tier ?? "—"}
           </Badge>
           {lead.lead_score != null && (
             <span className="text-2xl font-bold tabular-nums leading-none">
@@ -192,10 +289,59 @@ export function CallCard({ task }: { task: TaskWithLead }) {
         </div>
       </div>
 
-      {/* Pain hook */}
+      {/* Tier quick-switch */}
+      <div className="grid grid-cols-3 gap-1">
+        {TIER_BUTTONS.map((t) => {
+          const Icon = t.icon;
+          const active = tier === t.value;
+          return (
+            <Button
+              key={t.value}
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setLeadTier(t.value)}
+              disabled={pending}
+              className={cn(
+                "h-7 gap-1 text-xs",
+                active && t.className,
+                !active &&
+                  "border-border/60 bg-transparent text-muted-foreground",
+              )}
+            >
+              <Icon className="h-3 w-3" />
+              {t.label}
+            </Button>
+          );
+        })}
+      </div>
+
+      {/* Hook */}
       {lead.personalized_hook && (
-        <div className="rounded-lg border border-border/40 bg-primary/[0.05] p-3 text-sm leading-snug">
+        <div className="rounded-lg border border-primary/30 bg-primary/[0.05] p-3 text-sm leading-snug">
           {lead.personalized_hook}
+        </div>
+      )}
+
+      {/* Price + fit offer */}
+      {(priceRange || lead.fit_offer || lead.business_size) && (
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          {lead.fit_offer && (
+            <Badge
+              variant="outline"
+              className="border-border/60 bg-card text-[10px]"
+            >
+              {lead.fit_offer}
+            </Badge>
+          )}
+          {priceRange && (
+            <span className="font-semibold tabular-nums text-emerald-300">
+              {priceRange}
+            </span>
+          )}
+          {lead.business_size && (
+            <span className="text-muted-foreground">· {lead.business_size}</span>
+          )}
         </div>
       )}
 
@@ -236,26 +382,44 @@ export function CallCard({ task }: { task: TaskWithLead }) {
         )}
       </div>
 
-      {/* Outcome */}
-      <div className="space-y-2">
-        {showNotes && (
-          <Textarea
-            rows={2}
-            placeholder="Notizen (optional)…"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            className="text-sm"
-          />
-        )}
+      {/* Notes (persistent) */}
+      <Textarea
+        rows={2}
+        placeholder="Kurz-Notiz zum Lead…"
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+        onBlur={persistNotes}
+        className="text-sm"
+      />
+
+      {/* Outcome rows */}
+      <div className="space-y-1.5">
+        {/* Win row — sale + demo + interested */}
         <div className="grid grid-cols-3 gap-1.5">
-          {OUTCOMES.map((o) => {
+          <Button
+            onClick={() => pickOutcome("sale")}
+            disabled={pending}
+            size="sm"
+            className="gap-1 bg-amber-500 text-amber-950 hover:bg-amber-400"
+          >
+            <Trophy className="h-3 w-3" />
+            Verkauf!
+          </Button>
+          <AppointmentDialog
+            leadId={lead.id}
+            taskId={task.id}
+            triggerLabel="Demo gebucht"
+            defaultLeadName={lead.business_name}
+            defaultType="demo"
+            buttonClassName="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+          />
+          {POSITIVE_OUTCOMES.map((o) => {
             const Icon = o.icon;
             return (
               <Button
                 key={o.value}
                 onClick={() => pickOutcome(o.value)}
                 disabled={pending}
-                variant={o.variant}
                 size="sm"
                 className={cn("gap-1 text-xs", o.className)}
               >
@@ -265,14 +429,48 @@ export function CallCard({ task }: { task: TaskWithLead }) {
             );
           })}
         </div>
-        <div className="flex items-center justify-between text-xs">
-          <button
-            type="button"
-            onClick={() => setShowNotes((s) => !s)}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            {showNotes ? "Notizen ausblenden" : "+ Notizen"}
-          </button>
+
+        {/* Followup row */}
+        <div className="grid grid-cols-2 gap-1.5">
+          {FOLLOWUP_OUTCOMES.map((o) => {
+            const Icon = o.icon;
+            return (
+              <Button
+                key={o.value}
+                onClick={() => pickOutcome(o.value)}
+                disabled={pending}
+                variant="outline"
+                size="sm"
+                className="gap-1 text-xs"
+              >
+                <Icon className="h-3 w-3" />
+                {o.label}
+              </Button>
+            );
+          })}
+        </div>
+
+        {/* Negative row */}
+        <div className="grid grid-cols-3 gap-1.5">
+          {NEGATIVE_OUTCOMES.map((o) => {
+            const Icon = o.icon;
+            return (
+              <Button
+                key={o.value}
+                onClick={() => pickOutcome(o.value)}
+                disabled={pending}
+                variant="outline"
+                size="sm"
+                className={cn("gap-1 text-xs", o.className)}
+              >
+                <Icon className="h-3 w-3" />
+                {o.label}
+              </Button>
+            );
+          })}
+        </div>
+
+        <div className="flex items-center justify-end pt-1">
           <Button
             variant="ghost"
             size="sm"

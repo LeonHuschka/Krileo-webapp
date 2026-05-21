@@ -4,6 +4,7 @@ import { claude, firstTextBlock } from "@/lib/lead-engine/claude";
 import { leadEngine } from "@/lib/lead-engine/supabase";
 import { LEAD_SCORING_SYSTEM } from "@/lib/lead-engine/prompts/lead-scoring";
 import type {
+  BusinessSize,
   FitOffer,
   Lead,
   QualificationTier,
@@ -12,7 +13,10 @@ import type {
 export type ScoringResult = {
   lead_score: number;
   qualification_tier: QualificationTier;
+  business_size: BusinessSize;
   fit_offer: FitOffer;
+  suggested_price_min_eur: number;
+  suggested_price_max_eur: number;
   pain_points: string[];
   personalized_hook: string;
 };
@@ -23,12 +27,18 @@ const SCORING_SCHEMA = {
     lead_score: { type: "integer" },
     qualification_tier: {
       type: "string",
-      enum: ["hot", "warm", "cold", "skip"],
+      enum: ["hot", "warm", "cold"],
+    },
+    business_size: {
+      type: "string",
+      enum: ["small", "medium", "large"],
     },
     fit_offer: {
       type: "string",
       enum: ["website", "booking", "automation", "saas"],
     },
+    suggested_price_min_eur: { type: "integer" },
+    suggested_price_max_eur: { type: "integer" },
     pain_points: {
       type: "array",
       items: { type: "string" },
@@ -38,7 +48,10 @@ const SCORING_SCHEMA = {
   required: [
     "lead_score",
     "qualification_tier",
+    "business_size",
     "fit_offer",
+    "suggested_price_min_eur",
+    "suggested_price_max_eur",
     "pain_points",
     "personalized_hook",
   ],
@@ -127,7 +140,10 @@ export async function scoreLead(leadId: string): Promise<ScoringResult> {
     .update({
       lead_score: parsed.lead_score,
       qualification_tier: parsed.qualification_tier,
+      business_size: parsed.business_size,
       fit_offer: parsed.fit_offer,
+      suggested_price_min_eur: parsed.suggested_price_min_eur,
+      suggested_price_max_eur: parsed.suggested_price_max_eur,
       pain_points: parsed.pain_points,
       personalized_hook: parsed.personalized_hook,
       outreach_status: "scored",

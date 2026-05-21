@@ -20,7 +20,29 @@ export type OutreachStatus =
   | "lost" // not interested / bounced
   | "suppressed"; // opted out
 
-export type QualificationTier = "hot" | "warm" | "cold" | "skip";
+export type QualificationTier = "hot" | "warm" | "cold";
+export type BusinessSize = "small" | "medium" | "large";
+export type AppointmentType = "demo" | "callback" | "sale" | "onsite" | "other";
+export type AppointmentStatus =
+  | "scheduled"
+  | "completed"
+  | "no_show"
+  | "cancelled"
+  | "rescheduled";
+
+export interface Appointment {
+  id: string;
+  lead_id: string;
+  type: AppointmentType;
+  scheduled_for: string;
+  duration_minutes: number;
+  location: string | null;
+  notes: string | null;
+  status: AppointmentStatus;
+  created_by_task: string | null;
+  created_at: string;
+  updated_at: string;
+}
 
 export type FitOffer = "website" | "booking" | "automation" | "saas";
 
@@ -82,6 +104,10 @@ export interface Lead {
   fit_offer: FitOffer | null;
   pain_points: string[] | null;
   personalized_hook: string | null;
+  suggested_price_min_eur: number | null;
+  suggested_price_max_eur: number | null;
+  business_size: BusinessSize | null;
+  notes: string | null;
 
   // Channel routing (added in 00013_)
   primary_channel: Channel | null;

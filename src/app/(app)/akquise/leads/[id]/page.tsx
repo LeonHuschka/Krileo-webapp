@@ -13,8 +13,10 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RescoreButton } from "@/components/akquise/lead-actions";
+import { AppointmentDialog } from "@/components/akquise/appointment-dialog";
+import { AppointmentRow } from "@/components/akquise/appointment-row";
 import { cn } from "@/lib/utils";
-import type { Lead } from "@/lib/lead-engine/types";
+import type { Appointment, Lead } from "@/lib/lead-engine/types";
 
 export const dynamic = "force-dynamic";
 
@@ -51,6 +53,31 @@ export default async function LeadDetailPage({
     campaigns?: { industry: string; city: string };
   };
 
+  // Pull appointments for this lead
+  type ApptRow = Appointment & {
+    leads: {
+      business_name: string;
+      phone: string | null;
+      city: string | null;
+      owner_name: string | null;
+      owner_email: string | null;
+    } | null;
+  };
+  let appointments: ApptRow[] = [];
+  try {
+    const { data: appts } = await db
+      .from("appointments")
+      .select(
+        "*, leads(business_name, phone, city, owner_name, owner_email)",
+      )
+      .eq("lead_id", lead.id)
+      .order("scheduled_for", { ascending: true })
+      .limit(20);
+    appointments = (appts ?? []) as unknown as ApptRow[];
+  } catch {
+    /* table may not exist yet */
+  }
+
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-4 md:p-6">
       <Link
@@ -63,6 +90,11 @@ export default async function LeadDetailPage({
       <Card>
         <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
           <div className="flex-1 space-y-2">
+            {lead.owner_name && (
+              <div className="text-sm font-medium text-primary">
+                {lead.owner_name}
+              </div>
+            )}
             <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
               {lead.business_name}
             </h1>
@@ -113,7 +145,15 @@ export default async function LeadDetailPage({
                 {lead.lead_score}
               </span>
             )}
-            <RescoreButton leadId={lead.id} />
+            <div className="flex flex-col gap-1.5">
+              <RescoreButton leadId={lead.id} />
+              <AppointmentDialog
+                leadId={lead.id}
+                triggerLabel="Termin buchen"
+                triggerVariant="outline"
+                defaultLeadName={lead.business_name}
+              />
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-5">
@@ -224,6 +264,16 @@ export default async function LeadDetailPage({
             <Meta label="Branche" value={lead.campaigns?.industry} />
             <Meta label="Status" value={lead.outreach_status} />
             <Meta label="Fit Offer" value={lead.fit_offer} />
+            <Meta label="Business-Size" value={lead.business_size} />
+            <Meta
+              label="Preis-Range"
+              value={
+                lead.suggested_price_min_eur != null &&
+                lead.suggested_price_max_eur != null
+                  ? `${lead.suggested_price_min_eur}–${lead.suggested_price_max_eur} €`
+                  : null
+              }
+            />
             <Meta label="Adresse" value={lead.address} />
             <Meta
               label="Escalation"
@@ -242,8 +292,32 @@ export default async function LeadDetailPage({
               }
             />
           </div>
+
+          {lead.notes && (
+            <div>
+              <div className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Notizen
+              </div>
+              <div className="rounded-md border border-border/50 bg-card/60 p-3 text-sm whitespace-pre-wrap">
+                {lead.notes}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      {appointments.length > 0 && (
+        <div className="space-y-2">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Termine
+          </h2>
+          <div className="space-y-2">
+            {appointments.map((a) => (
+              <AppointmentRow key={a.id} appt={a} />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

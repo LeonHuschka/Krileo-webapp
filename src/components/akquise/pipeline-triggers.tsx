@@ -3,9 +3,10 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Bot, Compass, ListPlus, Loader2 } from "lucide-react";
+import { Bot, Compass, ListPlus, Search, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
+  triggerEnrich,
   triggerGenerateTasks,
   triggerRoute,
   triggerScore,
@@ -39,6 +40,20 @@ export function PipelineTriggers() {
 
   return (
     <div className="flex flex-wrap gap-2">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => run("enrich", () => triggerEnrich(), "Enrichment")}
+        disabled={pending}
+        className="gap-1.5"
+      >
+        {pending && activeAction === "enrich" ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <Search className="h-3.5 w-3.5" />
+        )}
+        Inhaber suchen (Impressum)
+      </Button>
       <Button
         variant="outline"
         size="sm"

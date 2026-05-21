@@ -35,7 +35,9 @@ export function assignChannel(
   >,
   industry: Industry,
 ): RouteResult {
-  if (lead.qualification_tier === "skip") {
+  // "skip" no longer exists in the enum — keep the legacy check for
+  // any old rows still in the DB.
+  if ((lead.qualification_tier as string | null) === "skip") {
     return { primary: "none", escalation: [] };
   }
 

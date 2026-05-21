@@ -216,17 +216,33 @@ export async function enrichLead(leadId: string): Promise<EnrichResult> {
 
   if (extracted?.owner_name && !existing.owner_name) {
     patch.owner_name = extracted.owner_name;
+    // Best-effort first/last split for schemas that have those columns.
+    const parts = extracted.owner_name.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      patch.owner_first_name = parts[0];
+      patch.owner_last_name = parts.slice(1).join(" ");
+    } else {
+      patch.owner_first_name = extracted.owner_name;
+    }
   }
   if (extracted?.owner_email && !existing.owner_email) {
     patch.owner_email = extracted.owner_email;
   }
+  if (extracted?.legal_form) {
+    patch.legal_form = extracted.legal_form;
+  }
 
-  // Always nudge status forward, even if extraction was empty —
-  // we don't want to retry indefinitely.
+  // Always nudge status forward — we don't want to retry indefinitely.
   patch.outreach_status = "enriched";
 
   if (Object.keys(patch).length > 0) {
-    await db.from("leads").update(patch).eq("id", leadId);
+    const { error } = await db.from("leads").update(patch).eq("id", leadId);
+    if (error) {
+      // Surface to the API/cron caller. Most common case: column missing.
+      throw new Error(
+        `Enrich update failed for ${leadId}: ${error.message}`,
+      );
+    }
   }
 
   return {

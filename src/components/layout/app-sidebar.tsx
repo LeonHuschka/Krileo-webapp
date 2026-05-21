@@ -12,6 +12,7 @@ import {
   Sparkles,
   Receipt,
   Wrench,
+  Target,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { APP_NAME } from "@/lib/constants";
@@ -21,6 +22,7 @@ const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/orders", label: "Aufträge", icon: ClipboardList },
   { href: "/growth", label: "Growth", icon: Sparkles },
+  { href: "/akquise", label: "Akquise", icon: Target },
   { href: "/contacts", label: "Kontakte", icon: Users },
   { href: "/tools", label: "Tools", icon: Wrench },
   { href: "/buchhaltung", label: "Buchhaltung", icon: Receipt },

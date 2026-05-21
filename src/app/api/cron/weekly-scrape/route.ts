@@ -3,10 +3,9 @@ import { scrapeAllActiveCampaigns } from "@/lib/lead-engine/apify";
 import { authorizeCronRequest } from "@/lib/lead-engine/auth";
 
 export const dynamic = "force-dynamic";
-// Worst-case 28 campaigns × ~30s Apify each → ~14 min. Vercel free
-// tier caps at 300s; on Pro we get 900s. Set to the Pro ceiling and
-// fall back to a smaller batch if we ever hit free.
-export const maxDuration = 800;
+// Hobby plan caps Serverless Functions at 300s. We parallelise the
+// scrape internally so the wall-clock isn't 28 × per-campaign-time.
+export const maxDuration = 300;
 
 export async function GET(request: Request) {
   const unauthorized = authorizeCronRequest(request);
@@ -14,7 +13,7 @@ export async function GET(request: Request) {
 
   try {
     const started = Date.now();
-    const results = await scrapeAllActiveCampaigns(50);
+    const results = await scrapeAllActiveCampaigns(50, { concurrency: 4 });
     const tookMs = Date.now() - started;
     return NextResponse.json({
       ok: true,

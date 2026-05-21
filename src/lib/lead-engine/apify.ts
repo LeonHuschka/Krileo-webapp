@@ -157,12 +157,15 @@ export async function scrapeCampaign(
 }
 
 /**
- * Run Stage 1 for every active campaign. Sequential by default so we
- * don't hammer Apify (and to keep error attribution clean).
+ * Run Stage 1 for every active campaign. Parallelised with a small
+ * concurrency limit so we don't blow Apify's actor-instance cap or our
+ * Vercel function's 300s wall-clock on Hobby.
  */
 export async function scrapeAllActiveCampaigns(
   maxResultsPerCampaign = 50,
+  opts: { concurrency?: number } = {},
 ): Promise<ScrapeResult[]> {
+  const concurrency = Math.max(1, opts.concurrency ?? 4);
   const db = leadEngine();
   const { data: campaigns, error } = await db
     .from("campaigns")
@@ -172,21 +175,33 @@ export async function scrapeAllActiveCampaigns(
   if (error) throw new Error(`Campaign list failed: ${error.message}`);
   if (!campaigns) return [];
 
+  const queue = [...(campaigns as { id: string }[])];
   const results: ScrapeResult[] = [];
-  for (const c of campaigns) {
-    try {
-      results.push(await scrapeCampaign(c.id, maxResultsPerCampaign));
-    } catch (err) {
-      results.push({
-        campaignId: c.id,
-        industry: "unknown",
-        city: "unknown",
-        scraped: 0,
-        inserted: 0,
-        skipped: 0,
-        ...{ error: err instanceof Error ? err.message : String(err) },
-      } as unknown as ScrapeResult);
+
+  async function worker() {
+    while (queue.length > 0) {
+      const c = queue.shift();
+      if (!c) return;
+      try {
+        results.push(await scrapeCampaign(c.id, maxResultsPerCampaign));
+      } catch (err) {
+        results.push({
+          campaignId: c.id,
+          industry: "unknown",
+          city: "unknown",
+          scraped: 0,
+          inserted: 0,
+          skipped: 0,
+          ...{ error: err instanceof Error ? err.message : String(err) },
+        } as unknown as ScrapeResult);
+      }
     }
   }
+
+  const workers = Array.from(
+    { length: Math.min(concurrency, queue.length) },
+    () => worker(),
+  );
+  await Promise.all(workers);
   return results;
 }

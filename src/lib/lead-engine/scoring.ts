@@ -7,12 +7,18 @@ import type {
   BusinessSize,
   FitOffer,
   Lead,
-  QualificationTier,
 } from "@/lib/lead-engine/types";
+
+// Tier is intentionally NOT in the LLM output anymore — every fresh
+// scored lead defaults to `cold` (= never contacted). Tier only moves
+// to warm/hot through real outreach outcomes:
+//   - "Interessiert" → warm
+//   - "Demo gebucht" → hot
+//   - "Verkauf!"     → won (terminal, not a tier change)
+// Or via the manual hot/warm/cold buttons on the call card.
 
 export type ScoringResult = {
   lead_score: number;
-  qualification_tier: QualificationTier;
   business_size: BusinessSize;
   fit_offer: FitOffer;
   suggested_price_min_eur: number;
@@ -25,10 +31,6 @@ const SCORING_SCHEMA = {
   type: "object",
   properties: {
     lead_score: { type: "integer" },
-    qualification_tier: {
-      type: "string",
-      enum: ["hot", "warm", "cold"],
-    },
     business_size: {
       type: "string",
       enum: ["small", "medium", "large"],
@@ -47,7 +49,6 @@ const SCORING_SCHEMA = {
   },
   required: [
     "lead_score",
-    "qualification_tier",
     "business_size",
     "fit_offer",
     "suggested_price_min_eur",
@@ -139,7 +140,9 @@ export async function scoreLead(leadId: string): Promise<ScoringResult> {
     .from("leads")
     .update({
       lead_score: parsed.lead_score,
-      qualification_tier: parsed.qualification_tier,
+      // Fresh leads default to cold — tier moves to warm/hot via
+      // outreach outcomes (Interessiert / Demo gebucht) or manual override.
+      qualification_tier: "cold",
       business_size: parsed.business_size,
       fit_offer: parsed.fit_offer,
       suggested_price_min_eur: parsed.suggested_price_min_eur,

@@ -27,14 +27,12 @@ export type GenerateResult = {
 /**
  * Build today's task queues.
  *
- * Calls: every lead with a phone number that isn't already won/lost/
- * suppressed becomes a call candidate. Sorted by lead_score DESC so
- * Boss works the hottest ones first, but no lead is excluded just
- * because the score is low — user explicitly wants to call them all.
+ * Channel-gated: every queue only pulls leads whose primary_channel
+ * matches. So a "Friseur" with instagram-first preference goes to
+ * the Insta queue (or the email queue once we build it), not the
+ * call queue — even though it has a phone number.
  *
- * Instagram / LinkedIn: still gated by primary_channel since those
- * platforms have stricter outreach norms.
- *
+ * Sorted by lead_score DESC so the highest-potential leads come first.
  * Idempotent — re-running on the same day adds nothing.
  */
 export async function generateDailyTasks(
@@ -68,25 +66,8 @@ export async function generateDailyTasks(
     if (row.lead_id) taken.add(`${row.channel}:${row.lead_id}`);
   }
 
-  // ── Calls: phone + not closed-out ───────────────────────────────────
-  await pickAndInsert({
-    db,
-    cap: caps.call,
-    channel: "call",
-    query: db
-      .from("leads")
-      .select("id, lead_score")
-      .not("phone", "is", null)
-      .not("outreach_status", "in", "(won,lost,suppressed)")
-      .order("lead_score", { ascending: false, nullsFirst: false })
-      .limit(caps.call * 3),
-    date,
-    taken,
-    onInserted: (n) => (generated.call = n),
-  });
-
-  // ── Instagram & LinkedIn: still channel-gated ───────────────────────
-  for (const ch of ["instagram", "linkedin"] as const) {
+  // ── All channels: filter by primary_channel ──────────────────────────
+  for (const ch of ["call", "instagram", "linkedin"] as const) {
     const cap = caps[ch];
     if (cap <= 0) continue;
     await pickAndInsert({

@@ -68,12 +68,20 @@ export async function completeTask(
 
   if (task?.lead_id) {
     const leadPatch: Record<string, unknown> = {};
-    if (outcome === "interested") leadPatch.outreach_status = "replied";
-    else if (outcome === "demo_booked") leadPatch.outreach_status = "replied";
-    else if (outcome === "sale") leadPatch.outreach_status = "won";
-    else if (outcome === "not_interested") leadPatch.outreach_status = "lost";
-    else if (outcome === "do_not_contact")
+    if (outcome === "interested") {
+      leadPatch.outreach_status = "replied";
+      leadPatch.qualification_tier = "warm"; // interest signal → warm
+    } else if (outcome === "demo_booked") {
+      leadPatch.outreach_status = "replied";
+      leadPatch.qualification_tier = "hot"; // booked demo → hot
+    } else if (outcome === "sale") {
+      leadPatch.outreach_status = "won";
+      leadPatch.qualification_tier = "hot";
+    } else if (outcome === "not_interested") {
+      leadPatch.outreach_status = "lost";
+    } else if (outcome === "do_not_contact") {
       leadPatch.outreach_status = "suppressed";
+    }
 
     if (Object.keys(leadPatch).length > 0) {
       await db.from("leads").update(leadPatch).eq("id", task.lead_id);

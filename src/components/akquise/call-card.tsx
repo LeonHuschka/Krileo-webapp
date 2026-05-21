@@ -243,18 +243,22 @@ function CallCardInner({
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          {lead.owner_name && (
-            <div className="flex items-center gap-1.5 text-xs font-medium text-primary">
-              <User className="h-3 w-3" />
-              {lead.owner_name}
-            </div>
-          )}
           <Link
             href={`/akquise/leads/${lead.id}`}
-            className="block break-words text-base font-semibold leading-tight hover:underline"
+            className="block break-words text-sm text-muted-foreground hover:underline"
           >
             {lead.business_name}
           </Link>
+          {lead.owner_name ? (
+            <div className="mt-0.5 flex items-center gap-1.5 text-lg font-bold leading-tight text-primary">
+              <User className="h-4 w-4 shrink-0" />
+              <span className="break-words">{lead.owner_name}</span>
+            </div>
+          ) : (
+            <div className="mt-0.5 text-base font-semibold leading-tight text-muted-foreground/60">
+              (Inhaber unbekannt)
+            </div>
+          )}
           <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             {lead.city && (
               <span className="flex items-center gap-1">

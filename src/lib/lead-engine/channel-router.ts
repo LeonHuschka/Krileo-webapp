@@ -4,14 +4,20 @@ import { leadEngine } from "@/lib/lead-engine/supabase";
 import type { Channel, Industry, Lead } from "@/lib/lead-engine/types";
 
 // Per-industry channel preference (best-fit first).
+//
+// Cold-outreach reality: for B2B SMB you reach the decision-maker
+// fastest by phone. Calls go first wherever the receptionist /
+// shop owner is reachable by phone during business hours. Social-
+// media-first only for industries where the staff is busy on-chair
+// (hair, nails) or the platform is the natural touchpoint (gastro).
 const PREFS: Record<Industry, Channel[]> = {
-  aerzte: ["email", "call"],
-  physios: ["email", "call"],
-  friseure: ["instagram", "email", "call"],
-  restaurants: ["instagram", "email", "call"],
+  aerzte: ["call", "email"],
+  physios: ["call", "email"],
   kfz: ["call", "email"],
-  kosmetik: ["instagram", "email", "call"],
-  verleih: ["email", "linkedin", "call"],
+  verleih: ["call", "email", "linkedin"],
+  friseure: ["instagram", "call", "email"],
+  kosmetik: ["instagram", "call", "email"],
+  restaurants: ["instagram", "call", "email"],
 };
 
 export type RouteResult = {

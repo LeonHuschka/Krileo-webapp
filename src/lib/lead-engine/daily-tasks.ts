@@ -3,6 +3,26 @@ import "server-only";
 import { leadEngine } from "@/lib/lead-engine/supabase";
 import type { DailyTaskChannel, Lead } from "@/lib/lead-engine/types";
 
+/**
+ * Outreach phase configuration.
+ *
+ * Phase 1 (current):
+ *   Email warmup is at ~10-15% — Smartlead Day 0 to ~Day 10. Until the
+ *   inboxes are fully warm we can't fire mass mail. Everything goes
+ *   into the call queue: top 30 leads by lead_score, regardless of
+ *   what the channel-router prefers. Instagram queue stays small for
+ *   the social-first industries that you might want to try.
+ *
+ * Phase 2 (when LEAD_ENGINE_EMAIL_READY=true):
+ *   Same 30/day for calls (the "call-worthy" subset: highest score),
+ *   plus up to 300/day for emails (the next-best leads that get the
+ *   lighter touch instead of a 5-min phone call).
+ *
+ * Flip the env var when Smartlead reports >95% inbox warmup
+ * (typically Day 10-14 of the warmup schedule).
+ */
+const EMAIL_READY = process.env.LEAD_ENGINE_EMAIL_READY === "true";
+
 const DEFAULT_CAPS: Record<DailyTaskChannel, number> = {
   call: 30,
   instagram: 15,
@@ -21,20 +41,10 @@ function today(): string {
 
 export type GenerateResult = {
   date: string;
+  emailReady: boolean;
   generated: Record<DailyTaskChannel, number>;
 };
 
-/**
- * Build today's task queues.
- *
- * Channel-gated: every queue only pulls leads whose primary_channel
- * matches. So a "Friseur" with instagram-first preference goes to
- * the Insta queue (or the email queue once we build it), not the
- * call queue — even though it has a phone number.
- *
- * Sorted by lead_score DESC so the highest-potential leads come first.
- * Idempotent — re-running on the same day adds nothing.
- */
 export async function generateDailyTasks(
   opts: {
     date?: string;
@@ -66,8 +76,31 @@ export async function generateDailyTasks(
     if (row.lead_id) taken.add(`${row.channel}:${row.lead_id}`);
   }
 
-  // ── All channels: filter by primary_channel ──────────────────────────
-  for (const ch of ["call", "instagram", "linkedin"] as const) {
+  // ── CALL QUEUE ──────────────────────────────────────────────────────
+  // The top N leads by lead_score that have a phone number and aren't
+  // closed-out. This deliberately ignores primary_channel during the
+  // warmup phase: every lead is callable until email is ready, then
+  // the top-N keeps getting calls and the rest go to email.
+  await pickAndInsert({
+    db,
+    cap: caps.call,
+    channel: "call",
+    query: db
+      .from("leads")
+      .select("id, lead_score")
+      .not("phone", "is", null)
+      .not("outreach_status", "in", "(won,lost,suppressed)")
+      .order("lead_score", { ascending: false, nullsFirst: false })
+      .limit(caps.call * 3),
+    date,
+    taken,
+    onInserted: (n) => (generated.call = n),
+  });
+
+  // ── INSTAGRAM / LINKEDIN ─────────────────────────────────────────────
+  // Still channel-gated — those are deliberate channel choices, not a
+  // fallback. Friseure/Kosmetik/Restaurants land here naturally.
+  for (const ch of ["instagram", "linkedin"] as const) {
     const cap = caps[ch];
     if (cap <= 0) continue;
     await pickAndInsert({
@@ -87,15 +120,17 @@ export async function generateDailyTasks(
     });
   }
 
-  return { date, generated };
+  // EMAIL queue will live here once LEAD_ENGINE_EMAIL_READY flips to true
+  // and we wire up the Smartlead push. For now we just don't generate
+  // anything for it.
+
+  return { date, emailReady: EMAIL_READY, generated };
 }
 
 async function pickAndInsert(args: {
   db: ReturnType<typeof leadEngine>;
   cap: number;
   channel: DailyTaskChannel;
-  // We don't formally type this — the query builder type is heavy.
-  // It just needs to be a thenable that yields { data, error }.
   query: PromiseLike<{ data: unknown; error: unknown }>;
   date: string;
   taken: Set<string>;

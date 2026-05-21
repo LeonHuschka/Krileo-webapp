@@ -18,6 +18,108 @@ const IMPRESSUM_PATH_HINTS = [
   "/datenschutz/impressum",
 ];
 
+// Generic mailboxes that never carry a person name in the local-part.
+const GENERIC_MAIL_PREFIXES = new Set([
+  "info",
+  "kontakt",
+  "contact",
+  "hello",
+  "hallo",
+  "office",
+  "praxis",
+  "termin",
+  "termine",
+  "anfrage",
+  "service",
+  "mail",
+  "email",
+  "post",
+  "team",
+  "buero",
+  "büro",
+  "rezeption",
+  "empfang",
+  "support",
+  "sales",
+  "verkauf",
+  "marketing",
+  "no-reply",
+  "noreply",
+  "admin",
+  "webmaster",
+]);
+
+function titlecase(s: string): string {
+  return s
+    .toLowerCase()
+    .split(/(\s|-)/)
+    .map((part) =>
+      part.length > 0 && /[a-zäöüß]/i.test(part[0])
+        ? part[0].toUpperCase() + part.slice(1)
+        : part,
+    )
+    .join("");
+}
+
+/**
+ * Best-effort name extraction from the email local-part. Handles
+ *   firstname.lastname@   firstname-lastname@   firstname_lastname@
+ * Returns null for generic mailboxes (info@, kontakt@, …) and for
+ * local-parts that don't look like a real name.
+ */
+function nameFromEmail(email: string | null | undefined): string | null {
+  if (!email || typeof email !== "string") return null;
+  const local = email.split("@")[0]?.toLowerCase();
+  if (!local) return null;
+
+  const cleaned = local
+    .replace(/^\d+/, "")
+    .replace(/\d+$/, "")
+    .replace(/^[+_.-]+|[+_.-]+$/g, "");
+  if (!cleaned) return null;
+  if (GENERIC_MAIL_PREFIXES.has(cleaned)) return null;
+
+  const parts = cleaned
+    .split(/[._-]+/)
+    .map((p) => p.trim())
+    .filter((p) => p.length > 1);
+
+  if (parts.length < 2) return null;
+
+  const goodParts = parts.filter((p) => /^[a-zäöüß]{2,}$/i.test(p));
+  if (goodParts.length < 2) return null;
+
+  return goodParts.slice(0, 3).map(titlecase).join(" ");
+}
+
+/**
+ * Scan the raw Apify payload for owner-like fields. Apify's
+ * compass/crawler-google-places sometimes returns ownerName,
+ * businessOwnerName, or has it nested under additionalInfo.
+ */
+function nameFromRawData(raw: unknown): string | null {
+  if (!raw || typeof raw !== "object") return null;
+  const obj = raw as Record<string, unknown>;
+  const candidates = [
+    obj.ownerName,
+    obj.businessOwnerName,
+    obj.ownerInfo,
+    obj.owner,
+    obj.contactName,
+    obj.manager,
+  ];
+  for (const c of candidates) {
+    if (typeof c === "string" && c.trim().length > 2) return c.trim();
+    if (c && typeof c === "object") {
+      const inner = (c as Record<string, unknown>).name;
+      if (typeof inner === "string" && inner.trim().length > 2) {
+        return inner.trim();
+      }
+    }
+  }
+  return null;
+}
+
 type ExtractResult = {
   owner_name: string | null;
   owner_email: string | null;
@@ -137,7 +239,7 @@ export type EnrichResult = {
   ownerName: string | null;
   ownerEmail: string | null;
   legalForm: string | null;
-  source: "impressum" | "homepage" | "none";
+  source: "impressum" | "homepage" | "email" | "raw_data" | "none";
 };
 
 /**
@@ -151,7 +253,9 @@ export async function enrichLead(leadId: string): Promise<EnrichResult> {
   const db = leadEngine();
   const { data: lead } = await db
     .from("leads")
-    .select("id, website_url, owner_name, owner_email")
+    .select(
+      "id, website_url, owner_name, owner_email, raw_data",
+    )
     .eq("id", leadId)
     .single();
 
@@ -165,54 +269,67 @@ export async function enrichLead(leadId: string): Promise<EnrichResult> {
     };
   }
 
-  const website = (lead as { website_url: string | null }).website_url;
-  if (!website) {
-    return {
-      leadId,
-      ownerName: null,
-      ownerEmail: null,
-      legalForm: null,
-      source: "none",
-    };
-  }
-
-  let impressumUrl = await findImpressumUrl(website);
-  let html: string | null = null;
-  if (impressumUrl) {
-    html = await fetchWithTimeout(impressumUrl);
-  }
-  if (!html) {
-    // Fall back to the homepage — owner sometimes appears on the front page
-    html = await fetchWithTimeout(website);
-    impressumUrl = null;
-  }
-  if (!html) {
-    return {
-      leadId,
-      ownerName: null,
-      ownerEmail: null,
-      legalForm: null,
-      source: "none",
-    };
-  }
-
-  const text = stripHtml(html);
-  if (text.length < 50) {
-    return {
-      leadId,
-      ownerName: null,
-      ownerEmail: null,
-      legalForm: null,
-      source: "none",
-    };
-  }
-
-  const extracted = await extractFromText(text);
-  const patch: Record<string, unknown> = {};
   const existing = lead as {
     owner_name: string | null;
     owner_email: string | null;
+    website_url: string | null;
+    raw_data: unknown;
   };
+
+  const website = existing.website_url;
+
+  // Try impressum first (most reliable when available)
+  let extracted: ExtractResult | null = null;
+  let source: EnrichResult["source"] = "none";
+
+  if (website) {
+    let impressumUrl = await findImpressumUrl(website);
+    let html: string | null = null;
+    if (impressumUrl) {
+      html = await fetchWithTimeout(impressumUrl);
+    }
+    if (!html) {
+      html = await fetchWithTimeout(website);
+      impressumUrl = null;
+    }
+    if (html) {
+      const text = stripHtml(html);
+      if (text.length >= 50) {
+        extracted = await extractFromText(text);
+        if (extracted?.owner_name) {
+          source = impressumUrl ? "impressum" : "homepage";
+        }
+      }
+    }
+  }
+
+  // Fallback A — derive from a known email's local-part
+  if (!extracted?.owner_name) {
+    const candidate = nameFromEmail(existing.owner_email);
+    if (candidate) {
+      extracted = {
+        owner_name: candidate,
+        owner_email: existing.owner_email,
+        legal_form: extracted?.legal_form ?? null,
+      };
+      if (source === "none") source = "email";
+    }
+  }
+
+  // Fallback B — scan the raw Apify payload for owner-ish fields
+  if (!extracted?.owner_name) {
+    const candidate = nameFromRawData(existing.raw_data);
+    if (candidate) {
+      extracted = {
+        owner_name: candidate,
+        owner_email: existing.owner_email,
+        legal_form: extracted?.legal_form ?? null,
+      };
+      if (source === "none") source = "raw_data";
+    }
+  }
+
+  const patch: Record<string, unknown> = {};
 
   if (extracted?.owner_name && !existing.owner_name) {
     patch.owner_name = extracted.owner_name;
@@ -250,12 +367,13 @@ export async function enrichLead(leadId: string): Promise<EnrichResult> {
     ownerName: extracted?.owner_name ?? null,
     ownerEmail: extracted?.owner_email ?? null,
     legalForm: extracted?.legal_form ?? null,
-    source: impressumUrl ? "impressum" : "homepage",
+    source,
   };
 }
 
 /**
- * Enrich every 'raw' lead that has a website URL.
+ * Enrich every 'raw' lead. We no longer require a website — fallbacks
+ * (email-local-part, raw_data fields) work on website-less leads too.
  */
 export async function enrichAllPending(
   opts: { limit?: number; concurrency?: number } = {},
@@ -266,9 +384,8 @@ export async function enrichAllPending(
 
   const { data, error } = await db
     .from("leads")
-    .select("id, website_url")
+    .select("id")
     .eq("outreach_status", "raw")
-    .not("website_url", "is", null)
     .limit(limit);
 
   if (error) throw new Error(`Lead list failed: ${error.message}`);

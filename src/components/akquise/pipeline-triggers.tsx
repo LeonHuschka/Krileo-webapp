@@ -3,11 +3,19 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Bot, Compass, ListPlus, Search, Loader2 } from "lucide-react";
+import {
+  Bot,
+  Compass,
+  ListPlus,
+  RefreshCw,
+  Search,
+  Loader2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   triggerEnrich,
   triggerGenerateTasks,
+  triggerReprocessAll,
   triggerRoute,
   triggerScore,
 } from "@/app/(app)/akquise/actions";
@@ -38,8 +46,35 @@ export function PipelineTriggers() {
     });
   }
 
+  function reprocess() {
+    if (
+      !confirm(
+        "Alle aktuellen Leads (außer won/lost/suppressed) zurücksetzen und die komplette Pipeline neu durchlaufen lassen?",
+      )
+    )
+      return;
+    run(
+      "reprocess",
+      () => triggerReprocessAll(),
+      "Alles neu prozessiert",
+    );
+  }
+
   return (
     <div className="flex flex-wrap gap-2">
+      <Button
+        size="sm"
+        onClick={reprocess}
+        disabled={pending}
+        className="gap-1.5 bg-amber-500 text-amber-950 hover:bg-amber-400"
+      >
+        {pending && activeAction === "reprocess" ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <RefreshCw className="h-3.5 w-3.5" />
+        )}
+        Alles neu durchnudeln
+      </Button>
       <Button
         variant="outline"
         size="sm"

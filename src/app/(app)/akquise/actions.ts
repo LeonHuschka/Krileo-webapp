@@ -198,3 +198,29 @@ export async function triggerGenerateTasks() {
   revalidateAll();
   return result;
 }
+
+/**
+ * Reset every non-final lead back to 'raw' and run the full pipeline
+ * again. Useful after a prompt change so existing leads pick up the
+ * new fields (owner_name, price range, etc.).
+ *
+ * Skips terminal states (won, lost, suppressed) so closed deals stay closed.
+ */
+export async function triggerReprocessAll() {
+  const db = leadEngine();
+  const { error } = await db
+    .from("leads")
+    .update({ outreach_status: "raw" })
+    .in("outreach_status", ["enriched", "scored", "queued", "sent", "replied"]);
+  if (error) throw new Error(`Reset failed: ${error.message}`);
+
+  const enrichment = await enrichAllPending({
+    limit: 200,
+    concurrency: 4,
+  });
+  const scoring = await scoreAllPending({ limit: 200, concurrency: 4 });
+  const routing = await routePendingLeads({ limit: 500 });
+  const tasks = await generateDailyTasks({});
+  revalidateAll();
+  return { enrichment, scoring, routing, tasks };
+}

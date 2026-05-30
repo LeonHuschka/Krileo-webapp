@@ -1,6 +1,0 @@
-{
-  "crons": [
-    { "path": "/api/cron/weekly-scrape", "schedule": "0 6 * * 1" },
-    { "path": "/api/cron/daily-tasks", "schedule": "0 6 * * *" }
-  ]
-}

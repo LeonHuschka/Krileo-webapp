@@ -1,10 +1,20 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { ExternalLink, Search } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import {
+  ExternalLink,
+  Search,
+  Phone,
+  Mail,
+  Sparkles,
+  Loader2,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -21,7 +31,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import type { Lead } from "@/lib/lead-engine/types";
+import {
+  autoAssignUnassigned,
+  setLeadChannel,
+} from "@/app/(app)/akquise/actions";
+import type { Channel, Lead } from "@/lib/lead-engine/types";
 
 const ALL = "__all__";
 
@@ -29,7 +43,6 @@ const TIER_COLORS: Record<string, string> = {
   hot: "border-rose-500/40 bg-rose-500/15 text-rose-300",
   warm: "border-amber-500/40 bg-amber-500/15 text-amber-300",
   cold: "border-sky-500/40 bg-sky-500/15 text-sky-300",
-  skip: "border-zinc-500/40 bg-zinc-500/15 text-zinc-300",
 };
 
 const CHANNEL_COLORS: Record<string, string> = {
@@ -41,15 +54,24 @@ const CHANNEL_COLORS: Record<string, string> = {
 };
 
 export function LeadsTable({ leads }: { leads: Lead[] }) {
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [tierFilter, setTierFilter] = useState<string>(ALL);
   const [channelFilter, setChannelFilter] = useState<string>(ALL);
+  const [pending, startTransition] = useTransition();
+  const [busyLead, setBusyLead] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return leads.filter((l) => {
       if (tierFilter !== ALL && l.qualification_tier !== tierFilter) return false;
-      if (channelFilter !== ALL && l.primary_channel !== channelFilter) return false;
+      if (channelFilter !== ALL) {
+        if (channelFilter === "unassigned") {
+          if (l.primary_channel != null) return false;
+        } else if (l.primary_channel !== channelFilter) {
+          return false;
+        }
+      }
       if (!q) return true;
       return (
         l.business_name.toLowerCase().includes(q) ||
@@ -60,6 +82,50 @@ export function LeadsTable({ leads }: { leads: Lead[] }) {
       );
     });
   }, [leads, query, tierFilter, channelFilter]);
+
+  const unassignedCount = useMemo(
+    () =>
+      leads.filter(
+        (l) =>
+          l.primary_channel == null &&
+          !["won", "lost", "suppressed"].includes(l.outreach_status),
+      ).length,
+    [leads],
+  );
+
+  function assign(leadId: string, channel: Channel) {
+    setBusyLead(leadId);
+    startTransition(async () => {
+      try {
+        await setLeadChannel(leadId, channel);
+        toast.success(`→ ${channel}`);
+        router.refresh();
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Fehler");
+      } finally {
+        setBusyLead(null);
+      }
+    });
+  }
+
+  function bulkAutoAssign() {
+    if (unassignedCount === 0) return;
+    if (
+      !confirm(
+        `${unassignedCount} Leads automatisch zuweisen?\n\nMail wenn E-Mail vorhanden, sonst Call.`,
+      )
+    )
+      return;
+    startTransition(async () => {
+      try {
+        const r = await autoAssignUnassigned();
+        toast.success(`${r.updated} Leads zugewiesen`);
+        router.refresh();
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Fehler");
+      }
+    });
+  }
 
   return (
     <div className="space-y-4">
@@ -82,22 +148,36 @@ export function LeadsTable({ leads }: { leads: Lead[] }) {
             <SelectItem value="hot">Hot</SelectItem>
             <SelectItem value="warm">Warm</SelectItem>
             <SelectItem value="cold">Cold</SelectItem>
-            <SelectItem value="skip">Skip</SelectItem>
           </SelectContent>
         </Select>
         <Select value={channelFilter} onValueChange={setChannelFilter}>
-          <SelectTrigger className="w-[160px]">
+          <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Channel" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={ALL}>Alle Channels</SelectItem>
+            <SelectItem value="unassigned">— ohne Channel —</SelectItem>
             <SelectItem value="call">Call</SelectItem>
             <SelectItem value="email">E-Mail</SelectItem>
             <SelectItem value="instagram">Instagram</SelectItem>
             <SelectItem value="linkedin">LinkedIn</SelectItem>
-            <SelectItem value="none">None / Skip</SelectItem>
+            <SelectItem value="none">None</SelectItem>
           </SelectContent>
         </Select>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={bulkAutoAssign}
+          disabled={pending || unassignedCount === 0}
+          className="gap-1.5"
+        >
+          {pending ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Sparkles className="h-3.5 w-3.5" />
+          )}
+          Auto-Assign ({unassignedCount})
+        </Button>
       </div>
 
       <div className="rounded-lg border border-border/50">
@@ -109,6 +189,7 @@ export function LeadsTable({ leads }: { leads: Lead[] }) {
               <TableHead className="text-right">Score</TableHead>
               <TableHead>Tier</TableHead>
               <TableHead>Channel</TableHead>
+              <TableHead className="w-[140px] text-center">Assign</TableHead>
               <TableHead>Phone</TableHead>
               <TableHead className="w-10 text-right">Web</TableHead>
             </TableRow>
@@ -117,7 +198,7 @@ export function LeadsTable({ leads }: { leads: Lead[] }) {
             {filtered.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={7}
+                  colSpan={8}
                   className="py-8 text-center text-sm text-muted-foreground"
                 >
                   Keine Leads gefunden.
@@ -176,6 +257,56 @@ export function LeadsTable({ leads }: { leads: Lead[] }) {
                     ) : (
                       <span className="text-xs text-muted-foreground">—</span>
                     )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center justify-center gap-1">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        title="Auf Call setzen"
+                        disabled={
+                          pending ||
+                          l.primary_channel === "call" ||
+                          !l.phone
+                        }
+                        onClick={() => assign(l.id, "call")}
+                        className={cn(
+                          "h-7 w-7 p-0",
+                          l.primary_channel === "call" &&
+                            "border-emerald-500/40 bg-emerald-500/15 text-emerald-300",
+                        )}
+                      >
+                        {busyLead === l.id && pending ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Phone className="h-3 w-3" />
+                        )}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        title="Auf Mail setzen"
+                        disabled={
+                          pending ||
+                          l.primary_channel === "email" ||
+                          !l.owner_email
+                        }
+                        onClick={() => assign(l.id, "email")}
+                        className={cn(
+                          "h-7 w-7 p-0",
+                          l.primary_channel === "email" &&
+                            "border-sky-500/40 bg-sky-500/15 text-sky-300",
+                        )}
+                      >
+                        {busyLead === l.id && pending ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Mail className="h-3 w-3" />
+                        )}
+                      </Button>
+                    </div>
                   </TableCell>
                   <TableCell className="font-mono text-xs">
                     {l.phone ?? "—"}

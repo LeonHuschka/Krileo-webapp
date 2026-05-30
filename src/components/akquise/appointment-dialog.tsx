@@ -37,7 +37,6 @@ function defaultDateTime(): string {
 
 export function AppointmentDialog({
   leadId,
-  taskId,
   triggerLabel = "Demo gebucht",
   triggerVariant = "default",
   defaultType = "demo",
@@ -45,7 +44,6 @@ export function AppointmentDialog({
   defaultLeadName,
 }: {
   leadId: string;
-  taskId?: string;
   triggerLabel?: string;
   triggerVariant?: "default" | "outline" | "secondary";
   defaultType?: AppointmentType;
@@ -70,7 +68,6 @@ export function AppointmentDialog({
       try {
         await bookAppointment({
           leadId,
-          taskId,
           type,
           scheduledFor: new Date(scheduledFor).toISOString(),
           durationMinutes: duration,

@@ -116,6 +116,11 @@ export interface Lead {
   channel_assigned_at: string | null;
   channel_locked_until: string | null;
 
+  // Pool-state (added in 00016_)
+  last_contact_outcome: string | null;
+  last_contact_at: string | null;
+  callback_at: string | null;
+
   // Email artifacts
   email_1_subject: string | null;
   email_1_body: string | null;

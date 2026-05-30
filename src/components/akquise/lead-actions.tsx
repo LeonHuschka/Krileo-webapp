@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Bot, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { triggerScore } from "@/app/(app)/akquise/actions";
+import { rescoreLead } from "@/app/(app)/akquise/actions";
 
 export function RescoreButton({ leadId }: { leadId: string }) {
   const router = useRouter();
@@ -14,7 +14,7 @@ export function RescoreButton({ leadId }: { leadId: string }) {
   function rescore() {
     startTransition(async () => {
       try {
-        await triggerScore(leadId);
+        await rescoreLead(leadId);
         toast.success("Lead neu gescored");
         router.refresh();
       } catch (err) {

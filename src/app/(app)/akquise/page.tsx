@@ -1,9 +1,12 @@
 import Link from "next/link";
-import { Phone, Users, Target, ArrowRight } from "lucide-react";
+import { Phone, Users, Mail, ArrowRight, Inbox } from "lucide-react";
 import { leadEngine } from "@/lib/lead-engine/supabase";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { PipelineTriggers } from "@/components/akquise/pipeline-triggers";
+import {
+  GenerateLeadsDialog,
+  type CampaignOption,
+} from "@/components/akquise/generate-leads-dialog";
 
 export const dynamic = "force-dynamic";
 
@@ -16,81 +19,109 @@ function todayBerlin(): string {
 
 type Stats = {
   totalLeads: number;
-  raw: number;
-  scored: number;
-  hot: number;
-  warm: number;
-  todayPending: number;
-  todayDone: number;
+  unassigned: number;
+  callPool: number;
+  emailPool: number;
+  callsToday: number;
 };
 
-async function loadStats(): Promise<{ stats: Stats | null; error: string | null }> {
+async function loadStats(): Promise<{
+  stats: Stats | null;
+  campaigns: CampaignOption[];
+  error: string | null;
+}> {
   try {
     const db = leadEngine();
     const date = todayBerlin();
+    const nowIso = new Date().toISOString();
 
     const [
       { count: total },
-      { count: raw },
-      { count: scored },
-      { count: hot },
-      { count: warm },
-      { count: todayPending },
-      { count: todayDone },
+      { count: unassigned },
+      { count: callPool },
+      { count: emailPool },
+      { count: callsToday },
+      { data: campaigns },
     ] = await Promise.all([
       db.from("leads").select("id", { head: true, count: "exact" }),
       db
         .from("leads")
         .select("id", { head: true, count: "exact" })
-        .eq("outreach_status", "raw"),
+        .is("primary_channel", null)
+        .not("outreach_status", "in", "(won,lost,suppressed)"),
+      callPoolCount(db, nowIso),
       db
         .from("leads")
         .select("id", { head: true, count: "exact" })
-        .eq("outreach_status", "scored"),
-      db
-        .from("leads")
-        .select("id", { head: true, count: "exact" })
-        .eq("qualification_tier", "hot"),
-      db
-        .from("leads")
-        .select("id", { head: true, count: "exact" })
-        .eq("qualification_tier", "warm"),
-      db
-        .from("daily_tasks")
-        .select("id", { head: true, count: "exact" })
-        .eq("task_date", date)
-        .eq("channel", "call")
-        .in("status", ["pending", "in_progress"]),
+        .eq("primary_channel", "email")
+        .not("outreach_status", "in", "(won,lost,suppressed)"),
       db
         .from("daily_tasks")
         .select("id", { head: true, count: "exact" })
         .eq("task_date", date)
         .eq("channel", "call")
         .eq("status", "completed"),
+      db
+        .from("campaigns")
+        .select("id, industry, city")
+        .eq("is_active", true)
+        .order("industry"),
     ]);
 
     return {
       stats: {
         totalLeads: total ?? 0,
-        raw: raw ?? 0,
-        scored: scored ?? 0,
-        hot: hot ?? 0,
-        warm: warm ?? 0,
-        todayPending: todayPending ?? 0,
-        todayDone: todayDone ?? 0,
+        unassigned: unassigned ?? 0,
+        callPool: callPool ?? 0,
+        emailPool: emailPool ?? 0,
+        callsToday: callsToday ?? 0,
       },
+      campaigns: (campaigns ?? []) as CampaignOption[],
       error: null,
     };
   } catch (err) {
     return {
       stats: null,
+      campaigns: [],
       error: err instanceof Error ? err.message : String(err),
     };
   }
 }
 
+/**
+ * Active call pool = leads in the call channel that haven't been
+ * contacted yet OR whose callback date has rolled around.
+ */
+async function callPoolCount(
+  db: ReturnType<typeof leadEngine>,
+  nowIso: string,
+): Promise<{ count: number | null }> {
+  // No clean way to express "(last_contact_outcome IS NULL OR
+  // callback_at <= now)" with the count head=true builder, so we
+  // count both branches and dedupe with a tiny client-side set.
+  const [{ data: fresh }, { data: due }] = await Promise.all([
+    db
+      .from("leads")
+      .select("id")
+      .eq("primary_channel", "call")
+      .not("outreach_status", "in", "(won,lost,suppressed)")
+      .is("last_contact_outcome", null),
+    db
+      .from("leads")
+      .select("id")
+      .eq("primary_channel", "call")
+      .not("outreach_status", "in", "(won,lost,suppressed)")
+      .not("callback_at", "is", null)
+      .lte("callback_at", nowIso),
+  ]);
+  const ids = new Set<string>();
+  for (const r of (fresh ?? []) as Array<{ id: string }>) ids.add(r.id);
+  for (const r of (due ?? []) as Array<{ id: string }>) ids.add(r.id);
+  return { count: ids.size };
+}
+
 export default async function AkquisePage() {
-  const { stats, error } = await loadStats();
+  const { stats, campaigns, error } = await loadStats();
 
   return (
     <div className="space-y-6 p-4 md:p-6">
@@ -100,21 +131,12 @@ export default async function AkquisePage() {
             Akquise
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Cold-Outreach-Pipeline für lokale SMBs (DACH). Eigene Lead-Engine-
-            Datenbank, getrennt von Aufträgen/Kontakten.
+            Cold-Outreach-Pipeline für lokale SMBs (DACH). Generier ein
+            paar Leads, ruf an, schreib Mails.
           </p>
         </div>
-        {!error && (
-          <Link
-            href="/akquise/tasks"
-            className="group inline-flex items-center gap-2 rounded-xl border border-primary/40 bg-primary/15 px-4 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary/25"
-          >
-            <Phone className="h-4 w-4" />
-            {stats && stats.todayPending > 0
-              ? `${stats.todayPending} offene Calls`
-              : "Call-Queue öffnen"}
-            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-          </Link>
+        {!error && campaigns.length > 0 && (
+          <GenerateLeadsDialog campaigns={campaigns} />
         )}
       </div>
 
@@ -141,78 +163,52 @@ export default async function AkquisePage() {
               iconBg="bg-sky-500/15 text-sky-300"
             />
             <StatCard
-              label="Heiße Leads"
-              value={stats!.hot}
-              icon={Target}
-              accent="from-rose-500/15 to-transparent"
-              iconBg="bg-rose-500/15 text-rose-300"
-            />
-            <StatCard
-              label="Calls heute"
-              value={stats!.todayPending + stats!.todayDone}
-              sub={`${stats!.todayDone} erledigt`}
+              label="Call-Pool"
+              value={stats!.callPool}
               icon={Phone}
               accent="from-emerald-500/15 to-transparent"
               iconBg="bg-emerald-500/15 text-emerald-300"
             />
             <StatCard
-              label="Ungescored"
-              value={stats!.raw}
-              icon={Users}
+              label="Email-Pool"
+              value={stats!.emailPool}
+              icon={Mail}
+              accent="from-indigo-500/15 to-transparent"
+              iconBg="bg-indigo-500/15 text-indigo-300"
+            />
+            <StatCard
+              label="Unzugewiesen"
+              value={stats!.unassigned}
+              sub="brauchen Channel"
+              icon={Inbox}
               accent="from-amber-500/15 to-transparent"
               iconBg="bg-amber-500/15 text-amber-300"
             />
           </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">
-                Pipeline manuell triggern
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <p className="text-xs text-muted-foreground">
-                Diese Schritte laufen automatisch via Cron (Mo 06:00 Scrape,
-                täglich 06:00 Score/Route/Tasks). Manuell triggern wenn du es
-                jetzt sofort brauchst.
-              </p>
-              <PipelineTriggers />
-            </CardContent>
-          </Card>
-
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Lead-Status</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm">
-                <StatusRow label="Ungescored (raw)" count={stats!.raw} />
-                <StatusRow label="Gescored" count={stats!.scored} />
-                <StatusRow
-                  label="Hot"
-                  count={stats!.hot}
-                  accent="text-rose-300"
-                />
-                <StatusRow
-                  label="Warm"
-                  count={stats!.warm}
-                  accent="text-amber-300"
-                />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Navigation</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <NavRow
-                  href="/akquise/tasks"
-                  label="Call-Queue (heute)"
-                  badge={stats!.todayPending}
-                />
-                <NavRow href="/akquise/leads" label="Lead-Browser" />
-              </CardContent>
-            </Card>
+            <NavCard
+              href="/akquise/tasks"
+              icon={Phone}
+              title="Call-Queue"
+              description="Heutige Anrufe nach Score. Bleiben stehen bis du sie wegarbeitest."
+              badge={stats!.callPool}
+              badgeLabel="im Pool"
+              meta={`${stats!.callsToday} heute gemacht`}
+            />
+            <NavCard
+              href="/akquise/leads"
+              icon={Users}
+              title="Lead-Browser"
+              description="Alle Leads filtern, Tier setzen, Channel zuweisen."
+              badge={stats!.unassigned}
+              badgeLabel="ohne Channel"
+              meta={
+                stats!.unassigned > 0
+                  ? "→ Auto-Assign oder einzeln zuweisen"
+                  : "alle zugewiesen ✓"
+              }
+            />
           </div>
         </>
       )}
@@ -259,51 +255,49 @@ function StatCard({
   );
 }
 
-function StatusRow({
-  label,
-  count,
-  accent,
-}: {
-  label: string;
-  count: number;
-  accent?: string;
-}) {
-  return (
-    <div className="flex items-center justify-between rounded-md border border-border/50 bg-card px-3 py-2">
-      <span className="text-muted-foreground">{label}</span>
-      <span className={`font-semibold tabular-nums ${accent ?? ""}`}>
-        {count}
-      </span>
-    </div>
-  );
-}
-
-function NavRow({
+function NavCard({
   href,
-  label,
+  icon: Icon,
+  title,
+  description,
   badge,
+  badgeLabel,
+  meta,
 }: {
   href: string;
-  label: string;
-  badge?: number;
+  icon: typeof Users;
+  title: string;
+  description: string;
+  badge: number;
+  badgeLabel: string;
+  meta?: string;
 }) {
   return (
     <Link
       href={href}
-      className="group flex items-center justify-between rounded-md border border-border/50 bg-card px-3 py-2 text-sm transition-colors hover:border-primary/40 hover:bg-primary/5"
+      className="group flex items-start gap-4 rounded-xl border border-border/60 bg-card p-5 transition-all hover:border-primary/40 hover:bg-primary/[0.03]"
     >
-      <span>{label}</span>
-      <div className="flex items-center gap-2">
-        {badge != null && badge > 0 && (
-          <Badge
-            variant="outline"
-            className="border-primary/40 bg-primary/15 text-primary"
-          >
-            {badge}
-          </Badge>
-        )}
-        <ArrowRight className="h-3.5 w-3.5 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+        <Icon className="h-5 w-5" />
       </div>
+      <div className="min-w-0 flex-1 space-y-1.5">
+        <div className="flex items-center justify-between gap-3">
+          <span className="font-medium">{title}</span>
+          {badge > 0 && (
+            <Badge
+              variant="outline"
+              className="border-primary/40 bg-primary/15 text-primary"
+            >
+              {badge} {badgeLabel}
+            </Badge>
+          )}
+        </div>
+        <p className="text-sm text-muted-foreground">{description}</p>
+        {meta && (
+          <p className="text-xs text-muted-foreground/70">{meta}</p>
+        )}
+      </div>
+      <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
     </Link>
   );
 }

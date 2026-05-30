@@ -11,7 +11,6 @@ import {
   CheckCircle2,
   XCircle,
   Ban,
-  SkipForward,
   ExternalLink,
   MapPin,
   Star,
@@ -26,22 +25,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  completeTask,
-  skipTask,
-  startTask,
+  logCallOutcome,
   updateLeadNotes,
   updateLeadTier,
   type CallOutcome,
 } from "@/app/(app)/akquise/actions";
 import { AppointmentDialog } from "@/components/akquise/appointment-dialog";
+import { CallbackDialog } from "@/components/akquise/callback-dialog";
 import { cn } from "@/lib/utils";
-import type {
-  DailyTask,
-  Lead,
-  QualificationTier,
-} from "@/lib/lead-engine/types";
-
-type TaskWithLead = DailyTask & { lead: Lead | null };
+import type { Lead, QualificationTier } from "@/lib/lead-engine/types";
 
 const POSITIVE_OUTCOMES: Array<{
   value: CallOutcome;
@@ -55,15 +47,6 @@ const POSITIVE_OUTCOMES: Array<{
     icon: CheckCircle2,
     className: "bg-emerald-600 hover:bg-emerald-700 text-white",
   },
-];
-
-const FOLLOWUP_OUTCOMES: Array<{
-  value: CallOutcome;
-  label: string;
-  icon: typeof Phone;
-}> = [
-  { value: "callback_requested", label: "Rückruf", icon: Repeat },
-  { value: "no_answer", label: "Nicht erreicht", icon: PhoneOff },
 ];
 
 const NEGATIVE_OUTCOMES: Array<{
@@ -133,32 +116,13 @@ function formatEur(amount: number | null | undefined) {
   }).format(amount);
 }
 
-export function CallCard({ task }: { task: TaskWithLead }) {
-  if (!task.lead) {
-    return (
-      <Card className="border-dashed border-border/50 bg-card/40 p-4 text-sm text-muted-foreground">
-        Task ohne Lead — Lead wurde gelöscht.
-      </Card>
-    );
-  }
-  return <CallCardInner task={task} lead={task.lead} />;
-}
-
-function CallCardInner({
-  task,
-  lead,
-}: {
-  task: TaskWithLead;
-  lead: Lead;
-}) {
+export function CallCard({ lead }: { lead: Lead }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [notes, setNotes] = useState(lead.notes ?? "");
   const [tier, setTier] = useState<QualificationTier | null>(
     lead.qualification_tier ?? null,
   );
-
-  const inProgress = task.status === "in_progress";
 
   function persistNotes() {
     if (notes === (lead.notes ?? "")) return;
@@ -188,25 +152,17 @@ function CallCardInner({
 
   function dial() {
     if (!lead.phone) return;
-    if (task.status === "pending") {
-      startTransition(async () => {
-        try {
-          await startTask(task.id);
-        } catch {
-          /* non-fatal */
-        }
-      });
-    }
     window.location.href = `tel:${lead.phone}`;
   }
 
   function pickOutcome(outcome: CallOutcome) {
     startTransition(async () => {
       try {
-        if (notes !== (lead.notes ?? "")) {
-          await updateLeadNotes(lead.id, notes);
-        }
-        await completeTask(task.id, outcome, notes || undefined);
+        await logCallOutcome({
+          leadId: lead.id,
+          outcome,
+          notes: notes || undefined,
+        });
         toast.success("Outcome gespeichert");
         router.refresh();
       } catch (err) {
@@ -215,17 +171,14 @@ function CallCardInner({
     });
   }
 
-  function skip() {
-    if (!confirm("Task wirklich überspringen?")) return;
-    startTransition(async () => {
-      try {
-        await skipTask(task.id, notes || undefined);
-        toast.success("Übersprungen");
-        router.refresh();
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Fehler");
-      }
+  async function handleCallback(date: string) {
+    await logCallOutcome({
+      leadId: lead.id,
+      outcome: "callback_requested",
+      notes: notes || undefined,
+      callbackAt: date,
     });
+    router.refresh();
   }
 
   const priceRange =
@@ -234,12 +187,7 @@ function CallCardInner({
       : null;
 
   return (
-    <Card
-      className={cn(
-        "group relative space-y-3 overflow-hidden border-border/60 bg-card p-4 shadow-none transition-all",
-        inProgress && "border-primary/40 ring-1 ring-primary/30",
-      )}
-    >
+    <Card className="group relative space-y-3 overflow-hidden border-border/60 bg-card p-4 shadow-none">
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
@@ -411,7 +359,6 @@ function CallCardInner({
           </Button>
           <AppointmentDialog
             leadId={lead.id}
-            taskId={task.id}
             triggerLabel="Demo gebucht"
             defaultLeadName={lead.business_name}
             defaultType="demo"
@@ -434,24 +381,25 @@ function CallCardInner({
           })}
         </div>
 
-        {/* Followup row */}
+        {/* Followup row — callback gets its own dialog */}
         <div className="grid grid-cols-2 gap-1.5">
-          {FOLLOWUP_OUTCOMES.map((o) => {
-            const Icon = o.icon;
-            return (
-              <Button
-                key={o.value}
-                onClick={() => pickOutcome(o.value)}
-                disabled={pending}
-                variant="outline"
-                size="sm"
-                className="gap-1 text-xs"
-              >
-                <Icon className="h-3 w-3" />
-                {o.label}
-              </Button>
-            );
-          })}
+          <CallbackDialog
+            triggerLabel="Rückruf"
+            triggerIcon={Repeat}
+            onSubmit={handleCallback}
+            disabled={pending}
+            defaultLeadName={lead.business_name}
+          />
+          <Button
+            onClick={() => pickOutcome("no_answer")}
+            disabled={pending}
+            variant="outline"
+            size="sm"
+            className="gap-1 text-xs"
+          >
+            <PhoneOff className="h-3 w-3" />
+            Nicht erreicht
+          </Button>
         </div>
 
         {/* Negative row */}
@@ -472,19 +420,6 @@ function CallCardInner({
               </Button>
             );
           })}
-        </div>
-
-        <div className="flex items-center justify-end pt-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={skip}
-            disabled={pending}
-            className="gap-1 text-xs text-muted-foreground hover:text-foreground"
-          >
-            <SkipForward className="h-3 w-3" />
-            Skippen
-          </Button>
         </div>
       </div>
     </Card>

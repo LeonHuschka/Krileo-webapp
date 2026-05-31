@@ -7,6 +7,7 @@ import {
   GenerateLeadsDialog,
   type CampaignOption,
 } from "@/components/akquise/generate-leads-dialog";
+import { formatLeadEngineError } from "@/lib/lead-engine/format-error";
 
 export const dynamic = "force-dynamic";
 
@@ -25,103 +26,141 @@ type Stats = {
   callsToday: number;
 };
 
-async function loadStats(): Promise<{
-  stats: Stats | null;
+/**
+ * Stats are wrapped per-query — a missing migration column (e.g.
+ * `last_contact_outcome` before 00016 is applied) shouldn't take out
+ * the whole page or hide the "Leads generieren" button.
+ */
+async function safeCount(
+  promise: PromiseLike<{ count: number | null; error: unknown }>,
+): Promise<number> {
+  try {
+    const { count, error } = await promise;
+    if (error) return 0;
+    return count ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
+async function loadCampaigns(): Promise<{
   campaigns: CampaignOption[];
   error: string | null;
 }> {
   try {
     const db = leadEngine();
-    const date = todayBerlin();
-    const nowIso = new Date().toISOString();
+    const { data, error } = await db
+      .from("campaigns")
+      .select("id, industry, city")
+      .eq("is_active", true)
+      .order("industry");
+    if (error) throw error;
+    return { campaigns: (data ?? []) as CampaignOption[], error: null };
+  } catch (err) {
+    return { campaigns: [], error: formatLeadEngineError(err) };
+  }
+}
 
-    const [
-      { count: total },
-      { count: unassigned },
-      { count: callPool },
-      { count: emailPool },
-      { count: callsToday },
-      { data: campaigns },
-    ] = await Promise.all([
-      db.from("leads").select("id", { head: true, count: "exact" }),
-      db
-        .from("leads")
-        .select("id", { head: true, count: "exact" })
-        .is("primary_channel", null)
-        .not("outreach_status", "in", "(won,lost,suppressed)"),
+async function loadStats(): Promise<Stats> {
+  const db = leadEngine();
+  const date = todayBerlin();
+  const nowIso = new Date().toISOString();
+
+  const [total, unassigned, callPool, emailPool, callsToday] =
+    await Promise.all([
+      safeCount(
+        db
+          .from("leads")
+          .select("id", { head: true, count: "exact" }) as unknown as PromiseLike<{
+          count: number | null;
+          error: unknown;
+        }>,
+      ),
+      safeCount(
+        db
+          .from("leads")
+          .select("id", { head: true, count: "exact" })
+          .is("primary_channel", null)
+          .not("outreach_status", "in", "(won,lost,suppressed)") as unknown as PromiseLike<{
+          count: number | null;
+          error: unknown;
+        }>,
+      ),
       callPoolCount(db, nowIso),
-      db
-        .from("leads")
-        .select("id", { head: true, count: "exact" })
-        .eq("primary_channel", "email")
-        .not("outreach_status", "in", "(won,lost,suppressed)"),
-      db
-        .from("daily_tasks")
-        .select("id", { head: true, count: "exact" })
-        .eq("task_date", date)
-        .eq("channel", "call")
-        .eq("status", "completed"),
-      db
-        .from("campaigns")
-        .select("id, industry, city")
-        .eq("is_active", true)
-        .order("industry"),
+      safeCount(
+        db
+          .from("leads")
+          .select("id", { head: true, count: "exact" })
+          .eq("primary_channel", "email")
+          .not("outreach_status", "in", "(won,lost,suppressed)") as unknown as PromiseLike<{
+          count: number | null;
+          error: unknown;
+        }>,
+      ),
+      safeCount(
+        db
+          .from("daily_tasks")
+          .select("id", { head: true, count: "exact" })
+          .eq("task_date", date)
+          .eq("channel", "call")
+          .eq("status", "completed") as unknown as PromiseLike<{
+          count: number | null;
+          error: unknown;
+        }>,
+      ),
     ]);
 
-    return {
-      stats: {
-        totalLeads: total ?? 0,
-        unassigned: unassigned ?? 0,
-        callPool: callPool ?? 0,
-        emailPool: emailPool ?? 0,
-        callsToday: callsToday ?? 0,
-      },
-      campaigns: (campaigns ?? []) as CampaignOption[],
-      error: null,
-    };
-  } catch (err) {
-    return {
-      stats: null,
-      campaigns: [],
-      error: err instanceof Error ? err.message : String(err),
-    };
-  }
+  return {
+    totalLeads: total,
+    unassigned,
+    callPool,
+    emailPool,
+    callsToday,
+  };
 }
 
 /**
  * Active call pool = leads in the call channel that haven't been
- * contacted yet OR whose callback date has rolled around.
+ * contacted yet OR whose callback date has rolled around. Returns 0
+ * silently if migration 00016 hasn't been applied yet.
  */
 async function callPoolCount(
   db: ReturnType<typeof leadEngine>,
   nowIso: string,
-): Promise<{ count: number | null }> {
-  // No clean way to express "(last_contact_outcome IS NULL OR
-  // callback_at <= now)" with the count head=true builder, so we
-  // count both branches and dedupe with a tiny client-side set.
-  const [{ data: fresh }, { data: due }] = await Promise.all([
-    db
-      .from("leads")
-      .select("id")
-      .eq("primary_channel", "call")
-      .not("outreach_status", "in", "(won,lost,suppressed)")
-      .is("last_contact_outcome", null),
-    db
-      .from("leads")
-      .select("id")
-      .eq("primary_channel", "call")
-      .not("outreach_status", "in", "(won,lost,suppressed)")
-      .not("callback_at", "is", null)
-      .lte("callback_at", nowIso),
-  ]);
-  const ids = new Set<string>();
-  for (const r of (fresh ?? []) as Array<{ id: string }>) ids.add(r.id);
-  for (const r of (due ?? []) as Array<{ id: string }>) ids.add(r.id);
-  return { count: ids.size };
+): Promise<number> {
+  try {
+    const [freshRes, dueRes] = await Promise.all([
+      db
+        .from("leads")
+        .select("id")
+        .eq("primary_channel", "call")
+        .not("outreach_status", "in", "(won,lost,suppressed)")
+        .is("last_contact_outcome", null),
+      db
+        .from("leads")
+        .select("id")
+        .eq("primary_channel", "call")
+        .not("outreach_status", "in", "(won,lost,suppressed)")
+        .not("callback_at", "is", null)
+        .lte("callback_at", nowIso),
+    ]);
+    if (freshRes.error || dueRes.error) return 0;
+    const ids = new Set<string>();
+    for (const r of (freshRes.data ?? []) as Array<{ id: string }>)
+      ids.add(r.id);
+    for (const r of (dueRes.data ?? []) as Array<{ id: string }>) ids.add(r.id);
+    return ids.size;
+  } catch {
+    return 0;
+  }
 }
 
 export default async function AkquisePage() {
-  const { stats, campaigns, error } = await loadStats();
+  // Load independently so a Stats failure doesn't hide the action button.
+  const [{ campaigns, error: campaignError }, stats] = await Promise.all([
+    loadCampaigns(),
+    loadStats(),
+  ]);
 
   return (
     <div className="space-y-6 p-4 md:p-6">
@@ -135,83 +174,87 @@ export default async function AkquisePage() {
             paar Leads, ruf an, schreib Mails.
           </p>
         </div>
-        {!error && campaigns.length > 0 && (
+        {campaigns.length > 0 && (
           <GenerateLeadsDialog campaigns={campaigns} />
         )}
       </div>
 
-      {error ? (
+      {campaignError && (
         <Card>
           <CardContent className="p-6">
-            <div className="mb-2 font-medium">Lead-Engine nicht erreichbar</div>
-            <code className="text-xs text-muted-foreground">{error}</code>
+            <div className="mb-2 font-medium">
+              Campaigns konnten nicht geladen werden
+            </div>
+            <code className="block whitespace-pre-wrap text-xs text-muted-foreground">
+              {campaignError}
+            </code>
             <p className="mt-3 text-sm text-muted-foreground">
-              Setze <code>LEAD_ENGINE_URL</code> und{" "}
-              <code>LEAD_ENGINE_SERVICE_KEY</code> in <code>.env.local</code>{" "}
-              bzw. in Vercel und re-deploye.
+              Falls die Spalten <code>last_contact_outcome</code> /{" "}
+              <code>callback_at</code> bzw. die Tabelle{" "}
+              <code>app_settings</code> fehlen: Migration{" "}
+              <code>00016_lead_pool_and_callbacks.sql</code> im Supabase
+              SQL-Editor applien.
             </p>
           </CardContent>
         </Card>
-      ) : (
-        <>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <StatCard
-              label="Leads gesamt"
-              value={stats!.totalLeads}
-              icon={Users}
-              accent="from-sky-500/15 to-transparent"
-              iconBg="bg-sky-500/15 text-sky-300"
-            />
-            <StatCard
-              label="Call-Pool"
-              value={stats!.callPool}
-              icon={Phone}
-              accent="from-emerald-500/15 to-transparent"
-              iconBg="bg-emerald-500/15 text-emerald-300"
-            />
-            <StatCard
-              label="Email-Pool"
-              value={stats!.emailPool}
-              icon={Mail}
-              accent="from-indigo-500/15 to-transparent"
-              iconBg="bg-indigo-500/15 text-indigo-300"
-            />
-            <StatCard
-              label="Unzugewiesen"
-              value={stats!.unassigned}
-              sub="brauchen Channel"
-              icon={Inbox}
-              accent="from-amber-500/15 to-transparent"
-              iconBg="bg-amber-500/15 text-amber-300"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <NavCard
-              href="/akquise/tasks"
-              icon={Phone}
-              title="Call-Queue"
-              description="Heutige Anrufe nach Score. Bleiben stehen bis du sie wegarbeitest."
-              badge={stats!.callPool}
-              badgeLabel="im Pool"
-              meta={`${stats!.callsToday} heute gemacht`}
-            />
-            <NavCard
-              href="/akquise/leads"
-              icon={Users}
-              title="Lead-Browser"
-              description="Alle Leads filtern, Tier setzen, Channel zuweisen."
-              badge={stats!.unassigned}
-              badgeLabel="ohne Channel"
-              meta={
-                stats!.unassigned > 0
-                  ? "→ Auto-Assign oder einzeln zuweisen"
-                  : "alle zugewiesen ✓"
-              }
-            />
-          </div>
-        </>
       )}
+
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <StatCard
+          label="Leads gesamt"
+          value={stats.totalLeads}
+          icon={Users}
+          accent="from-sky-500/15 to-transparent"
+          iconBg="bg-sky-500/15 text-sky-300"
+        />
+        <StatCard
+          label="Call-Pool"
+          value={stats.callPool}
+          icon={Phone}
+          accent="from-emerald-500/15 to-transparent"
+          iconBg="bg-emerald-500/15 text-emerald-300"
+        />
+        <StatCard
+          label="Email-Pool"
+          value={stats.emailPool}
+          icon={Mail}
+          accent="from-indigo-500/15 to-transparent"
+          iconBg="bg-indigo-500/15 text-indigo-300"
+        />
+        <StatCard
+          label="Unzugewiesen"
+          value={stats.unassigned}
+          sub="brauchen Channel"
+          icon={Inbox}
+          accent="from-amber-500/15 to-transparent"
+          iconBg="bg-amber-500/15 text-amber-300"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <NavCard
+          href="/akquise/tasks"
+          icon={Phone}
+          title="Call-Queue"
+          description="Heutige Anrufe nach Score. Bleiben stehen bis du sie wegarbeitest."
+          badge={stats.callPool}
+          badgeLabel="im Pool"
+          meta={`${stats.callsToday} heute gemacht`}
+        />
+        <NavCard
+          href="/akquise/leads"
+          icon={Users}
+          title="Lead-Browser"
+          description="Alle Leads filtern, Tier setzen, Channel zuweisen."
+          badge={stats.unassigned}
+          badgeLabel="ohne Channel"
+          meta={
+            stats.unassigned > 0
+              ? "→ Auto-Assign oder einzeln zuweisen"
+              : "alle zugewiesen ✓"
+          }
+        />
+      </div>
     </div>
   );
 }

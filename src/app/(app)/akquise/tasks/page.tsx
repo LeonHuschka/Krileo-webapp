@@ -5,6 +5,7 @@ import { CallCard } from "@/components/akquise/call-card";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { DailyTargetInput } from "@/components/akquise/daily-target-input";
+import { formatLeadEngineError } from "@/lib/lead-engine/format-error";
 import type { Lead } from "@/lib/lead-engine/types";
 
 export const dynamic = "force-dynamic";
@@ -18,32 +19,43 @@ function todayBerlin(): string {
 
 type QueueLead = Lead & { _callbackDue: boolean };
 
-async function loadQueue(): Promise<{
+type LoadResult = {
   queue: QueueLead[];
   poolSize: number;
   callsToday: number;
   dailyTarget: number;
   error: string | null;
-}> {
-  try {
-    const db = leadEngine();
-    const nowIso = new Date().toISOString();
-    const date = todayBerlin();
+  migrationMissing: boolean;
+};
 
-    // 1. Daily target
-    const { data: settings } = await db
+async function loadQueue(): Promise<LoadResult> {
+  const db = leadEngine();
+  const nowIso = new Date().toISOString();
+  const date = todayBerlin();
+  let migrationMissing = false;
+  let dailyTarget = 30;
+
+  // 1. Daily target — graceful fallback if app_settings not migrated yet
+  try {
+    const { data, error } = await db
       .from("app_settings")
       .select("daily_call_target")
       .eq("id", 1)
-      .single();
-    const dailyTarget =
-      (settings as { daily_call_target?: number } | null)?.daily_call_target ??
-      30;
+      .maybeSingle();
+    if (error) {
+      migrationMissing = true;
+    } else {
+      dailyTarget =
+        (data as { daily_call_target?: number } | null)?.daily_call_target ??
+        30;
+    }
+  } catch {
+    migrationMissing = true;
+  }
 
-    // 2. Active call pool
-    //    - primary_channel = 'call'
-    //    - not closed (won/lost/suppressed)
-    //    - never contacted OR callback_at is due
+  // 2. Active call pool — fall back to a simpler query if the new
+  //    columns don't exist yet.
+  try {
     const [freshRes, dueRes] = await Promise.all([
       db
         .from("leads")
@@ -86,35 +98,44 @@ async function loadQueue(): Promise<{
     const poolSize = merged.length;
     const queue = merged.slice(0, dailyTarget);
 
-    // 3. Calls done today
-    const { count: callsTodayCount } = await db
-      .from("daily_tasks")
-      .select("id", { head: true, count: "exact" })
-      .eq("task_date", date)
-      .eq("channel", "call")
-      .eq("status", "completed");
+    // 3. Calls done today (best-effort)
+    let callsToday = 0;
+    try {
+      const { count } = await db
+        .from("daily_tasks")
+        .select("id", { head: true, count: "exact" })
+        .eq("task_date", date)
+        .eq("channel", "call")
+        .eq("status", "completed");
+      callsToday = count ?? 0;
+    } catch {
+      /* ignore */
+    }
 
     return {
       queue,
       poolSize,
-      callsToday: callsTodayCount ?? 0,
+      callsToday,
       dailyTarget,
       error: null,
+      migrationMissing,
     };
   } catch (err) {
     return {
       queue: [],
       poolSize: 0,
       callsToday: 0,
-      dailyTarget: 30,
-      error: err instanceof Error ? err.message : String(err),
+      dailyTarget,
+      error: formatLeadEngineError(err),
+      migrationMissing: true,
     };
   }
 }
 
 export default async function AkquiseTasksPage() {
   const date = todayBerlin();
-  const { queue, poolSize, callsToday, dailyTarget, error } = await loadQueue();
+  const { queue, poolSize, callsToday, dailyTarget, error, migrationMissing } =
+    await loadQueue();
 
   return (
     <div className="space-y-6 p-4 md:p-6">
@@ -154,16 +175,52 @@ export default async function AkquiseTasksPage() {
         <DailyTargetInput initialValue={dailyTarget} />
       </div>
 
-      {error ? (
+      {migrationMissing && (
+        <Card className="border-amber-500/40 bg-amber-500/5">
+          <CardContent className="space-y-2 p-4 text-sm">
+            <div className="font-medium text-amber-300">
+              Migration 00016 fehlt noch
+            </div>
+            <p className="text-muted-foreground">
+              Die Tabelle <code>app_settings</code> bzw. die Spalten{" "}
+              <code>last_contact_outcome</code> /{" "}
+              <code>callback_at</code> existieren in der Lead-Engine-DB
+              noch nicht.
+            </p>
+            <p className="text-muted-foreground">
+              Lauf{" "}
+              <code>
+                supabase/lead-engine/migrations/00016_lead_pool_and_callbacks.sql
+              </code>{" "}
+              im SQL-Editor:{" "}
+              <a
+                href="https://supabase.com/dashboard/project/chtmbhvfxickdgtumwdb/sql/new"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline"
+              >
+                Supabase SQL Editor öffnen
+              </a>
+            </p>
+            {error && (
+              <code className="block whitespace-pre-wrap rounded bg-card/60 p-2 text-xs">
+                {error}
+              </code>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {error && !migrationMissing ? (
         <Card>
           <CardContent className="p-6 text-sm text-muted-foreground">
             <div className="mb-2 font-medium text-foreground">
-              Lead-Engine nicht erreichbar
+              Lead-Engine Fehler
             </div>
-            <code className="text-xs">{error}</code>
+            <code className="block whitespace-pre-wrap text-xs">{error}</code>
           </CardContent>
         </Card>
-      ) : queue.length === 0 ? (
+      ) : queue.length === 0 && !migrationMissing ? (
         <Card>
           <CardContent className="space-y-3 p-6 text-sm text-muted-foreground">
             <div className="flex items-center gap-2 font-medium text-foreground">
@@ -185,7 +242,7 @@ export default async function AkquiseTasksPage() {
             </Link>
           </CardContent>
         </Card>
-      ) : (
+      ) : queue.length > 0 ? (
         <>
           {queue.some((q) => q._callbackDue) && (
             <p className="text-xs text-amber-300/90">
@@ -199,7 +256,7 @@ export default async function AkquiseTasksPage() {
             ))}
           </div>
         </>
-      )}
+      ) : null}
     </div>
   );
 }

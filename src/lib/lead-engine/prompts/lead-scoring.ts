@@ -28,13 +28,24 @@ Pro Branche kennen wir typische Pain-Points:
 
 Liefere strukturiertes JSON mit:
 
-- lead_score (0-100): Geschätztes Closing-Potenzial.
-  · 85-100: Top-Lead, sofort anrufen
-  · 60-84:  Solider Fit
-  · 30-59:  Anrufbar, brauchst aber gutes Pitch-Game
-  · 0-29:   Schwierig, aber nicht skippen
-  Niemand bekommt skip. Auch ohne Website darf man scoren — sogar gerne
-  hoch, weil "keine Website" das beste Pain-Signal ist.
+- lead_score (0-100): Geschätztes Closing-Potenzial für Krileo.
+
+  DOMINANT-SIGNAL (überschreibt alles andere):
+  · KEINE Website  → Score IMMER ≥ 75, typisch 80-95.
+                     Krileo verkauft Websites — ein laufendes Business
+                     ohne Webseite ist der perfekte Lead. Anzahl
+                     Reviews spielt fast keine Rolle: wer offline ist
+                     hat das offensichtlichste Pain Point. Sogar mit
+                     0 Reviews noch ≥ 75 wenn Phone vorhanden ist.
+
+  STANDARD-SKALA (wenn Website existiert):
+  · 85-100: Top-Lead — etabliert, Pain klar erkennbar (z.B. Booking-
+            Lücke, alte Website, viele Reviews ohne digitalen Funnel)
+  · 60-84:  Solider Fit — sichtbare Schwächen, brauchbar
+  · 30-59:  Schwächer — Website schon halbwegs OK, Pain unklar
+  · 0-29:   Schlecht erreichbar, gesättigt, oder zu groß für Krileo
+
+  Niemand bekommt skip. Auch 0-29-Leads landen ins System.
 
 - business_size:
   · "small"  → solo / 1-2 Personen / < 10 Reviews
@@ -75,11 +86,22 @@ Liefere strukturiertes JSON mit:
   · "Habe gesehen, dass Sie noch über Telefon Termine machen — bei einer
      Werkstatt Ihrer Größe lassen Sie damit täglich Anfragen liegen."
 
-Heuristiken:
-- Keine Website + viele Reviews = lead_score 80+ (Tier 1 fit_offer="website")
-- Hohe Bewertung (4.5+) + viele Reviews (50+) = etabliert, höhere Preis-Range
-- Wenig Reviews (<10) = junges Business, niedrigere Range, lead_score eher 30-50
-- "Klinik", "Zentrum", "GmbH & Co. KG" = business_size=large, Tier 3
-- Verleih = +20% Bonus
+Heuristiken (Anwendung in dieser Reihenfolge):
+
+1. KEINE WEBSITE → 75-95. Default fit_offer="website", Tier 1.
+   Anzahl Reviews ist nur Tie-Breaker: 50+ Reviews → 90+, 10-49 → 85,
+   <10 → 78. Phone vorhanden = +5. Phone fehlt = -10.
+
+2. WEBSITE VORHANDEN:
+   - 4.5★ + 50+ Reviews + Booking-Pain (Branche: Ärzte/Physios/Friseure/
+     Restaurants) → 75-85, fit_offer="booking", Preis hoch
+   - 4.0+ + 20+ Reviews + sichtbare Lücke → 55-75
+   - <10 Reviews → eher 30-50 (junges Business)
+   - Standortketten / "Klinik" / "Zentrum" / "GmbH & Co. KG" →
+     business_size=large, Tier 3, lead_score 70-90 (große Deals)
+   - Verleih-Branche immer +10 Score (Rentamoto-Case rechtfertigt es)
+
+3. Schlechte Bewertungen (<3.5★) sind kein KO — die brauchen uns
+   sogar mehr. Aber lead_score nicht über 70.
 
 Antworte AUSSCHLIESSLICH im strukturierten JSON-Format. Keine Erklärungen, keine Markdown.`;

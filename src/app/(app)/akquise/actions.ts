@@ -337,6 +337,73 @@ export async function rescoreLead(leadId: string) {
   return result;
 }
 
+/**
+ * Bulk-reset every non-final lead's qualification_tier back to 'cold'.
+ * Honest housekeeping after a prompt change or for stale data — the
+ * tier should only ever move via real outreach outcomes, never via
+ * the scorer.
+ */
+export async function resetAllTiersToCold(): Promise<{ updated: number }> {
+  const db = leadEngine();
+  const { data, error } = await db
+    .from("leads")
+    .update({ qualification_tier: "cold" })
+    .not("outreach_status", "in", "(won,suppressed)")
+    .neq("qualification_tier", "cold")
+    .select("id");
+  if (error) throw new Error(error.message);
+  const updated = (data as { id: string }[] | null)?.length ?? 0;
+  revalidateAll();
+  return { updated };
+}
+
+/**
+ * Re-score every lead that's already been scored at least once.
+ * Useful after a prompt change so old leads pick up the new logic.
+ * Concurrency-limited; bails after `limit` to stay inside the
+ * function wall-clock.
+ */
+export async function rescoreAll(
+  opts: { limit?: number; concurrency?: number } = {},
+): Promise<{ rescored: number; failed: number }> {
+  const limit = opts.limit ?? 200;
+  const concurrency = Math.max(1, opts.concurrency ?? 4);
+
+  const db = leadEngine();
+  const { data, error } = await db
+    .from("leads")
+    .select("id")
+    .not("outreach_status", "in", "(won,lost,suppressed)")
+    .not("lead_score", "is", null)
+    .order("lead_score", { ascending: true, nullsFirst: false })
+    .limit(limit);
+  if (error) throw new Error(error.message);
+
+  const queue = ((data ?? []) as { id: string }[]).map((l) => l.id);
+  let rescored = 0;
+  let failed = 0;
+
+  async function worker() {
+    while (queue.length > 0) {
+      const id = queue.shift();
+      if (!id) return;
+      try {
+        await scoreLead(id);
+        rescored += 1;
+      } catch {
+        failed += 1;
+      }
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, queue.length) }, () => worker()),
+  );
+
+  revalidateAll();
+  return { rescored, failed };
+}
+
 // ── App settings ──────────────────────────────────────────────────────
 
 export async function setDailyCallTarget(target: number): Promise<void> {

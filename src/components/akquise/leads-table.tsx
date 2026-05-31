@@ -11,6 +11,8 @@ import {
   Mail,
   Sparkles,
   Loader2,
+  Snowflake,
+  RefreshCw,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +35,8 @@ import {
 import { cn } from "@/lib/utils";
 import {
   autoAssignUnassigned,
+  rescoreAll,
+  resetAllTiersToCold,
   setLeadChannel,
 } from "@/app/(app)/akquise/actions";
 import type { Channel, Lead } from "@/lib/lead-engine/types";
@@ -112,14 +116,52 @@ export function LeadsTable({ leads }: { leads: Lead[] }) {
     if (unassignedCount === 0) return;
     if (
       !confirm(
-        `${unassignedCount} Leads automatisch zuweisen?\n\nMail wenn E-Mail vorhanden, sonst Call.`,
+        `${unassignedCount} Leads automatisch zuweisen?\n\nHoher Score (oder keine Mail) → Call. Sonst Mail.`,
       )
     )
       return;
     startTransition(async () => {
       try {
         const r = await autoAssignUnassigned();
-        toast.success(`${r.updated} Leads zugewiesen`);
+        toast.success(
+          `${r.updated} zugewiesen — ${r.calls} Call · ${r.emails} Mail`,
+        );
+        router.refresh();
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Fehler");
+      }
+    });
+  }
+
+  function bulkResetTiers() {
+    if (
+      !confirm(
+        "Alle Leads (außer Verkauf/DNC) auf 'cold' zurücksetzen?\n\nTier ändert sich nur durch echte Anruf-Outcomes — vorherige LLM-Klassifizierungen werden weggeräumt.",
+      )
+    )
+      return;
+    startTransition(async () => {
+      try {
+        const r = await resetAllTiersToCold();
+        toast.success(`${r.updated} Tiers auf 'cold' gesetzt`);
+        router.refresh();
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Fehler");
+      }
+    });
+  }
+
+  function bulkRescore() {
+    if (
+      !confirm(
+        "Alle aktiven Leads neu scoren?\n\nDauert je nach Anzahl 1-5 Minuten und kostet API-Credits. Sinnvoll nach Prompt-Änderungen.",
+      )
+    )
+      return;
+    startTransition(async () => {
+      try {
+        const r = await rescoreAll({ limit: 200 });
+        toast.success(`${r.rescored} neu gescored${r.failed > 0 ? `, ${r.failed} Fehler` : ""}`);
         router.refresh();
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Fehler");
@@ -177,6 +219,36 @@ export function LeadsTable({ leads }: { leads: Lead[] }) {
             <Sparkles className="h-3.5 w-3.5" />
           )}
           Auto-Assign ({unassignedCount})
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={bulkResetTiers}
+          disabled={pending}
+          className="gap-1.5"
+          title="Alle Tiers auf 'cold' setzen"
+        >
+          {pending ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Snowflake className="h-3.5 w-3.5" />
+          )}
+          Tier-Reset
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={bulkRescore}
+          disabled={pending}
+          className="gap-1.5"
+          title="Alle aktiven Leads neu scoren (LLM, dauert)"
+        >
+          {pending ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <RefreshCw className="h-3.5 w-3.5" />
+          )}
+          Re-Score (200)
         </Button>
       </div>
 

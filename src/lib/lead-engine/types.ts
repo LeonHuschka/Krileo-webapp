@@ -46,14 +46,22 @@ export interface Appointment {
 
 export type FitOffer = "website" | "booking" | "automation" | "saas";
 
-export type Industry =
-  | "aerzte"
-  | "physios"
-  | "friseure"
-  | "restaurants"
-  | "kfz"
-  | "kosmetik"
-  | "verleih";
+/**
+ * Industry is a free-form string — the seeded niches are listed below
+ * for UX defaults, but the user can punch in any new niche at scrape
+ * time and we'll create a fresh campaign for it.
+ */
+export type Industry = string;
+
+export const SEEDED_INDUSTRIES = [
+  "aerzte",
+  "physios",
+  "friseure",
+  "restaurants",
+  "kfz",
+  "kosmetik",
+  "verleih",
+] as const;
 
 export interface Campaign {
   id: string;

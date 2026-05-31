@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2, Sparkles, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -26,6 +26,7 @@ import {
 import { generateLeads } from "@/app/(app)/akquise/actions";
 
 const AUTO_ASSIGN_THRESHOLD = 30;
+const CUSTOM = "__custom__";
 
 export type CampaignOption = {
   id: string;
@@ -43,6 +44,15 @@ const INDUSTRY_LABEL: Record<string, string> = {
   verleih: "Verleihe",
 };
 
+function labelFor(industry: string): string {
+  return (
+    INDUSTRY_LABEL[industry] ??
+    industry
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, (c) => c.toUpperCase())
+  );
+}
+
 export function GenerateLeadsDialog({
   campaigns,
 }: {
@@ -52,57 +62,88 @@ export function GenerateLeadsDialog({
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
 
-  const industries = useMemo(() => {
+  const knownIndustries = useMemo(() => {
     const set = new Set(campaigns.map((c) => c.industry));
-    return Array.from(set);
+    return Array.from(set).sort();
   }, [campaigns]);
 
-  const [industry, setIndustry] = useState<string>(industries[0] ?? "");
+  const knownCitiesAll = useMemo(() => {
+    const set = new Set(campaigns.map((c) => c.city));
+    return Array.from(set).sort();
+  }, [campaigns]);
+
+  const [industry, setIndustry] = useState<string>(knownIndustries[0] ?? CUSTOM);
+  const [customIndustry, setCustomIndustry] = useState<string>("");
+
   const citiesForIndustry = useMemo(
     () => campaigns.filter((c) => c.industry === industry).map((c) => c.city),
     [campaigns, industry],
   );
-  const [city, setCity] = useState<string>(citiesForIndustry[0] ?? "");
+
+  // Default city: first existing for the selected industry, else first
+  // known city overall, else custom.
+  const initialCity = citiesForIndustry[0] ?? knownCitiesAll[0] ?? CUSTOM;
+  const [city, setCity] = useState<string>(initialCity);
+  const [customCity, setCustomCity] = useState<string>("");
+
   const [count, setCount] = useState<number>(25);
   const [autoAssignToggle, setAutoAssignToggle] = useState<boolean>(false);
 
-  // When the user picks a new industry, jump to that industry's first city
   function pickIndustry(next: string) {
     setIndustry(next);
-    const cities = campaigns
-      .filter((c) => c.industry === next)
-      .map((c) => c.city);
-    setCity(cities[0] ?? "");
+    if (next === CUSTOM) {
+      // Force the city into custom mode too — there are no known cities
+      // for a brand-new niche.
+      setCity(CUSTOM);
+    } else {
+      const cities = campaigns
+        .filter((c) => c.industry === next)
+        .map((c) => c.city);
+      setCity(cities[0] ?? knownCitiesAll[0] ?? CUSTOM);
+    }
   }
 
-  const campaign = useMemo(
+  const isCustomIndustry = industry === CUSTOM;
+  const isCustomCity = city === CUSTOM;
+
+  const effectiveIndustry = isCustomIndustry ? customIndustry.trim() : industry;
+  const effectiveCity = isCustomCity ? customCity.trim() : city;
+
+  // Existing campaign id if user picked both from dropdowns
+  const existingCampaign = useMemo(
     () =>
-      campaigns.find((c) => c.industry === industry && c.city === city) ??
-      null,
-    [campaigns, industry, city],
+      !isCustomIndustry && !isCustomCity
+        ? campaigns.find((c) => c.industry === industry && c.city === city) ??
+          null
+        : null,
+    [campaigns, industry, city, isCustomIndustry, isCustomCity],
   );
 
   const forceAutoAssign = count > AUTO_ASSIGN_THRESHOLD;
   const willAutoAssign = forceAutoAssign || autoAssignToggle;
 
+  const formValid = effectiveIndustry.length > 0 && effectiveCity.length > 0;
+
   function submit() {
-    if (!campaign) {
-      toast.error("Keine passende Campaign gefunden");
+    if (!formValid) {
+      toast.error("Niche und Stadt müssen ausgefüllt sein");
       return;
     }
     startTransition(async () => {
       try {
         const r = await generateLeads({
-          campaignId: campaign.id,
+          campaignId: existingCampaign?.id,
+          industry: existingCampaign ? undefined : effectiveIndustry,
+          city: existingCampaign ? undefined : effectiveCity,
           count,
           autoAssign: autoAssignToggle,
         });
+        const assignSummary =
+          r.autoAssigned > 0
+            ? ` · ${r.autoAssignCalls ?? 0} Call / ${r.autoAssignEmails ?? 0} Mail`
+            : "";
         toast.success(
-          `${r.inserted} neue Leads — ${r.scored} gescored${
-            r.autoAssigned > 0
-              ? `, ${r.autoAssigned} auto-zugewiesen`
-              : ""
-          }`,
+          `${r.inserted} neue Leads — ${r.scored} gescored${assignSummary}`,
         );
         setOpen(false);
         router.refresh();
@@ -134,13 +175,27 @@ export function GenerateLeadsDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {industries.map((i) => (
+                  {knownIndustries.map((i) => (
                     <SelectItem key={i} value={i}>
-                      {INDUSTRY_LABEL[i] ?? i}
+                      {labelFor(i)}
                     </SelectItem>
                   ))}
+                  <SelectItem value={CUSTOM}>
+                    <span className="flex items-center gap-1.5">
+                      <Plus className="h-3 w-3" />
+                      Eigene Niche…
+                    </span>
+                  </SelectItem>
                 </SelectContent>
               </Select>
+              {isCustomIndustry && (
+                <Input
+                  placeholder="z.B. Tattoo-Studios, Zahnärzte…"
+                  value={customIndustry}
+                  onChange={(e) => setCustomIndustry(e.target.value)}
+                  autoFocus
+                />
+              )}
             </div>
             <div className="space-y-2">
               <Label>Stadt</Label>
@@ -149,13 +204,28 @@ export function GenerateLeadsDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {citiesForIndustry.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {c}
-                    </SelectItem>
-                  ))}
+                  {(isCustomIndustry ? knownCitiesAll : citiesForIndustry).map(
+                    (c) => (
+                      <SelectItem key={c} value={c}>
+                        {c}
+                      </SelectItem>
+                    ),
+                  )}
+                  <SelectItem value={CUSTOM}>
+                    <span className="flex items-center gap-1.5">
+                      <Plus className="h-3 w-3" />
+                      Eigene Stadt…
+                    </span>
+                  </SelectItem>
                 </SelectContent>
               </Select>
+              {isCustomCity && (
+                <Input
+                  placeholder="z.B. Berlin, München…"
+                  value={customCity}
+                  onChange={(e) => setCustomCity(e.target.value)}
+                />
+              )}
             </div>
           </div>
 
@@ -194,7 +264,7 @@ export function GenerateLeadsDialog({
                   Channels automatisch zuweisen
                 </Label>
                 <p className="text-xs text-muted-foreground">
-                  Mail wenn E-Mail vorhanden, sonst Call.
+                  Hoher Score (oder keine Mail) → Call. Sonst Mail.
                 </p>
               </div>
               <Checkbox
@@ -221,7 +291,7 @@ export function GenerateLeadsDialog({
           <Button variant="ghost" onClick={() => setOpen(false)}>
             Abbrechen
           </Button>
-          <Button onClick={submit} disabled={pending || !campaign}>
+          <Button onClick={submit} disabled={pending || !formValid}>
             {pending ? (
               <>
                 <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />

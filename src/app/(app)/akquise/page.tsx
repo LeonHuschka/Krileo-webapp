@@ -188,11 +188,10 @@ export default async function AkquisePage() {
               {campaignError}
             </code>
             <p className="mt-3 text-sm text-muted-foreground">
-              Falls die Spalten <code>last_contact_outcome</code> /{" "}
-              <code>callback_at</code> bzw. die Tabelle{" "}
-              <code>app_settings</code> fehlen: Migration{" "}
-              <code>00016_lead_pool_and_callbacks.sql</code> im Supabase
-              SQL-Editor applien.
+              Falls Spalten oder Tabellen fehlen: Migrationen{" "}
+              <code>00016_lead_pool_and_callbacks.sql</code> und{" "}
+              <code>00017_min_call_score.sql</code> im Supabase SQL-Editor
+              applien.
             </p>
           </CardContent>
         </Card>

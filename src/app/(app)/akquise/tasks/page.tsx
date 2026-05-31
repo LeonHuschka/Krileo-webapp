@@ -4,7 +4,7 @@ import { leadEngine } from "@/lib/lead-engine/supabase";
 import { CallCard } from "@/components/akquise/call-card";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { DailyTargetInput } from "@/components/akquise/daily-target-input";
+import { QueueSettings } from "@/components/akquise/queue-settings";
 import { formatLeadEngineError } from "@/lib/lead-engine/format-error";
 import type { Lead } from "@/lib/lead-engine/types";
 
@@ -24,6 +24,7 @@ type LoadResult = {
   poolSize: number;
   callsToday: number;
   dailyTarget: number;
+  minCallScore: number;
   error: string | null;
   migrationMissing: boolean;
 };
@@ -34,20 +35,24 @@ async function loadQueue(): Promise<LoadResult> {
   const date = todayBerlin();
   let migrationMissing = false;
   let dailyTarget = 30;
+  let minCallScore = 60;
 
-  // 1. Daily target — graceful fallback if app_settings not migrated yet
+  // 1. Settings — graceful fallback if app_settings not migrated yet
   try {
     const { data, error } = await db
       .from("app_settings")
-      .select("daily_call_target")
+      .select("daily_call_target, min_call_score")
       .eq("id", 1)
       .maybeSingle();
     if (error) {
       migrationMissing = true;
-    } else {
-      dailyTarget =
-        (data as { daily_call_target?: number } | null)?.daily_call_target ??
-        30;
+    } else if (data) {
+      const settings = data as {
+        daily_call_target?: number;
+        min_call_score?: number;
+      };
+      dailyTarget = settings.daily_call_target ?? 30;
+      minCallScore = settings.min_call_score ?? 60;
     }
   } catch {
     migrationMissing = true;
@@ -117,6 +122,7 @@ async function loadQueue(): Promise<LoadResult> {
       poolSize,
       callsToday,
       dailyTarget,
+      minCallScore,
       error: null,
       migrationMissing,
     };
@@ -126,6 +132,7 @@ async function loadQueue(): Promise<LoadResult> {
       poolSize: 0,
       callsToday: 0,
       dailyTarget,
+      minCallScore,
       error: formatLeadEngineError(err),
       migrationMissing: true,
     };
@@ -134,8 +141,15 @@ async function loadQueue(): Promise<LoadResult> {
 
 export default async function AkquiseTasksPage() {
   const date = todayBerlin();
-  const { queue, poolSize, callsToday, dailyTarget, error, migrationMissing } =
-    await loadQueue();
+  const {
+    queue,
+    poolSize,
+    callsToday,
+    dailyTarget,
+    minCallScore,
+    error,
+    migrationMissing,
+  } = await loadQueue();
 
   return (
     <div className="space-y-6 p-4 md:p-6">
@@ -172,27 +186,22 @@ export default async function AkquiseTasksPage() {
           </div>
         </div>
 
-        <DailyTargetInput initialValue={dailyTarget} />
+        <QueueSettings
+          dailyTarget={dailyTarget}
+          minCallScore={minCallScore}
+        />
       </div>
 
       {migrationMissing && (
         <Card className="border-amber-500/40 bg-amber-500/5">
           <CardContent className="space-y-2 p-4 text-sm">
             <div className="font-medium text-amber-300">
-              Migration 00016 fehlt noch
+              Migration fehlt noch
             </div>
             <p className="text-muted-foreground">
-              Die Tabelle <code>app_settings</code> bzw. die Spalten{" "}
-              <code>last_contact_outcome</code> /{" "}
-              <code>callback_at</code> existieren in der Lead-Engine-DB
-              noch nicht.
-            </p>
-            <p className="text-muted-foreground">
-              Lauf{" "}
-              <code>
-                supabase/lead-engine/migrations/00016_lead_pool_and_callbacks.sql
-              </code>{" "}
-              im SQL-Editor:{" "}
+              Lauf die Migrationen{" "}
+              <code>00016_lead_pool_and_callbacks.sql</code> und{" "}
+              <code>00017_min_call_score.sql</code> im SQL-Editor:{" "}
               <a
                 href="https://supabase.com/dashboard/project/chtmbhvfxickdgtumwdb/sql/new"
                 target="_blank"

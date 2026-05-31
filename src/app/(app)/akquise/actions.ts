@@ -150,52 +150,96 @@ export async function setLeadChannel(leadId: string, channel: Channel) {
 }
 
 /**
- * For everything that doesn't have a primary_channel yet: pick one.
- *   - has owner_email → "email"
- *   - else has phone  → "call"
- *   - else            → "none"
+ * Score-aware auto-assignment. Used for both manual bulk-assign and
+ * the per-batch step that runs after lead generation.
+ *
+ *   - no phone, has email     → EMAIL  (can't call them)
+ *   - no phone, no email      → 'none' (no contact path)
+ *   - no email                → CALL   (only channel available)
+ *   - has email, score >= min → CALL   (worth the personal touch)
+ *   - has email, score <  min → EMAIL  (let mail do the work)
  */
-export async function autoAssignUnassigned(): Promise<{ updated: number }> {
+type AssignableLead = {
+  id: string;
+  owner_email: string | null;
+  phone: string | null;
+  lead_score: number | null;
+};
+
+function pickChannel(lead: AssignableLead, minCallScore: number): Channel {
+  if (!lead.phone) return lead.owner_email ? "email" : "none";
+  if (!lead.owner_email) return "call";
+  const score = lead.lead_score ?? 0;
+  return score >= minCallScore ? "call" : "email";
+}
+
+async function getMinCallScore(): Promise<number> {
   const db = leadEngine();
+  try {
+    const { data, error } = await db
+      .from("app_settings")
+      .select("min_call_score")
+      .eq("id", 1)
+      .maybeSingle();
+    if (error) return 60;
+    return (data as { min_call_score?: number } | null)?.min_call_score ?? 60;
+  } catch {
+    return 60;
+  }
+}
+
+export async function autoAssignUnassigned(): Promise<{
+  updated: number;
+  calls: number;
+  emails: number;
+}> {
+  const db = leadEngine();
+  const minCallScore = await getMinCallScore();
   const { data, error } = await db
     .from("leads")
-    .select("id, owner_email, phone")
+    .select("id, owner_email, phone, lead_score")
     .is("primary_channel", null)
     .not("outreach_status", "in", "(won,lost,suppressed)");
 
   if (error) throw new Error(error.message);
-  const rows = (data ?? []) as Array<{
-    id: string;
-    owner_email: string | null;
-    phone: string | null;
-  }>;
-  if (rows.length === 0) return { updated: 0 };
+  const rows = (data ?? []) as AssignableLead[];
+  if (rows.length === 0) return { updated: 0, calls: 0, emails: 0 };
 
   const now = new Date().toISOString();
   let updated = 0;
+  let calls = 0;
+  let emails = 0;
   for (const r of rows) {
-    const channel: Channel = r.owner_email ? "email" : r.phone ? "call" : "none";
+    const channel = pickChannel(r, minCallScore);
     const { error: upErr } = await db
       .from("leads")
       .update({ primary_channel: channel, channel_assigned_at: now })
       .eq("id", r.id);
-    if (!upErr) updated += 1;
+    if (!upErr) {
+      updated += 1;
+      if (channel === "call") calls += 1;
+      if (channel === "email") emails += 1;
+    }
   }
 
   revalidateAll();
-  return { updated };
+  return { updated, calls, emails };
 }
 
 // ── Lead generation (one button to rule them all) ─────────────────────
 
 export type GenerateLeadsInput = {
-  campaignId: string;
+  /** Either pick an existing campaign by id… */
+  campaignId?: string;
+  /** …or hand over industry + city and we'll find-or-create one. */
+  industry?: string;
+  city?: string;
   count: number;
   /**
-   * If true OR if count > AUTO_ASSIGN_THRESHOLD: leads with an email
-   * land in the email channel, the rest in the call channel.
-   * Otherwise the freshly-scored leads stay unassigned and you sort
-   * them by hand in the lead browser.
+   * If true OR if count > AUTO_ASSIGN_THRESHOLD: the score-aware
+   * channel assignment runs over the freshly scraped batch. Otherwise
+   * the new leads stay unassigned and you sort them by hand in the
+   * lead browser.
    */
   autoAssign: boolean;
 };
@@ -204,17 +248,34 @@ export async function generateLeads(input: GenerateLeadsInput) {
   const count = Math.max(1, Math.min(500, Math.round(input.count)));
   const autoAssign = input.autoAssign || count > AUTO_ASSIGN_THRESHOLD;
 
+  // Resolve campaign — either picked from a dropdown or freshly
+  // created for a never-seen niche/city combo.
+  let campaignId = input.campaignId ?? null;
+  if (!campaignId) {
+    if (!input.industry || !input.city) {
+      throw new Error("Niche und Stadt müssen angegeben sein");
+    }
+    campaignId = await findOrCreateCampaign({
+      industry: input.industry,
+      city: input.city,
+    });
+  }
+
   // scrape → enrich → score → route (route writes primary_channel
   // for *industries* with strong defaults). We then optionally
-  // override to the email/call default when autoAssign is on.
-  const scrape = await scrapeCampaign(input.campaignId, count, {
+  // override to the score-aware default when autoAssign is on.
+  const scrape = await scrapeCampaign(campaignId, count, {
     pipeline: true,
   });
 
   let assigned = 0;
+  let assignedCalls = 0;
+  let assignedEmails = 0;
   if (autoAssign) {
-    const result = await autoAssignFromCampaign(input.campaignId);
+    const result = await autoAssignFromCampaign(campaignId);
     assigned = result.updated;
+    assignedCalls = result.calls;
+    assignedEmails = result.emails;
   }
 
   revalidateAll();
@@ -224,43 +285,48 @@ export async function generateLeads(input: GenerateLeadsInput) {
     scored: scrape.scored ?? 0,
     enriched: scrape.enriched ?? 0,
     autoAssigned: assigned,
+    autoAssignCalls: assignedCalls,
+    autoAssignEmails: assignedEmails,
     autoAssignForced: count > AUTO_ASSIGN_THRESHOLD,
   };
 }
 
 async function autoAssignFromCampaign(
   campaignId: string,
-): Promise<{ updated: number }> {
+): Promise<{ updated: number; calls: number; emails: number }> {
   const db = leadEngine();
-  // For autoAssign we *override* the rule-based router decision so the
-  // simple "has email → email else call" contract holds when the user
-  // ticks the box. Restricted to this campaign so big bulk generations
-  // don't reshuffle the whole DB.
+  const minCallScore = await getMinCallScore();
+  // Override the rule-based router decision so the score-aware
+  // "high-score gets a call, low-score gets a mail" contract holds.
+  // Restricted to this campaign so a 500-lead generation doesn't
+  // reshuffle the rest of the DB.
   const { data, error } = await db
     .from("leads")
-    .select("id, owner_email, phone")
+    .select("id, owner_email, phone, lead_score")
     .eq("campaign_id", campaignId)
     .not("outreach_status", "in", "(won,lost,suppressed)");
 
   if (error) throw new Error(error.message);
-  const rows = (data ?? []) as Array<{
-    id: string;
-    owner_email: string | null;
-    phone: string | null;
-  }>;
-  if (rows.length === 0) return { updated: 0 };
+  const rows = (data ?? []) as AssignableLead[];
+  if (rows.length === 0) return { updated: 0, calls: 0, emails: 0 };
 
   const now = new Date().toISOString();
   let updated = 0;
+  let calls = 0;
+  let emails = 0;
   for (const r of rows) {
-    const channel: Channel = r.owner_email ? "email" : r.phone ? "call" : "none";
+    const channel = pickChannel(r, minCallScore);
     const { error: upErr } = await db
       .from("leads")
       .update({ primary_channel: channel, channel_assigned_at: now })
       .eq("id", r.id);
-    if (!upErr) updated += 1;
+    if (!upErr) {
+      updated += 1;
+      if (channel === "call") calls += 1;
+      if (channel === "email") emails += 1;
+    }
   }
-  return { updated };
+  return { updated, calls, emails };
 }
 
 // ── Single-lead re-score (used on the lead detail page) ──────────────
@@ -283,6 +349,83 @@ export async function setDailyCallTarget(target: number): Promise<void> {
   if (error) throw new Error(error.message);
   revalidatePath("/akquise/tasks");
   revalidatePath("/akquise");
+}
+
+export async function setMinCallScore(score: number): Promise<void> {
+  const n = Math.max(0, Math.min(100, Math.round(score)));
+  const db = leadEngine();
+  const { error } = await db
+    .from("app_settings")
+    .update({ min_call_score: n, updated_at: new Date().toISOString() })
+    .eq("id", 1);
+  if (error) throw new Error(error.message);
+  revalidatePath("/akquise/tasks");
+  revalidatePath("/akquise");
+}
+
+// ── Campaign find-or-create (for ad-hoc niches) ──────────────────────
+
+function slugifyIndustry(raw: string): string {
+  return raw
+    .toLowerCase()
+    .trim()
+    .replace(/ä/g, "ae")
+    .replace(/ö/g, "oe")
+    .replace(/ü/g, "ue")
+    .replace(/ß/g, "ss")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function titleCase(raw: string): string {
+  return raw
+    .trim()
+    .split(/\s+/)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
+}
+
+export async function findOrCreateCampaign(input: {
+  industry: string;
+  city: string;
+}): Promise<string> {
+  const industry = slugifyIndustry(input.industry);
+  const city = titleCase(input.city);
+  if (!industry || !city) {
+    throw new Error("Niche und Stadt dürfen nicht leer sein");
+  }
+
+  const db = leadEngine();
+
+  // Already there?
+  const { data: existing, error: findErr } = await db
+    .from("campaigns")
+    .select("id")
+    .eq("industry", industry)
+    .eq("city", city)
+    .maybeSingle();
+
+  if (findErr) throw new Error(findErr.message);
+  if (existing) return (existing as { id: string }).id;
+
+  // Create new. Search queries default to "<readable niche> <city>";
+  // the user-typed industry usually reads better than the slug, so we
+  // use the raw input for the query and the slug for the column.
+  const readableNiche = input.industry.trim().replace(/_/g, " ");
+  const queries = [`${readableNiche} ${city}`, `${readableNiche} in ${city}`];
+
+  const { data: created, error: insErr } = await db
+    .from("campaigns")
+    .insert({
+      industry,
+      city,
+      search_queries: queries,
+    })
+    .select("id")
+    .single();
+
+  if (insErr) throw new Error(`Campaign-Create fehlgeschlagen: ${insErr.message}`);
+  return (created as { id: string }).id;
 }
 
 // ── Appointments ──────────────────────────────────────────────────────

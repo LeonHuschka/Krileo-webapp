@@ -212,7 +212,16 @@ export function LeadsTable({
     startTransition(async () => {
       try {
         const r = await rescoreAll({ limit: 200 });
-        toast.success(`${r.rescored} neu gescored${r.failed > 0 ? `, ${r.failed} Fehler` : ""}`);
+        if (r.failed > 0 && r.errors.length > 0) {
+          // Surface the actual error so missing migrations / API issues
+          // don't hide behind a silent "0 gescored, 10 Fehler" toast.
+          toast.error(
+            `${r.rescored} neu gescored, ${r.failed} Fehler. Erste Ursache: ${r.errors[0]}`,
+            { duration: 12_000 },
+          );
+        } else {
+          toast.success(`${r.rescored} neu gescored`);
+        }
         router.refresh();
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Fehler");

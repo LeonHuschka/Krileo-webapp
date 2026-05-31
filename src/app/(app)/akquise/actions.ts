@@ -624,7 +624,7 @@ export async function resetAllTiersToCold(): Promise<{ updated: number }> {
  */
 export async function rescoreAll(
   opts: { limit?: number; concurrency?: number } = {},
-): Promise<{ rescored: number; failed: number }> {
+): Promise<{ rescored: number; failed: number; errors: string[] }> {
   const limit = opts.limit ?? 200;
   const concurrency = Math.max(1, opts.concurrency ?? 4);
 
@@ -641,6 +641,7 @@ export async function rescoreAll(
   const queue = ((data ?? []) as { id: string }[]).map((l) => l.id);
   let rescored = 0;
   let failed = 0;
+  const errors: string[] = [];
 
   async function worker() {
     while (queue.length > 0) {
@@ -649,8 +650,11 @@ export async function rescoreAll(
       try {
         await scoreLead(id);
         rescored += 1;
-      } catch {
+      } catch (err) {
         failed += 1;
+        if (errors.length < 5) {
+          errors.push(err instanceof Error ? err.message : String(err));
+        }
       }
     }
   }
@@ -660,7 +664,7 @@ export async function rescoreAll(
   );
 
   revalidateAll();
-  return { rescored, failed };
+  return { rescored, failed, errors };
 }
 
 // ── App settings ──────────────────────────────────────────────────────

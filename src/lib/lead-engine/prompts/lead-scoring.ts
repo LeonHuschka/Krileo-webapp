@@ -102,6 +102,34 @@ WEITERE FELDER
   · "automation"  → Workflows (Erinnerungen, Follow-ups, Quittungen) → Tier 2-3
   · "saas"        → mehrere Touchpoints brauchen Integration → Tier 3
 
+- pickup_profile — WER geht beim Anruf ans Telefon?
+  Entscheidet die Pickup-Line. Pflichtfeld.
+
+  · "owner_direct" → solo-Betrieb. Inhaber selbst nimmt ab.
+       Signale: business_size=small, <30 Reviews, Personenname im
+       Business-Name ("Friseur Müller", "Praxis Dr. Schmidt",
+       "Kosmetik Anna Bauer"), keine GmbH/Klinik/Zentrum/Kette,
+       Owner-Name ist gleichzeitig der Business-Name.
+       → User pitcht direkt, keine Pickup-Line nötig.
+
+  · "gatekeeper"   → Empfangskraft / MFA / Rezeption screent.
+       Signale: business_size=large, ≥80 Reviews, "Klinik" /
+       "Zentrum" / "GmbH" / "Praxis Dr. X und Dr. Y" (mehrere
+       Ärzte) / "Hotel" / "Resort", category enthält "Gruppenpraxis",
+       sehr lange Adresse mit Etagenangabe.
+       → User MUSS Pickup-Line fahren ("Frau Dr. Müller persönlich,
+       bitte — sie weiß Bescheid").
+
+  · "mixed" → mittelgroß, kann beides sein.
+       Signale: business_size=medium, 30-80 Reviews, einzelne Praxis
+       ohne ausdrückliches Empfangs-Setup.
+       → Pickup-Line bereithalten, aber zuerst direkt versuchen.
+
+  ENTSCHEIDUNGS-PRIORITÄT:
+    1) Personenname im Business-Name UND small → owner_direct
+    2) Klinik/Zentrum/GmbH/Kette UND/ODER ≥80 Reviews → gatekeeper
+    3) Sonst → mixed
+
 - suggested_price_min_eur / max_eur — realistische Range:
   · small + website     → 2000-4000
   · small + booking     → 3500-6000

@@ -40,6 +40,7 @@ import {
   setLeadChannel,
 } from "@/app/(app)/akquise/actions";
 import { LeadRowActions } from "@/components/akquise/lead-row-actions";
+import { PickupBadge } from "@/components/akquise/pickup-badge";
 import type { Channel, Lead, LeadEvent } from "@/lib/lead-engine/types";
 
 const ALL = "__all__";
@@ -311,6 +312,7 @@ export function LeadsTable({
               <TableHead className="text-right">Score</TableHead>
               <TableHead>Tier</TableHead>
               <TableHead>Channel</TableHead>
+              <TableHead className="w-[110px]">Pickup</TableHead>
               <TableHead className="w-[140px] text-center">Assign</TableHead>
               <TableHead className="w-[160px]">Letztes Event</TableHead>
               <TableHead>Phone</TableHead>
@@ -322,7 +324,7 @@ export function LeadsTable({
             {filtered.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={10}
+                  colSpan={11}
                   className="py-8 text-center text-sm text-muted-foreground"
                 >
                   Keine Leads gefunden.
@@ -381,6 +383,14 @@ export function LeadsTable({
                     ) : (
                       <span className="text-xs text-muted-foreground">—</span>
                     )}
+                  </TableCell>
+                  <TableCell>
+                    <PickupBadge
+                      leadId={l.id}
+                      profile={l.pickup_profile ?? null}
+                      ownerName={l.owner_name}
+                      variant="compact"
+                    />
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center justify-center gap-1">

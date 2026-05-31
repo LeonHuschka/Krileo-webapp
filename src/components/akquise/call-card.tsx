@@ -40,6 +40,7 @@ import { AppointmentDialog } from "@/components/akquise/appointment-dialog";
 import { CallbackDialog } from "@/components/akquise/callback-dialog";
 import { LeadHistoryStrip } from "@/components/akquise/lead-history-strip";
 import { PhoneManager } from "@/components/akquise/phone-manager";
+import { PickupBadge } from "@/components/akquise/pickup-badge";
 import { cn } from "@/lib/utils";
 import type {
   Lead,
@@ -211,6 +212,14 @@ export function CallCard({
               </span>
             )}
           </div>
+          <div className="mt-2">
+            <PickupBadge
+              leadId={lead.id}
+              profile={lead.pickup_profile ?? null}
+              ownerName={lead.owner_name}
+              variant="full"
+            />
+          </div>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
           <Badge
@@ -368,6 +377,20 @@ export function CallCard({
             </li>
           ))}
         </ul>
+      )}
+
+      {/* Gatekeeper pickup-line — only when reception is expected */}
+      {lead.pickup_profile === "gatekeeper" && (
+        <div className="rounded-lg border border-rose-500/30 bg-rose-500/[0.06] p-2.5 text-xs leading-snug">
+          <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-rose-300">
+            Pickup-Line
+          </div>
+          <span className="text-foreground">
+            {lead.owner_name
+              ? `»${lead.owner_name} persönlich, bitte — sie/er weiß Bescheid.«`
+              : "»Den/die Geschäftsführer/in persönlich, bitte — es geht um die Website.«"}
+          </span>
+        </div>
       )}
 
       {/* Phones (primary + additional + add) */}

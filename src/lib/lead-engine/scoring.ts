@@ -7,6 +7,7 @@ import type {
   BusinessSize,
   FitOffer,
   Lead,
+  PickupProfile,
 } from "@/lib/lead-engine/types";
 
 // Tier is intentionally NOT in the LLM output anymore — every fresh
@@ -28,6 +29,7 @@ export type ScoringResult = {
   };
   business_size: BusinessSize;
   fit_offer: FitOffer;
+  pickup_profile: PickupProfile;
   suggested_price_min_eur: number;
   suggested_price_max_eur: number;
   pain_points: string[];
@@ -65,6 +67,10 @@ const SCORING_SCHEMA = {
       type: "string",
       enum: ["website", "booking", "automation", "saas"],
     },
+    pickup_profile: {
+      type: "string",
+      enum: ["owner_direct", "mixed", "gatekeeper"],
+    },
     suggested_price_min_eur: { type: "integer" },
     suggested_price_max_eur: { type: "integer" },
     pain_points: {
@@ -77,6 +83,7 @@ const SCORING_SCHEMA = {
     "score_breakdown",
     "business_size",
     "fit_offer",
+    "pickup_profile",
     "suggested_price_min_eur",
     "suggested_price_max_eur",
     "pain_points",
@@ -182,6 +189,7 @@ export async function scoreLead(leadId: string): Promise<ScoringResult> {
       qualification_tier: "cold",
       business_size: parsed.business_size,
       fit_offer: parsed.fit_offer,
+      pickup_profile: parsed.pickup_profile,
       suggested_price_min_eur: parsed.suggested_price_min_eur,
       suggested_price_max_eur: parsed.suggested_price_max_eur,
       pain_points: parsed.pain_points,

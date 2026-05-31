@@ -15,6 +15,7 @@ import type {
   AppointmentType,
   Channel,
   OutreachStatus,
+  PickupProfile,
   QualificationTier,
 } from "@/lib/lead-engine/types";
 
@@ -370,6 +371,24 @@ export async function updateLeadNotes(leadId: string, notes: string) {
  * Manually pin a lead to a specific outreach channel — what the
  * "→ Call" / "→ Mail" buttons in the lead browser fire.
  */
+export async function setPickupProfile(
+  leadId: string,
+  profile: PickupProfile,
+) {
+  const db = leadEngine();
+  const { error } = await db
+    .from("leads")
+    .update({ pickup_profile: profile })
+    .eq("id", leadId);
+  if (error) throw new Error(error.message);
+  await appendLeadEvent({
+    leadId,
+    type: "note",
+    notes: `Pickup-Profil → ${profile}`,
+  });
+  revalidateAll();
+}
+
 export async function setLeadChannel(leadId: string, channel: Channel) {
   const db = leadEngine();
   const { error } = await db

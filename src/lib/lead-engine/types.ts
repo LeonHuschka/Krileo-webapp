@@ -52,6 +52,14 @@ export interface Appointment {
 
 export type FitOffer = "website" | "booking" | "automation" | "saas";
 
+/**
+ * "Wer geht ans Telefon?" — bestimmt die Call-Strategie.
+ *  owner_direct = solo / kleine Praxis → Inhaber selbst
+ *  mixed        = mittelgroß → kann beides sein
+ *  gatekeeper   = Klinik/Zentrum/Kette → Empfang screent
+ */
+export type PickupProfile = "owner_direct" | "mixed" | "gatekeeper";
+
 export interface AdditionalPhone {
   label?: string | null; // e.g. "Mobil GF", "Direkt"
   number: string;
@@ -156,6 +164,9 @@ export interface Lead {
   // Extra contact + score detail (added in 00019_)
   additional_phones: AdditionalPhone[] | null;
   score_breakdown: ScoreBreakdown | null;
+
+  // Gatekeeper classification (added in 00020_)
+  pickup_profile: PickupProfile | null;
 
   // Email artifacts
   email_1_subject: string | null;

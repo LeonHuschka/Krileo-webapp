@@ -42,11 +42,11 @@ const SCORING_SCHEMA = {
     score_breakdown: {
       type: "object",
       properties: {
-        pain_severity: { type: "integer", minimum: 0, maximum: 25 },
-        fit_confidence: { type: "integer", minimum: 0, maximum: 25 },
-        deal_size_potential: { type: "integer", minimum: 0, maximum: 20 },
-        reachability: { type: "integer", minimum: 0, maximum: 15 },
-        buying_signals: { type: "integer", minimum: 0, maximum: 15 },
+        pain_severity: { type: "integer" },
+        fit_confidence: { type: "integer" },
+        deal_size_potential: { type: "integer" },
+        reachability: { type: "integer" },
+        buying_signals: { type: "integer" },
         rationale: { type: "string" },
       },
       required: [
@@ -170,14 +170,18 @@ export async function scoreLead(leadId: string): Promise<ScoringResult> {
   }
 
   // Compute total score as the sum of the five components — natural
-  // variance instead of LLM picking round numbers.
+  // variance instead of LLM picking round numbers. Clamp each sub-
+  // score to its prompt-defined range in case the LLM ignores the
+  // ceiling (Anthropic structured output doesn't enforce min/max).
   const b = parsed.score_breakdown;
+  const clamp = (v: number, max: number) =>
+    Math.max(0, Math.min(max, Math.round(v)));
   const computedScore =
-    b.pain_severity +
-    b.fit_confidence +
-    b.deal_size_potential +
-    b.reachability +
-    b.buying_signals;
+    clamp(b.pain_severity, 25) +
+    clamp(b.fit_confidence, 25) +
+    clamp(b.deal_size_potential, 20) +
+    clamp(b.reachability, 15) +
+    clamp(b.buying_signals, 15);
 
   const { error: updateErr } = await db
     .from("leads")

@@ -20,13 +20,16 @@ import type {
 
 export type CallOutcome =
   | "no_answer"
+  | "hangup"               // legt direkt auf — terminal lost
   | "callback_requested"
   | "interested"
   | "not_interested"
   | "wrong_person"
   | "do_not_contact"
-  | "demo_booked"
-  | "sale";
+  | "demo_booked"          // Beratungstermin
+  | "sales_booked"         // Verkaufsgespräch geplant
+  | "onboard_booked"       // Kunde beauftragt direkt, Onboarding-Termin
+  | "sale";                // Verkauf direkt am Telefon, kein Termin
 
 const AUTO_ASSIGN_THRESHOLD = 30;
 
@@ -109,6 +112,14 @@ export async function logCallOutcome(input: {
       leadPatch.callback_at = null;
       break;
     }
+    case "hangup": {
+      // Lead legt direkt auf — terminal lost (user can requeue manually
+      // via the row actions dropdown if they want to try again later).
+      leadPatch.outreach_status = "lost";
+      leadPatch.next_action_at = null;
+      leadPatch.callback_at = null;
+      break;
+    }
     case "interested": {
       leadPatch.outreach_status = "replied";
       leadPatch.qualification_tier = "warm";
@@ -118,6 +129,22 @@ export async function logCallOutcome(input: {
     }
     case "demo_booked": {
       leadPatch.outreach_status = "replied";
+      leadPatch.qualification_tier = "warm";
+      leadPatch.next_action_at = null;
+      leadPatch.callback_at = null;
+      break;
+    }
+    case "sales_booked": {
+      // Already qualified, hotter than a demo.
+      leadPatch.outreach_status = "replied";
+      leadPatch.qualification_tier = "hot";
+      leadPatch.next_action_at = null;
+      leadPatch.callback_at = null;
+      break;
+    }
+    case "onboard_booked": {
+      // Deal closed on the phone, onboarding scheduled.
+      leadPatch.outreach_status = "won";
       leadPatch.qualification_tier = "hot";
       leadPatch.next_action_at = null;
       leadPatch.callback_at = null;
@@ -173,6 +200,68 @@ export async function logCallOutcome(input: {
     completed_at: now,
   });
 
+  revalidateAll();
+}
+
+// ── Additional phone numbers on a lead ───────────────────────────────
+
+export async function addLeadPhone(input: {
+  leadId: string;
+  number: string;
+  label?: string;
+}): Promise<void> {
+  const num = input.number.trim();
+  if (!num) throw new Error("Nummer fehlt");
+  const db = leadEngine();
+  const { data, error } = await db
+    .from("leads")
+    .select("additional_phones")
+    .eq("id", input.leadId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  const current =
+    ((data as { additional_phones?: unknown } | null)?.additional_phones as
+      | Array<{ label?: string | null; number: string }>
+      | null) ?? [];
+  const next = [
+    ...current,
+    { label: input.label?.trim() || null, number: num },
+  ];
+  const { error: upErr } = await db
+    .from("leads")
+    .update({ additional_phones: next })
+    .eq("id", input.leadId);
+  if (upErr) throw new Error(upErr.message);
+  await appendLeadEvent({
+    leadId: input.leadId,
+    type: "note",
+    notes: `Nummer hinzugefügt: ${input.label ? input.label + " — " : ""}${num}`,
+  });
+  revalidateAll();
+}
+
+export async function removeLeadPhone(
+  leadId: string,
+  index: number,
+): Promise<void> {
+  const db = leadEngine();
+  const { data, error } = await db
+    .from("leads")
+    .select("additional_phones")
+    .eq("id", leadId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  const current =
+    ((data as { additional_phones?: unknown } | null)?.additional_phones as
+      | Array<{ label?: string | null; number: string }>
+      | null) ?? [];
+  if (index < 0 || index >= current.length) return;
+  const next = current.filter((_, i) => i !== index);
+  const { error: upErr } = await db
+    .from("leads")
+    .update({ additional_phones: next })
+    .eq("id", leadId);
+  if (upErr) throw new Error(upErr.message);
   revalidateAll();
 }
 
@@ -669,7 +758,11 @@ export async function bookAppointment(input: {
   // Booking from the call queue closes the lead's current contact
   // turn — feed it through the same outcome logger.
   const outcome: CallOutcome =
-    input.type === "sale" ? "sale" : "demo_booked";
+    input.type === "sale"
+      ? "sales_booked"
+      : input.type === "onboard"
+        ? "onboard_booked"
+        : "demo_booked";
   await logCallOutcome({
     leadId: input.leadId,
     outcome,

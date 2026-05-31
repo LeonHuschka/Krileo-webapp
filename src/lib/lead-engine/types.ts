@@ -22,7 +22,13 @@ export type OutreachStatus =
 
 export type QualificationTier = "hot" | "warm" | "cold";
 export type BusinessSize = "small" | "medium" | "large";
-export type AppointmentType = "demo" | "callback" | "sale" | "onsite" | "other";
+export type AppointmentType =
+  | "demo"
+  | "callback"
+  | "sale"
+  | "onboard"
+  | "onsite"
+  | "other";
 export type AppointmentStatus =
   | "scheduled"
   | "completed"
@@ -45,6 +51,20 @@ export interface Appointment {
 }
 
 export type FitOffer = "website" | "booking" | "automation" | "saas";
+
+export interface AdditionalPhone {
+  label?: string | null; // e.g. "Mobil GF", "Direkt"
+  number: string;
+}
+
+export interface ScoreBreakdown {
+  pain_severity: number;     // 0-25 — how badly do they need this
+  fit_confidence: number;    // 0-25 — how well Krileo fits the gap
+  deal_size_potential: number; // 0-20 — money potential
+  reachability: number;      // 0-15 — contact data quality
+  buying_signals: number;    // 0-15 — urgency / momentum
+  rationale: string;         // 1-2 sentences why this score, not others
+}
 
 /**
  * Industry is a free-form string — the seeded niches are listed below
@@ -132,6 +152,10 @@ export interface Lead {
   // Cascade + history (added in 00018_)
   attempt_count: number;
   next_action_at: string | null;
+
+  // Extra contact + score detail (added in 00019_)
+  additional_phones: AdditionalPhone[] | null;
+  score_breakdown: ScoreBreakdown | null;
 
   // Email artifacts
   email_1_subject: string | null;

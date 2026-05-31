@@ -18,7 +18,14 @@ import type {
 // Or via the manual hot/warm/cold buttons on the call card.
 
 export type ScoringResult = {
-  lead_score: number;
+  score_breakdown: {
+    pain_severity: number;
+    fit_confidence: number;
+    deal_size_potential: number;
+    reachability: number;
+    buying_signals: number;
+    rationale: string;
+  };
   business_size: BusinessSize;
   fit_offer: FitOffer;
   suggested_price_min_eur: number;
@@ -30,7 +37,26 @@ export type ScoringResult = {
 const SCORING_SCHEMA = {
   type: "object",
   properties: {
-    lead_score: { type: "integer" },
+    score_breakdown: {
+      type: "object",
+      properties: {
+        pain_severity: { type: "integer", minimum: 0, maximum: 25 },
+        fit_confidence: { type: "integer", minimum: 0, maximum: 25 },
+        deal_size_potential: { type: "integer", minimum: 0, maximum: 20 },
+        reachability: { type: "integer", minimum: 0, maximum: 15 },
+        buying_signals: { type: "integer", minimum: 0, maximum: 15 },
+        rationale: { type: "string" },
+      },
+      required: [
+        "pain_severity",
+        "fit_confidence",
+        "deal_size_potential",
+        "reachability",
+        "buying_signals",
+        "rationale",
+      ],
+      additionalProperties: false,
+    },
     business_size: {
       type: "string",
       enum: ["small", "medium", "large"],
@@ -48,7 +74,7 @@ const SCORING_SCHEMA = {
     personalized_hook: { type: "string" },
   },
   required: [
-    "lead_score",
+    "score_breakdown",
     "business_size",
     "fit_offer",
     "suggested_price_min_eur",
@@ -136,10 +162,21 @@ export async function scoreLead(leadId: string): Promise<ScoringResult> {
     );
   }
 
+  // Compute total score as the sum of the five components — natural
+  // variance instead of LLM picking round numbers.
+  const b = parsed.score_breakdown;
+  const computedScore =
+    b.pain_severity +
+    b.fit_confidence +
+    b.deal_size_potential +
+    b.reachability +
+    b.buying_signals;
+
   const { error: updateErr } = await db
     .from("leads")
     .update({
-      lead_score: parsed.lead_score,
+      lead_score: computedScore,
+      score_breakdown: parsed.score_breakdown,
       // Fresh leads default to cold — tier moves to warm/hot via
       // outreach outcomes (Interessiert / Demo gebucht) or manual override.
       qualification_tier: "cold",
@@ -157,7 +194,9 @@ export async function scoreLead(leadId: string): Promise<ScoringResult> {
     throw new Error(`Score persistence failed: ${updateErr.message}`);
   }
 
-  return parsed;
+  return { ...parsed, lead_score: computedScore } as ScoringResult & {
+    lead_score: number;
+  };
 }
 
 /**

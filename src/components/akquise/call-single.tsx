@@ -81,7 +81,7 @@ export function CallSingle({
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr,320px]">
+    <div className="mx-auto grid max-w-5xl grid-cols-1 gap-4 lg:grid-cols-[minmax(0,560px),300px] lg:justify-center">
       <div className="space-y-3">
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>

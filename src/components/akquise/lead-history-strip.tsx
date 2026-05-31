@@ -56,10 +56,28 @@ function visualFor(ev: LeadEvent): EventVisual {
         return {
           icon: CalendarPlus,
           label: "Demo gebucht",
+          color: "text-indigo-300",
+        };
+      case "sales_booked":
+        return {
+          icon: CalendarPlus,
+          label: "Sales Call gebucht",
           color: "text-primary",
+        };
+      case "onboard_booked":
+        return {
+          icon: CalendarPlus,
+          label: "Onboard gebucht",
+          color: "text-amber-300",
         };
       case "sale":
         return { icon: Trophy, label: "Verkauf", color: "text-amber-300" };
+      case "hangup":
+        return {
+          icon: XCircle,
+          label: "Aufgelegt",
+          color: "text-rose-400",
+        };
       default:
         return {
           icon: PhoneOff,

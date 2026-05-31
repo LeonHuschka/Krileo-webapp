@@ -115,8 +115,9 @@ export function AppointmentDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="demo">Demo / Beratung</SelectItem>
+                  <SelectItem value="sale">Sales Call (Closing)</SelectItem>
+                  <SelectItem value="onboard">Onboard / Kickoff</SelectItem>
                   <SelectItem value="callback">Rückruf</SelectItem>
-                  <SelectItem value="sale">Verkaufsgespräch</SelectItem>
                   <SelectItem value="onsite">Vor Ort</SelectItem>
                   <SelectItem value="other">Sonstiges</SelectItem>
                 </SelectContent>

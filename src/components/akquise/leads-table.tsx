@@ -88,8 +88,14 @@ function outcomeLabel(outcome: string | null | undefined): string | null {
       return "DNC";
     case "demo_booked":
       return "Demo gebucht";
+    case "sales_booked":
+      return "Sales gebucht";
+    case "onboard_booked":
+      return "Onboard gebucht";
     case "sale":
       return "Verkauf";
+    case "hangup":
+      return "Aufgelegt";
     default:
       return outcome;
   }

@@ -60,7 +60,7 @@ export interface Campaign {
   industry: Industry;
   city: string;
   search_queries: string[];
-  is_active: boolean;
+  is_active?: boolean;
   created_at: string;
   updated_at: string;
 }

@@ -52,7 +52,6 @@ async function loadCampaigns(): Promise<{
     const { data, error } = await db
       .from("campaigns")
       .select("id, industry, city")
-      .eq("is_active", true)
       .order("industry");
     if (error) throw error;
     return { campaigns: (data ?? []) as CampaignOption[], error: null };

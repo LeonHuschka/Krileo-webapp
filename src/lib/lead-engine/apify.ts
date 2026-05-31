@@ -65,7 +65,7 @@ export async function scrapeCampaign(
   // 1. Look up campaign
   const { data: campaign, error: campaignError } = await db
     .from("campaigns")
-    .select("id, industry, city, search_queries, is_active")
+    .select("id, industry, city, search_queries")
     .eq("id", campaignId)
     .single<Campaign>();
 
@@ -311,8 +311,7 @@ export async function scrapeAllActiveCampaigns(
   const db = leadEngine();
   const { data: campaigns, error } = await db
     .from("campaigns")
-    .select("id")
-    .eq("is_active", true);
+    .select("id");
 
   if (error) throw new Error(`Campaign list failed: ${error.message}`);
   if (!campaigns) return [];

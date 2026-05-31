@@ -39,7 +39,8 @@ import {
   resetAllTiersToCold,
   setLeadChannel,
 } from "@/app/(app)/akquise/actions";
-import type { Channel, Lead } from "@/lib/lead-engine/types";
+import { LeadRowActions } from "@/components/akquise/lead-row-actions";
+import type { Channel, Lead, LeadEvent } from "@/lib/lead-engine/types";
 
 const ALL = "__all__";
 
@@ -57,7 +58,50 @@ const CHANNEL_COLORS: Record<string, string> = {
   none: "border-zinc-500/40 bg-zinc-500/15 text-zinc-300",
 };
 
-export function LeadsTable({ leads }: { leads: Lead[] }) {
+function relativeTime(iso: string): string {
+  const ms = Date.now() - new Date(iso).getTime();
+  const s = Math.floor(Math.abs(ms) / 1000);
+  const sign = ms < 0 ? "in " : "vor ";
+  if (s < 60) return `${sign}${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${sign}${m}m`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${sign}${h}h`;
+  const d = Math.floor(h / 24);
+  return `${sign}${d}d`;
+}
+
+function outcomeLabel(outcome: string | null | undefined): string | null {
+  if (!outcome) return null;
+  switch (outcome) {
+    case "no_answer":
+      return "Nicht erreicht";
+    case "callback_requested":
+      return "Rückruf";
+    case "interested":
+      return "Interessiert";
+    case "not_interested":
+      return "Nein";
+    case "wrong_person":
+      return "Falsche Person";
+    case "do_not_contact":
+      return "DNC";
+    case "demo_booked":
+      return "Demo gebucht";
+    case "sale":
+      return "Verkauf";
+    default:
+      return outcome;
+  }
+}
+
+export function LeadsTable({
+  leads,
+  lastEventByLead = {},
+}: {
+  leads: Lead[];
+  lastEventByLead?: Record<string, LeadEvent | undefined>;
+}) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [tierFilter, setTierFilter] = useState<string>(ALL);
@@ -262,15 +306,17 @@ export function LeadsTable({ leads }: { leads: Lead[] }) {
               <TableHead>Tier</TableHead>
               <TableHead>Channel</TableHead>
               <TableHead className="w-[140px] text-center">Assign</TableHead>
+              <TableHead className="w-[160px]">Letztes Event</TableHead>
               <TableHead>Phone</TableHead>
               <TableHead className="w-10 text-right">Web</TableHead>
+              <TableHead className="w-10"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filtered.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={8}
+                  colSpan={10}
                   className="py-8 text-center text-sm text-muted-foreground"
                 >
                   Keine Leads gefunden.
@@ -380,6 +426,27 @@ export function LeadsTable({ leads }: { leads: Lead[] }) {
                       </Button>
                     </div>
                   </TableCell>
+                  <TableCell>
+                    {(() => {
+                      const ev = lastEventByLead[l.id];
+                      if (!ev)
+                        return (
+                          <span className="text-xs text-muted-foreground/60">
+                            —
+                          </span>
+                        );
+                      const label =
+                        outcomeLabel(ev.outcome) ?? ev.event_type;
+                      return (
+                        <div className="space-y-0.5 text-[11px]">
+                          <div className="text-foreground">{label}</div>
+                          <div className="text-muted-foreground/70">
+                            {relativeTime(ev.created_at)}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </TableCell>
                   <TableCell className="font-mono text-xs">
                     {l.phone ?? "—"}
                   </TableCell>
@@ -399,6 +466,9 @@ export function LeadsTable({ leads }: { leads: Lead[] }) {
                         —
                       </span>
                     )}
+                  </TableCell>
+                  <TableCell>
+                    <LeadRowActions lead={l} />
                   </TableCell>
                 </TableRow>
               ))

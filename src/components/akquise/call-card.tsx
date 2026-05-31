@@ -32,8 +32,13 @@ import {
 } from "@/app/(app)/akquise/actions";
 import { AppointmentDialog } from "@/components/akquise/appointment-dialog";
 import { CallbackDialog } from "@/components/akquise/callback-dialog";
+import { LeadHistoryStrip } from "@/components/akquise/lead-history-strip";
 import { cn } from "@/lib/utils";
-import type { Lead, QualificationTier } from "@/lib/lead-engine/types";
+import type {
+  Lead,
+  LeadEvent,
+  QualificationTier,
+} from "@/lib/lead-engine/types";
 
 const POSITIVE_OUTCOMES: Array<{
   value: CallOutcome;
@@ -116,7 +121,13 @@ function formatEur(amount: number | null | undefined) {
   }).format(amount);
 }
 
-export function CallCard({ lead }: { lead: Lead }) {
+export function CallCard({
+  lead,
+  events = [],
+}: {
+  lead: Lead;
+  events?: LeadEvent[];
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [notes, setNotes] = useState(lead.notes ?? "");
@@ -240,6 +251,30 @@ export function CallCard({ lead }: { lead: Lead }) {
           )}
         </div>
       </div>
+
+      {/* History */}
+      {events.length > 0 && (
+        <LeadHistoryStrip events={events} max={3} />
+      )}
+
+      {/* Attempt counter */}
+      {lead.attempt_count > 0 && (
+        <div className="text-[10px] text-amber-300/80">
+          {lead.attempt_count} Versuch{lead.attempt_count === 1 ? "" : "e"}{" "}
+          bisher
+          {lead.next_action_at && (
+            <span className="text-muted-foreground">
+              {" · "}nächste Action:{" "}
+              {new Date(lead.next_action_at).toLocaleString("de-DE", {
+                day: "2-digit",
+                month: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Tier quick-switch */}
       <div className="grid grid-cols-3 gap-1">

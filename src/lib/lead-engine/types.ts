@@ -129,6 +129,10 @@ export interface Lead {
   last_contact_at: string | null;
   callback_at: string | null;
 
+  // Cascade + history (added in 00018_)
+  attempt_count: number;
+  next_action_at: string | null;
+
   // Email artifacts
   email_1_subject: string | null;
   email_1_body: string | null;
@@ -185,6 +189,26 @@ export type DailyTaskStatus =
   | "completed"
   | "skipped"
   | "expired";
+
+export type LeadEventType =
+  | "call_attempt"
+  | "callback_scheduled"
+  | "note"
+  | "status_change"
+  | "channel_change"
+  | "tier_change"
+  | "appointment_booked"
+  | "manual_requeue";
+
+export interface LeadEvent {
+  id: string;
+  lead_id: string;
+  event_type: LeadEventType;
+  outcome: string | null;
+  notes: string | null;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
+}
 
 export interface DailyTask {
   id: string;

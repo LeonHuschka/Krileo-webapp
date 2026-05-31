@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { leadEngine } from "@/lib/lead-engine/supabase";
 import { scrapeCampaign } from "@/lib/lead-engine/apify";
 import { scoreLead } from "@/lib/lead-engine/scoring";
+import { appendLeadEvent } from "@/lib/lead-engine/events";
+import { nextActionAfterNoAnswer } from "@/lib/lead-engine/cascade";
 import {
   createAppointment,
   updateAppointmentStatus,
@@ -12,6 +14,7 @@ import type {
   AppointmentStatus,
   AppointmentType,
   Channel,
+  OutreachStatus,
   QualificationTier,
 } from "@/lib/lead-engine/types";
 
@@ -37,11 +40,23 @@ function revalidateAll() {
 // ── Outcome logging (pool-based) ──────────────────────────────────────
 
 /**
- * Persist a call outcome directly on the lead and write an audit row
- * into `daily_tasks` for today's counter. The queue UI reads off the
- * lead state (last_contact_outcome / callback_at), not off the task
- * rows — so the only purpose of the task insert is the "X Calls heute"
- * stat.
+ * Persist a call outcome. The behaviour depends on the outcome:
+ *
+ *   - no_answer            → bump attempt_count, push next_action_at
+ *                            forward via the cascade (4h → 1d → 3d → 1w)
+ *   - callback_requested   → set next_action_at to the user-picked date,
+ *                            attempt_count stays (this *was* an answered
+ *                            call, but conversation continues later)
+ *   - interested           → outreach_status='replied', tier=warm,
+ *                            lead drops out of the pool
+ *   - demo_booked          → outreach_status='replied', tier=hot
+ *   - sale                 → outreach_status='won' (terminal)
+ *   - not_interested       → outreach_status='lost' (terminal)
+ *   - wrong_person         → just logs the event, lead stays in pool
+ *   - do_not_contact       → outreach_status='suppressed' (terminal)
+ *
+ * Every call also writes a row to `lead_events` so the history strip
+ * on the call card can show what's happened.
  */
 export async function logCallOutcome(input: {
   leadId: string;
@@ -54,37 +69,79 @@ export async function logCallOutcome(input: {
   const now = new Date().toISOString();
   const todayDate = todayBerlin();
 
+  // Fetch current attempt count so cascade knows where it is.
+  const { data: currentLead } = await db
+    .from("leads")
+    .select("attempt_count")
+    .eq("id", input.leadId)
+    .maybeSingle();
+  const currentAttempts =
+    (currentLead as { attempt_count?: number } | null)?.attempt_count ?? 0;
+
   const leadPatch: Record<string, unknown> = {
     last_contact_outcome: input.outcome,
     last_contact_at: now,
   };
-
   if (input.notes != null) leadPatch.notes = input.notes || null;
 
-  if (input.outcome === "callback_requested") {
-    // Default: +2 days if user didn't pick a date
-    leadPatch.callback_at =
-      input.callbackAt ??
-      new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString();
-  } else {
-    // Any non-callback outcome clears a pending callback so the lead
-    // doesn't re-surface unexpectedly.
-    leadPatch.callback_at = null;
-  }
-
-  if (input.outcome === "interested") {
-    leadPatch.outreach_status = "replied";
-    leadPatch.qualification_tier = "warm";
-  } else if (input.outcome === "demo_booked") {
-    leadPatch.outreach_status = "replied";
-    leadPatch.qualification_tier = "hot";
-  } else if (input.outcome === "sale") {
-    leadPatch.outreach_status = "won";
-    leadPatch.qualification_tier = "hot";
-  } else if (input.outcome === "not_interested") {
-    leadPatch.outreach_status = "lost";
-  } else if (input.outcome === "do_not_contact") {
-    leadPatch.outreach_status = "suppressed";
+  // Per-outcome state machine
+  switch (input.outcome) {
+    case "no_answer": {
+      // Cascade — bump attempt counter and reschedule.
+      const nextAttempt = currentAttempts; // current attempt index = current count
+      leadPatch.attempt_count = currentAttempts + 1;
+      leadPatch.next_action_at = nextActionAfterNoAnswer(nextAttempt);
+      leadPatch.callback_at = null;
+      break;
+    }
+    case "callback_requested": {
+      leadPatch.next_action_at =
+        input.callbackAt ??
+        new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString();
+      leadPatch.callback_at = leadPatch.next_action_at;
+      // attempt_count stays — this was an answered call, conversation continues
+      break;
+    }
+    case "wrong_person": {
+      // Came through but wrong contact — short retry window
+      leadPatch.attempt_count = currentAttempts + 1;
+      leadPatch.next_action_at = nextActionAfterNoAnswer(0); // +4h
+      leadPatch.callback_at = null;
+      break;
+    }
+    case "interested": {
+      leadPatch.outreach_status = "replied";
+      leadPatch.qualification_tier = "warm";
+      leadPatch.next_action_at = null;
+      leadPatch.callback_at = null;
+      break;
+    }
+    case "demo_booked": {
+      leadPatch.outreach_status = "replied";
+      leadPatch.qualification_tier = "hot";
+      leadPatch.next_action_at = null;
+      leadPatch.callback_at = null;
+      break;
+    }
+    case "sale": {
+      leadPatch.outreach_status = "won";
+      leadPatch.qualification_tier = "hot";
+      leadPatch.next_action_at = null;
+      leadPatch.callback_at = null;
+      break;
+    }
+    case "not_interested": {
+      leadPatch.outreach_status = "lost";
+      leadPatch.next_action_at = null;
+      leadPatch.callback_at = null;
+      break;
+    }
+    case "do_not_contact": {
+      leadPatch.outreach_status = "suppressed";
+      leadPatch.next_action_at = null;
+      leadPatch.callback_at = null;
+      break;
+    }
   }
 
   const { error: leadErr } = await db
@@ -93,7 +150,19 @@ export async function logCallOutcome(input: {
     .eq("id", input.leadId);
   if (leadErr) throw new Error(leadErr.message);
 
-  // Audit row — fire and forget. Used by "Calls heute" counter.
+  // History
+  await appendLeadEvent({
+    leadId: input.leadId,
+    type: "call_attempt",
+    outcome: input.outcome,
+    notes: input.notes ?? null,
+    metadata: {
+      attempt_index: currentAttempts,
+      next_action_at: leadPatch.next_action_at ?? null,
+    },
+  });
+
+  // Counter row — best-effort, ignore failures
   await db.from("daily_tasks").insert({
     task_date: todayDate,
     channel: "call",
@@ -102,6 +171,69 @@ export async function logCallOutcome(input: {
     outcome: input.outcome,
     notes: input.notes ?? null,
     completed_at: now,
+  });
+
+  revalidateAll();
+}
+
+// ── Manual lead overrides (used from lead browser dropdown) ──────────
+
+/**
+ * Put a lead back into the active call pool — clears attempt counters,
+ * removes any scheduled next-action, resets a closed outreach_status
+ * back to 'scored'. Useful after accidental "Nicht erreicht" clicks or
+ * to re-engage a previously-lost lead.
+ */
+export async function requeueLeadToCallQueue(leadId: string) {
+  const db = leadEngine();
+  const { data: cur } = await db
+    .from("leads")
+    .select("outreach_status")
+    .eq("id", leadId)
+    .maybeSingle();
+  const wasClosed = ["won", "lost", "suppressed"].includes(
+    (cur as { outreach_status?: string } | null)?.outreach_status ?? "",
+  );
+
+  const patch: Record<string, unknown> = {
+    last_contact_outcome: null,
+    last_contact_at: null,
+    next_action_at: null,
+    callback_at: null,
+    attempt_count: 0,
+  };
+  if (wasClosed) patch.outreach_status = "scored";
+
+  const { error } = await db.from("leads").update(patch).eq("id", leadId);
+  if (error) throw new Error(error.message);
+
+  await appendLeadEvent({
+    leadId,
+    type: "manual_requeue",
+    notes: wasClosed ? "Lead aus Closed reaktiviert" : "Lead zurück in Pool",
+  });
+
+  revalidateAll();
+}
+
+export async function forceLeadStatus(
+  leadId: string,
+  status: OutreachStatus,
+) {
+  const db = leadEngine();
+  const patch: Record<string, unknown> = { outreach_status: status };
+  if (["won", "lost", "suppressed"].includes(status)) {
+    patch.next_action_at = null;
+    patch.callback_at = null;
+  }
+  const { error } = await db.from("leads").update(patch).eq("id", leadId);
+  if (error) throw new Error(error.message);
+
+  await appendLeadEvent({
+    leadId,
+    type: "status_change",
+    outcome: status,
+    notes: `Status manuell auf ${status} gesetzt`,
   });
 
   revalidateAll();
@@ -119,6 +251,12 @@ export async function updateLeadTier(
     .update({ qualification_tier: tier })
     .eq("id", leadId);
   if (error) throw new Error(error.message);
+  await appendLeadEvent({
+    leadId,
+    type: "tier_change",
+    outcome: tier,
+    notes: `Tier → ${tier}`,
+  });
   revalidateAll();
 }
 
@@ -129,6 +267,13 @@ export async function updateLeadNotes(leadId: string, notes: string) {
     .update({ notes: notes || null })
     .eq("id", leadId);
   if (error) throw new Error(error.message);
+  if (notes && notes.trim().length > 0) {
+    await appendLeadEvent({
+      leadId,
+      type: "note",
+      notes: notes.trim(),
+    });
+  }
   revalidateAll();
 }
 
@@ -146,6 +291,12 @@ export async function setLeadChannel(leadId: string, channel: Channel) {
     })
     .eq("id", leadId);
   if (error) throw new Error(error.message);
+  await appendLeadEvent({
+    leadId,
+    type: "channel_change",
+    outcome: channel,
+    notes: `Channel → ${channel}`,
+  });
   revalidateAll();
 }
 
@@ -523,6 +674,14 @@ export async function bookAppointment(input: {
     leadId: input.leadId,
     outcome,
     notes: input.notes,
+  });
+
+  await appendLeadEvent({
+    leadId: input.leadId,
+    type: "appointment_booked",
+    outcome: input.type,
+    notes: `${input.type} am ${new Date(input.scheduledFor).toLocaleString("de-DE")}`,
+    metadata: { appointmentId: appt.id, scheduledFor: input.scheduledFor },
   });
 
   return appt;

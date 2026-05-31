@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { leadEngine } from "@/lib/lead-engine/supabase";
+import { latestEventByLead } from "@/lib/lead-engine/events";
 import { LeadsTable } from "@/components/akquise/leads-table";
 import { Card, CardContent } from "@/components/ui/card";
 import type { Lead } from "@/lib/lead-engine/types";
@@ -24,6 +25,10 @@ export default async function AkquiseLeadsPage() {
   } catch (err) {
     error = err instanceof Error ? err.message : String(err);
   }
+
+  const eventMap = leads.length
+    ? await latestEventByLead(leads.map((l) => l.id))
+    : {};
 
   return (
     <div className="space-y-6 p-4 md:p-6">
@@ -50,7 +55,7 @@ export default async function AkquiseLeadsPage() {
           </CardContent>
         </Card>
       ) : (
-        <LeadsTable leads={leads} />
+        <LeadsTable leads={leads} lastEventByLead={eventMap} />
       )}
     </div>
   );

@@ -1,12 +1,21 @@
 import Link from "next/link";
 import { ArrowLeft, Inbox } from "lucide-react";
 import { leadEngine } from "@/lib/lead-engine/supabase";
+import { listUpcomingAppointments } from "@/lib/lead-engine/appointments";
+import { latestEventByLead, listLeadEvents } from "@/lib/lead-engine/events";
 import { CallCard } from "@/components/akquise/call-card";
+import { CallList } from "@/components/akquise/call-list";
+import { CallSingle } from "@/components/akquise/call-single";
+import { DayCalendar } from "@/components/akquise/day-calendar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { QueueSettings } from "@/components/akquise/queue-settings";
+import {
+  ViewSwitcher,
+  type QueueView,
+} from "@/components/akquise/view-switcher";
 import { formatLeadEngineError } from "@/lib/lead-engine/format-error";
-import type { Lead } from "@/lib/lead-engine/types";
+import type { Appointment, Lead, LeadEvent } from "@/lib/lead-engine/types";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +27,9 @@ function todayBerlin(): string {
 }
 
 type QueueLead = Lead & { _callbackDue: boolean };
+type ApptWithLead = Appointment & {
+  lead: { business_name: string; owner_name?: string | null } | null;
+};
 
 type LoadResult = {
   queue: QueueLead[];
@@ -25,6 +37,8 @@ type LoadResult = {
   callsToday: number;
   dailyTarget: number;
   minCallScore: number;
+  appointments: ApptWithLead[];
+  lastEventByLead: Record<string, LeadEvent | undefined>;
   error: string | null;
   migrationMissing: boolean;
 };
@@ -37,7 +51,6 @@ async function loadQueue(): Promise<LoadResult> {
   let dailyTarget = 30;
   let minCallScore = 60;
 
-  // 1. Settings — graceful fallback if app_settings not migrated yet
   try {
     const { data, error } = await db
       .from("app_settings")
@@ -58,98 +71,115 @@ async function loadQueue(): Promise<LoadResult> {
     migrationMissing = true;
   }
 
-  // 2. Active call pool — fall back to a simpler query if the new
-  //    columns don't exist yet.
+  // Pool query — leads in the call channel that are either
+  // never-contacted (next_action_at IS NULL) or whose scheduled
+  // resurfacing date has passed.
+  let queue: QueueLead[] = [];
+  let poolSize = 0;
+  let loadErr: string | null = null;
+
   try {
-    const [freshRes, dueRes] = await Promise.all([
-      db
-        .from("leads")
-        .select("*")
-        .eq("primary_channel", "call")
-        .not("outreach_status", "in", "(won,lost,suppressed)")
-        .is("last_contact_outcome", null)
-        .order("lead_score", { ascending: false, nullsFirst: false })
-        .limit(500),
-      db
-        .from("leads")
-        .select("*")
-        .eq("primary_channel", "call")
-        .not("outreach_status", "in", "(won,lost,suppressed)")
-        .not("callback_at", "is", null)
-        .lte("callback_at", nowIso)
-        .order("callback_at", { ascending: true })
-        .limit(500),
-    ]);
+    const { data, error } = await db
+      .from("leads")
+      .select("*")
+      .eq("primary_channel", "call")
+      .not("outreach_status", "in", "(won,lost,suppressed)")
+      .or(`next_action_at.is.null,next_action_at.lte.${nowIso}`)
+      .order("next_action_at", { ascending: true, nullsFirst: false })
+      .order("lead_score", { ascending: false, nullsFirst: false })
+      .limit(500);
 
-    if (freshRes.error) throw freshRes.error;
-    if (dueRes.error) throw dueRes.error;
-
-    const dueLeads = (dueRes.data ?? []) as Lead[];
-    const freshLeads = (freshRes.data ?? []) as Lead[];
-
-    const seen = new Set<string>();
-    const merged: QueueLead[] = [];
-    for (const l of dueLeads) {
-      if (seen.has(l.id)) continue;
-      seen.add(l.id);
-      merged.push({ ...l, _callbackDue: true });
-    }
-    for (const l of freshLeads) {
-      if (seen.has(l.id)) continue;
-      seen.add(l.id);
-      merged.push({ ...l, _callbackDue: false });
-    }
-
-    const poolSize = merged.length;
-    const queue = merged.slice(0, dailyTarget);
-
-    // 3. Calls done today (best-effort)
-    let callsToday = 0;
-    try {
-      const { count } = await db
-        .from("daily_tasks")
-        .select("id", { head: true, count: "exact" })
-        .eq("task_date", date)
-        .eq("channel", "call")
-        .eq("status", "completed");
-      callsToday = count ?? 0;
-    } catch {
-      /* ignore */
-    }
-
-    return {
-      queue,
-      poolSize,
-      callsToday,
-      dailyTarget,
-      minCallScore,
-      error: null,
-      migrationMissing,
-    };
+    if (error) throw error;
+    const rows = (data ?? []) as Lead[];
+    queue = rows.map((l) => ({
+      ...l,
+      _callbackDue: l.next_action_at != null,
+    }));
+    poolSize = queue.length;
   } catch (err) {
-    return {
-      queue: [],
-      poolSize: 0,
-      callsToday: 0,
-      dailyTarget,
-      minCallScore,
-      error: formatLeadEngineError(err),
-      migrationMissing: true,
-    };
+    loadErr = formatLeadEngineError(err);
+    migrationMissing = true;
   }
+
+  // Appointments for the day calendar (today + next ~7 days)
+  let appointments: ApptWithLead[] = [];
+  try {
+    appointments = (await listUpcomingAppointments({
+      daysAhead: 7,
+      limit: 50,
+    })) as ApptWithLead[];
+  } catch {
+    /* non-fatal */
+  }
+
+  // Latest event per lead (for history strips)
+  const lastEventByLead = queue.length
+    ? await latestEventByLead(queue.map((l) => l.id))
+    : {};
+
+  // Calls done today counter
+  let callsToday = 0;
+  try {
+    const { count } = await db
+      .from("daily_tasks")
+      .select("id", { head: true, count: "exact" })
+      .eq("task_date", date)
+      .eq("channel", "call")
+      .eq("status", "completed");
+    callsToday = count ?? 0;
+  } catch {
+    /* ignore */
+  }
+
+  return {
+    queue,
+    poolSize,
+    callsToday,
+    dailyTarget,
+    minCallScore,
+    appointments,
+    lastEventByLead,
+    error: loadErr,
+    migrationMissing,
+  };
 }
 
-export default async function AkquiseTasksPage() {
+export default async function AkquiseTasksPage({
+  searchParams,
+}: {
+  searchParams: { view?: string; i?: string };
+}) {
   const date = todayBerlin();
+  const view: QueueView =
+    searchParams.view === "list"
+      ? "list"
+      : searchParams.view === "single"
+        ? "single"
+        : "cards";
+  const singleIndex = Math.max(0, Number(searchParams.i ?? 0) || 0);
+
   const {
     queue,
     poolSize,
     callsToday,
     dailyTarget,
     minCallScore,
+    appointments,
+    lastEventByLead,
     error,
     migrationMissing,
   } = await loadQueue();
+
+  const slicedQueue = queue.slice(0, dailyTarget);
+
+  // For single-view, fetch full history for the focused lead
+  const fullEventsByLead: Record<string, LeadEvent[]> = {};
+  if (view === "single" && slicedQueue.length > 0) {
+    const focus = slicedQueue[Math.min(singleIndex, slicedQueue.length - 1)];
+    if (focus) {
+      fullEventsByLead[focus.id] = await listLeadEvents(focus.id, 20);
+    }
+  }
 
   return (
     <div className="space-y-6 p-4 md:p-6">
@@ -169,7 +199,7 @@ export default async function AkquiseTasksPage() {
               variant="outline"
               className="border-primary/40 bg-primary/15 text-primary"
             >
-              {queue.length} in der Queue
+              {slicedQueue.length} in der Queue
             </Badge>
             <Badge
               variant="outline"
@@ -186,10 +216,13 @@ export default async function AkquiseTasksPage() {
           </div>
         </div>
 
-        <QueueSettings
-          dailyTarget={dailyTarget}
-          minCallScore={minCallScore}
-        />
+        <div className="flex items-end gap-3">
+          <ViewSwitcher current={view} />
+          <QueueSettings
+            dailyTarget={dailyTarget}
+            minCallScore={minCallScore}
+          />
+        </div>
       </div>
 
       {migrationMissing && (
@@ -199,9 +232,8 @@ export default async function AkquiseTasksPage() {
               Migration fehlt noch
             </div>
             <p className="text-muted-foreground">
-              Lauf die Migrationen{" "}
-              <code>00016_lead_pool_and_callbacks.sql</code> und{" "}
-              <code>00017_min_call_score.sql</code> im SQL-Editor:{" "}
+              Lauf die neuesten Migrationen im SQL-Editor (00016, 00017,
+              00018):{" "}
               <a
                 href="https://supabase.com/dashboard/project/chtmbhvfxickdgtumwdb/sql/new"
                 target="_blank"
@@ -229,7 +261,7 @@ export default async function AkquiseTasksPage() {
             <code className="block whitespace-pre-wrap text-xs">{error}</code>
           </CardContent>
         </Card>
-      ) : queue.length === 0 && !migrationMissing ? (
+      ) : slicedQueue.length === 0 && !migrationMissing ? (
         <Card>
           <CardContent className="space-y-3 p-6 text-sm text-muted-foreground">
             <div className="flex items-center gap-2 font-medium text-foreground">
@@ -241,7 +273,7 @@ export default async function AkquiseTasksPage() {
             <p>
               {poolSize === 0
                 ? "Generier auf der Akquise-Startseite ein paar Leads — die mit Phone-Nummer landen im Call-Pool."
-                : "Alle Leads im Pool warten gerade auf einen Rückruf-Termin."}
+                : "Alle Leads warten auf Rückruf-Termine. Schau morgen wieder rein."}
             </p>
             <Link
               href="/akquise"
@@ -251,19 +283,50 @@ export default async function AkquiseTasksPage() {
             </Link>
           </CardContent>
         </Card>
-      ) : queue.length > 0 ? (
+      ) : slicedQueue.length > 0 ? (
         <>
-          {queue.some((q) => q._callbackDue) && (
+          {slicedQueue.some((q) => q._callbackDue) && (
             <p className="text-xs text-amber-300/90">
-              ⏰ {queue.filter((q) => q._callbackDue).length} fällige Rückrufe
-              zuerst.
+              ⏰ {slicedQueue.filter((q) => q._callbackDue).length} fällige
+              Rückrufe / Wiedervorlagen.
             </p>
           )}
-          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-3">
-            {queue.map((l) => (
-              <CallCard key={l.id} lead={l} />
-            ))}
-          </div>
+
+          {view === "list" && (
+            <CallList
+              leads={slicedQueue}
+              lastEventByLead={lastEventByLead}
+            />
+          )}
+
+          {view === "cards" && (
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr,300px]">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-2">
+                {slicedQueue.map((l) => (
+                  <CallCard
+                    key={l.id}
+                    lead={l}
+                    events={
+                      lastEventByLead[l.id] ? [lastEventByLead[l.id]!] : []
+                    }
+                  />
+                ))}
+              </div>
+              <DayCalendar
+                appointments={appointments}
+                className="self-start xl:sticky xl:top-4"
+              />
+            </div>
+          )}
+
+          {view === "single" && (
+            <CallSingle
+              leads={slicedQueue}
+              appointments={appointments}
+              eventsByLead={fullEventsByLead}
+              index={singleIndex}
+            />
+          )}
         </>
       ) : null}
     </div>

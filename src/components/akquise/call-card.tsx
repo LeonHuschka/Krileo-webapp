@@ -38,6 +38,7 @@ import {
 } from "@/app/(app)/akquise/actions";
 import { AppointmentDialog } from "@/components/akquise/appointment-dialog";
 import { CallbackDialog } from "@/components/akquise/callback-dialog";
+import { CallCoachSheet } from "@/components/akquise/call-coach-sheet";
 import { LeadHistoryStrip } from "@/components/akquise/lead-history-strip";
 import { PhoneManager } from "@/components/akquise/phone-manager";
 import { PickupBadge } from "@/components/akquise/pickup-badge";
@@ -212,13 +213,14 @@ export function CallCard({
               </span>
             )}
           </div>
-          <div className="mt-2">
+          <div className="mt-2 flex flex-wrap items-center gap-2">
             <PickupBadge
               leadId={lead.id}
               profile={lead.pickup_profile ?? null}
               ownerName={lead.owner_name}
               variant="full"
             />
+            <CallCoachSheet lead={lead} />
           </div>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">

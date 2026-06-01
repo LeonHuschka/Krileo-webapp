@@ -4,6 +4,10 @@ import { revalidatePath } from "next/cache";
 import { leadEngine } from "@/lib/lead-engine/supabase";
 import { scrapeCampaign } from "@/lib/lead-engine/apify";
 import { scoreLead } from "@/lib/lead-engine/scoring";
+import {
+  getCoachSuggestions,
+  type CoachSuggestion,
+} from "@/lib/akquise/call-coach";
 import { appendLeadEvent } from "@/lib/lead-engine/events";
 import { nextActionAfterNoAnswer } from "@/lib/lead-engine/cascade";
 import {
@@ -586,6 +590,20 @@ async function autoAssignFromCampaign(
     }
   }
   return { updated, calls, emails };
+}
+
+// ── Live call coach ──────────────────────────────────────────────────
+
+export async function getCallCoachSuggestions(input: {
+  leadId: string;
+  situation: string;
+}): Promise<CoachSuggestion[]> {
+  const text = input.situation.trim();
+  if (!text) throw new Error("Bitte Situation beschreiben");
+  return getCoachSuggestions({
+    leadId: input.leadId,
+    situation: text,
+  });
 }
 
 // ── Single-lead re-score (used on the lead detail page) ──────────────

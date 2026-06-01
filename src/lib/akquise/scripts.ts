@@ -28,38 +28,46 @@ export type ScriptVariant = {
 
 export const PICKUP_OWNER_DIRECT: ScriptVariant[] = [
   {
-    id: "owner-honesty",
-    label: "Radical Honesty (Default)",
+    id: "owner-reverse-qualify",
+    label: "Reverse-Qualify (Top-Pattern)",
     text:
-      "Hallo {salutation}, hier ist Leon von Krileo. Ich rufe komplett kalt an und mach's kurz — darf ich Ihnen in 30 Sekunden erklären, worum's geht?",
+      "{salutation}? Hier Leon Huschka — ich überleg grad ob {business} für ein Projekt passt was wir für ein paar {category}-Praxen in der Region machen. Ist das was für Sie oder eh nicht?",
     rationale:
-      "Killt sofort den Telemarketer-Pattern. »Komplett kalt« + Zeitbox + Permission = niedriges Risiko für sie zuzustimmen.",
-    conversion: "~70-80% weiterhören",
+      "Du qualifizierst SIE, nicht umgekehrt. »Eh nicht?« kehrt die Rollen — sie will jetzt wissen warum sie qualifiziert wäre. Killer-Move bei Inhabern die häufig angerufen werden.",
+    conversion: "Sehr hoch — psychologische Umkehr",
   },
   {
-    id: "owner-observation",
-    label: "Observation-Hook",
+    id: "owner-direct-question",
+    label: "Direkte Frage (no preamble)",
     text:
-      "{salutation}, ich hab grad Ihre Website angeschaut — eine Sache fällt mir auf, die Sie wahrscheinlich täglich Patienten kostet. Darf ich kurz erklären?",
+      "{salutation}? Direkt eine Frage: wie viele Patienten-Anrufer verlieren Sie täglich, weil keiner rangehen kann während Sie behandeln?",
     rationale:
-      "Spezifische Beobachtung = du bist kein Massenanrufer. »Patienten kostet« = direkter monetärer Schmerz statt schwammiges »Verbesserung«.",
-    conversion: "Hoch — Curiosity-Loop, sie muss jetzt wissen was",
+      "Keine Vorrede, keine Vorstellung, kein »darf ich«. Sofort eine Frage die SIE über Pain nachdenken lässt. Sie verkauft sich selber.",
   },
   {
-    id: "owner-direct-out",
-    label: "Direct-with-Out",
+    id: "owner-peer-reference",
+    label: "Lokale Peer-Referenz",
     text:
-      "{salutation}, direkt zur Sache: ich mach Websites für {category} und Sie sind mir aufgefallen. Falsche Person für solche Themen?",
+      "Hallo {salutation} — Leon Huschka. Wir haben grad für eine {category}-Praxis hier in der Gegend das Online-Booking eingerichtet, da läuft jetzt richtig was. Bei Ihnen läuft das aktuell noch über Telefon, schätze ich?",
     rationale:
-      "»Falsche Person?« gibt ihr Ausweg → kein Falle-Gefühl → sie sagt eher »nein, eigentlich richtig«. Anti-Pitch.",
+      "Lokales Peer-Beispiel = legitime Existenz, kein random Verkäufer. »Schätze ich« klingt nach gleicher Augenhöhe. Sie korrigiert oder bestätigt — entweder weg ist sie in Discovery.",
   },
   {
-    id: "owner-pattern-interrupt",
-    label: "Pattern-Interrupt",
+    id: "owner-false-dilemma",
+    label: "Choice-Framing",
     text:
-      "{salutation}, sind Sie zufällig die Inhaberin von {business}? — Super, hier ist Leon von Krileo, ich rufe wegen Ihrer Online-Präsenz an. Dürfen 30 Sek?",
+      "{salutation}? Eine Frage — was wäre Ihnen lieber: Patienten können 24/7 online buchen, oder Ihre Empfangskraft hat mehr Zeit für Patienten vor Ort?",
     rationale:
-      "Frage als Eröffnung bricht Skript-Erwartung. Sie bestätigt → kleines Mini-Commitment → härtere Ablehnung danach.",
+      "False Dilemma — beide Optionen führen zu unserer Lösung. Sie denkt mit, statt zu verteidigen. Keine Tactic-Phrasen, klingt wie Interesse.",
+  },
+  {
+    id: "owner-specific-data",
+    label: "Daten-Hook (wenn Recherche vorliegt)",
+    text:
+      "{salutation}? Hier Leon. Ich war grad auf Ihrer Website — wer hat die für Sie gebaut? Frag aus konkretem Grund.",
+    rationale:
+      "»Wer hat die gebaut?« = sie muss antworten, ist neutral, keine Pitch-Falle. »Aus konkretem Grund« = Curiosity-Hook ohne Plumpheit.",
+    conversion: "Hoch — funktioniert besonders bei alten Websites",
   },
 ];
 
@@ -67,39 +75,38 @@ export const PICKUP_OWNER_DIRECT: ScriptVariant[] = [
 
 export const PICKUP_GATEKEEPER: ScriptVariant[] = [
   {
-    id: "gate-honesty-personal",
-    label: "Radical Honesty + Persönlich (Default)",
+    id: "gate-ally",
+    label: "Empfang als Verbündete (Top-Pattern)",
     text:
-      "Hallo, hier ist Leon Huschka. Ich rufe komplett kalt an und brauch eigentlich 30 Sekunden mit {salutation} persönlich — geht das jetzt grad?",
+      "Hallo, hier Leon Huschka. Sie sind die Empfangsdame, oder? Kurze Frage — Sie kennen die Praxis ja besser als jeder andere: ist {salutation} jemand mit der/dem man Praxis-Themen direkt bespricht, oder läuft das eher über Sie?",
     rationale:
-      "Ehrlichkeit überrascht Empfangskraft. »Persönlich« = nicht Praxis-Angelegenheit. Kein Pitch an Empfang → sie kann nicht filtern.",
-    conversion: "~40% Durchstellrate",
+      "Du adelst sie — sie ist nicht Filter, sondern Insiderin. Sie wird KEIN Filter mehr sein weil du sie als Experte behandelst. Funktioniert weil 99% der Anrufer sie umgehen wollen.",
+    conversion: "Sehr hoch — Empfang fühlt sich respektiert",
   },
   {
-    id: "gate-project-frame",
-    label: "Pre-Frame als Anliegen (Graue Zone)",
-    text:
-      "Hallo, hier ist Leon — ich brauch {salutation} kurz wegen einem Projekt. Können Sie mich verbinden?",
-    rationale:
-      "»Wegen einem Projekt« klingt nach bestehender Geschichte. Vage genug. ⚠️ KEINE Lüge erfinden wenn nachgehakt — dann Honesty-Switch.",
-    conversion: "~60% — aber Risiko",
-  },
-  {
-    id: "gate-when-direct",
+    id: "gate-when-best",
     label: "Verlängerter Slot",
     text:
-      "Hallo, hier Leon von Krileo. Ich erreiche {salutation} am besten wann direkt — vielleicht nach Sprechstunde? Ich rufe gezielt nochmal an.",
+      "Hallo, hier Leon Huschka. Wann erreich ich {salutation} am besten persönlich — vielleicht nach Sprechstunde? Ich rufe dann gezielt nochmal an.",
     rationale:
-      "Du planst dich als wiederkehrenden Anrufer. »Termin« = legitim — du kommst nächstes Mal sauber durch.",
-    conversion: "100% Erfolgsquote für Re-Call (Empfang erinnert sich)",
+      "Du planst dich als wiederkehrenden Anrufer mit Termin = legitim. Nächstes Mal kommst du sauber durch weil Empfang sich erinnert.",
+    conversion: "100% Re-Call-Erfolg",
   },
   {
-    id: "gate-name-drop",
-    label: "Name-Drop",
+    id: "gate-topic-with-out",
+    label: "Topic + Ausweg",
     text:
-      "Hallo, hier Leon Huschka — können Sie mich kurz mit {salutation} verbinden? Sie hat sich was angeschaut, glaube ich.",
+      "Hallo, hier Leon — ich rufe wegen der Praxis-Website von {business}. Können Sie mich mit {salutation} verbinden oder lieber nächste Woche probieren?",
     rationale:
-      "»Glaube ich« + soft framing — Empfang fragt nicht weiter weil unsicher. ⚠️ Greyzone, nur wenn Inhaberin nicht aggressiv reagiert.",
+      "»Oder lieber nächste Woche« = nicht aufdringlich. Du gibst ihr Ausweg, sie muss nicht filtern. Topic ist direkt aber nicht spammy.",
+  },
+  {
+    id: "gate-authority-soft",
+    label: "Soft Authority",
+    text:
+      "Hallo, hier Leon Huschka. {salutation} bitte — wegen unserer Sache. Können Sie verbinden?",
+    rationale:
+      "»Unsere Sache« impliziert bestehenden Kontakt ohne explizite Lüge. Kurz, ohne zu fragen. ⚠️ Bei Nachfrage sofort Wahrheit: »Sorry, ich hatte Sie noch gar nicht — neuer Versuch wegen Praxis-Website.«",
   },
 ];
 
@@ -107,20 +114,20 @@ export const PICKUP_GATEKEEPER: ScriptVariant[] = [
 
 export const PICKUP_MIXED: ScriptVariant[] = [
   {
-    id: "mixed-name-ask",
-    label: "Name-First-Ask",
+    id: "mixed-clarify",
+    label: "Identitätsfrage zuerst",
     text:
-      "Hallo, hier Leon Huschka von Krileo — kann ich {salutation} kurz sprechen?",
+      "Hallo, hier Leon Huschka — spreche ich grad mit {salutation}?",
     rationale:
-      "Wenn Inhaberin selber rangeht: bestätigt mit »am Apparat«. Wenn Empfang rangeht: filter dann mit Variante aus Gatekeeper-Section.",
+      "Klare Frage = klare Antwort. Sie sagt »ja« → weiter mit Owner-Direkt-Patterns. Sagt »nein, hier ist die Empfangsdame« → switch zu Gatekeeper-Ally-Pattern.",
   },
   {
-    id: "mixed-direct",
-    label: "Direkt zum Inhaber durch",
+    id: "mixed-topic-first",
+    label: "Topic + Routing",
     text:
-      "Hallo, hier Leon von Krileo — direkt zur Sache: ich rufe wegen der Website von {business} an. Bin ich grad bei {salutation}?",
+      "Hallo, hier Leon — kurze Frage zu Ihrer Praxis-Website. Komme ich da besser zu {salutation} direkt oder läuft das über jemand anderen?",
     rationale:
-      "Klare Frage = klare Antwort. Wenn Empfang: »Worum geht's?« → switch auf Gatekeeper-Honesty.",
+      "Pre-routing — du fragst sie WO du landen sollst statt durchzudrücken. Empfangskraft entscheidet, fühlt sich respektiert.",
   },
 ];
 
@@ -128,28 +135,28 @@ export const PICKUP_MIXED: ScriptVariant[] = [
 
 export const OPENER_AFTER_PERMISSION: ScriptVariant[] = [
   {
-    id: "opener-pain-direct",
-    label: "Pain-Direct",
+    id: "opener-specific-observation",
+    label: "Spezifische Beobachtung",
     text:
-      "Super, danke. Also — ich hab gesehen, {business} hat noch kein Online-Booking auf der Website. Bei {category} ist das normalerweise täglich verlorene Termine. Stimmt das bei Ihnen auch?",
+      "Ich war grad auf Ihrer Website — die ist soweit okay, aber zwei Sachen sind mir aufgefallen die wahrscheinlich Termine kosten. Soll ich kurz konkret werden oder eher generell?",
     rationale:
-      "Konkret + Branchen-Insight + Bestätigungsfrage = sie *muss* antworten. Antwort öffnet Discovery.",
+      "»Zwei Sachen« = Curiosity-Loop. »Konkret oder generell?« = Choice die sie zwingt mitzudenken. Klingt wie Berater, nicht Verkäufer.",
   },
   {
-    id: "opener-curiosity",
-    label: "Curiosity-Lead",
+    id: "opener-peer-compare",
+    label: "Peer-Vergleich",
     text:
-      "Top — ich hab eine spezifische Idee für {business}. Aber zuerst: wie kommen aktuell die meisten Neukunden zu Ihnen — über Empfehlung, Google, oder was anderes?",
+      "Wir haben grad für eine {category}-Praxis hier in der Gegend das Booking umgestellt — die haben jetzt 30-40% weniger Telefon-Anfragen wegen Termin-Verschieben. Wo stehen Sie da im Moment?",
     rationale:
-      "Du fragst, statt zu pitchen. Sie redet. Du lernst. Discovery-Mode aktiviert.",
+      "Konkrete Zahl + lokales Peer = du existierst. »Wo stehen Sie?« = sie muss bewerten, du lernst.",
   },
   {
-    id: "opener-mirror",
-    label: "Mirror + Bridge (Chris Voss)",
+    id: "opener-question-priority",
+    label: "Priorität abfragen",
     text:
-      "Klasse — bevor ich pitche: was ist für Sie als Inhaberin gerade das größte Thema im Praxis-Alltag? Ich frag bevor ich erzähl, sonst red ich am Pain vorbei.",
+      "Eine Frage damit ich weiß ob's überhaupt passt: wenn Sie an die nächsten 12 Monate für {business} denken — was steht oben auf Ihrer Liste? Mehr Patienten, weniger Telefon-Stress, oder was Drittes?",
     rationale:
-      "»Frag bevor ich erzähl« = tactical empathy. Du wirkst als Berater, nicht Verkäufer. Sie öffnet sich.",
+      "Du fragst nach Priorität, nicht nach Pain. Sie öffnet sich, weil sie über IHRE Strategie reden darf — das tut sie gerne.",
   },
 ];
 

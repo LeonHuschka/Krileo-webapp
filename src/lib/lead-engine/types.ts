@@ -48,6 +48,11 @@ export interface Appointment {
   created_by_task: string | null;
   created_at: string;
   updated_at: string;
+  // Google Calendar sync (added in 00021_)
+  google_event_id?: string | null;
+  google_calendar_id?: string | null;
+  synced_at?: string | null;
+  sync_error?: string | null;
 }
 
 export type FitOffer = "website" | "booking" | "automation" | "saas";

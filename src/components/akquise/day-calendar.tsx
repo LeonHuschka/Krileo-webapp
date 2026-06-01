@@ -10,6 +10,15 @@ type ApptWithLead = Appointment & {
   lead: { business_name: string; owner_name?: string | null } | null;
 };
 
+export type ExternalEvent = {
+  id: string;
+  startIso: string;
+  endIso: string;
+  title: string;
+  location?: string | null;
+  htmlLink?: string;
+};
+
 const START_HOUR = 7;
 const END_HOUR = 22;
 const HOUR_HEIGHT = 56; // px
@@ -48,9 +57,11 @@ function typeColor(type: string): string {
  */
 export function DayCalendar({
   appointments,
+  externalEvents = [],
   className,
 }: {
   appointments: ApptWithLead[];
+  externalEvents?: ExternalEvent[];
   className?: string;
 }) {
   const [nowY, setNowY] = useState<number | null>(null);
@@ -80,6 +91,23 @@ export function DayCalendar({
 
   const todays = (appointments ?? []).filter((a) => {
     const d = new Date(a.scheduled_for);
+    return (
+      d.getFullYear() === today.getFullYear() &&
+      d.getMonth() === today.getMonth() &&
+      d.getDate() === today.getDate()
+    );
+  });
+
+  // External events (Google Cal) for today — filter and dedupe against
+  // app appointments that already have a google_event_id.
+  const knownGoogleIds = new Set(
+    (appointments ?? [])
+      .map((a) => a.google_event_id)
+      .filter((id): id is string => !!id),
+  );
+  const todaysExternal = (externalEvents ?? []).filter((ev) => {
+    if (knownGoogleIds.has(ev.id)) return false;
+    const d = new Date(ev.startIso);
     return (
       d.getFullYear() === today.getFullYear() &&
       d.getMonth() === today.getMonth() &&
@@ -117,9 +145,14 @@ export function DayCalendar({
 
       <div className="mb-3 flex items-center justify-between text-[10px] text-muted-foreground">
         <span>
-          {todays.length === 0
+          {todays.length + todaysExternal.length === 0
             ? "Keine Termine heute"
-            : `${todays.length} Termin${todays.length === 1 ? "" : "e"} heute`}
+            : `${todays.length + todaysExternal.length} Termin${todays.length + todaysExternal.length === 1 ? "" : "e"} heute`}
+          {todaysExternal.length > 0 && (
+            <span className="ml-1 text-muted-foreground/60">
+              ({todaysExternal.length} extern)
+            </span>
+          )}
         </span>
         <Link
           href="/akquise/termine"
@@ -187,6 +220,33 @@ export function DayCalendar({
                 {a.lead?.owner_name ?? a.lead?.business_name ?? "Termin"}
               </div>
             </Link>
+          );
+        })}
+
+        {/* External Google Calendar events */}
+        {todaysExternal.map((ev) => {
+          const start = new Date(ev.startIso);
+          const end = new Date(ev.endIso);
+          const top = hoursToY(start.getHours(), start.getMinutes());
+          const minutes = Math.max(
+            15,
+            (end.getTime() - start.getTime()) / 60_000,
+          );
+          const height = Math.max(18, (minutes / 60) * HOUR_HEIGHT - 2);
+          const Cmp = ev.htmlLink ? "a" : "div";
+          return (
+            <Cmp
+              key={ev.id}
+              href={ev.htmlLink}
+              target={ev.htmlLink ? "_blank" : undefined}
+              rel={ev.htmlLink ? "noopener noreferrer" : undefined}
+              className="absolute left-8 right-1 overflow-hidden rounded-md border border-dashed border-zinc-500/40 bg-zinc-500/10 px-1.5 py-1 text-[10px] leading-tight text-zinc-200 transition-colors hover:bg-zinc-500/20"
+              style={{ top, height }}
+              title={`${ev.title} — Google Calendar`}
+            >
+              <div className="font-semibold">{fmtTime(ev.startIso)}</div>
+              <div className="truncate opacity-80">{ev.title}</div>
+            </Cmp>
           );
         })}
       </div>

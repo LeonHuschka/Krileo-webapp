@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { patchGoogleConfig } from "@/lib/google/storage";
 
 const profileSchema = z.object({
   full_name: z.string().min(1).max(100),
@@ -33,4 +34,17 @@ export async function updateMyProfile(input: {
 
   revalidatePath("/settings");
   revalidatePath("/", "layout");
+}
+
+export async function setGoogleCalendar(
+  calendarId: string,
+  calendarSummary: string,
+) {
+  await patchGoogleConfig({
+    calendar_id: calendarId,
+    calendar_summary: calendarSummary,
+  });
+  revalidatePath("/settings");
+  revalidatePath("/akquise/tasks");
+  revalidatePath("/akquise/termine");
 }

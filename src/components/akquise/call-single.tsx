@@ -5,7 +5,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CallCard } from "@/components/akquise/call-card";
-import { DayCalendar } from "@/components/akquise/day-calendar";
+import {
+  DayCalendar,
+  type ExternalEvent,
+} from "@/components/akquise/day-calendar";
 import type { Appointment, Lead, LeadEvent } from "@/lib/lead-engine/types";
 
 type ApptWithLead = Appointment & {
@@ -20,11 +23,13 @@ type ApptWithLead = Appointment & {
 export function CallSingle({
   leads,
   appointments,
+  externalEvents = [],
   eventsByLead,
   index,
 }: {
   leads: Lead[];
   appointments: ApptWithLead[];
+  externalEvents?: ExternalEvent[];
   eventsByLead: Record<string, LeadEvent[]>;
   index: number;
 }) {
@@ -123,7 +128,11 @@ export function CallSingle({
         </p>
       </div>
 
-      <DayCalendar appointments={appointments} className="self-start" />
+      <DayCalendar
+        appointments={appointments}
+        externalEvents={externalEvents}
+        className="self-start"
+      />
     </div>
   );
 }

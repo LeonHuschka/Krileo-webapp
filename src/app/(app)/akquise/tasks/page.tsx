@@ -2,6 +2,9 @@ import Link from "next/link";
 import { ArrowLeft, Inbox } from "lucide-react";
 import { leadEngine } from "@/lib/lead-engine/supabase";
 import { listUpcomingAppointments } from "@/lib/lead-engine/appointments";
+import { listGoogleEvents } from "@/lib/google/calendar";
+import { loadGoogleConfig } from "@/lib/google/storage";
+import type { ExternalEvent } from "@/components/akquise/day-calendar";
 import { latestEventByLead, listLeadEvents } from "@/lib/lead-engine/events";
 import { CallCard } from "@/components/akquise/call-card";
 import { CallList } from "@/components/akquise/call-list";
@@ -38,6 +41,7 @@ type LoadResult = {
   dailyTarget: number;
   minCallScore: number;
   appointments: ApptWithLead[];
+  externalEvents: ExternalEvent[];
   lastEventByLead: Record<string, LeadEvent | undefined>;
   error: string | null;
   migrationMissing: boolean;
@@ -112,6 +116,33 @@ async function loadQueue(): Promise<LoadResult> {
     /* non-fatal */
   }
 
+  // External Google Calendar events (only if connected)
+  let externalEvents: ExternalEvent[] = [];
+  const googleCfg = await loadGoogleConfig();
+  if (googleCfg) {
+    try {
+      const start = new Date();
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000);
+      const events = await listGoogleEvents({
+        timeMin: start.toISOString(),
+        timeMax: end.toISOString(),
+      });
+      externalEvents = events
+        .filter((e) => e.start?.dateTime && e.end?.dateTime)
+        .map((e) => ({
+          id: e.id,
+          startIso: e.start!.dateTime!,
+          endIso: e.end!.dateTime!,
+          title: e.summary ?? "(ohne Titel)",
+          location: e.location ?? null,
+          htmlLink: e.htmlLink,
+        }));
+    } catch {
+      /* non-fatal */
+    }
+  }
+
   // Latest event per lead (for history strips)
   const lastEventByLead = queue.length
     ? await latestEventByLead(queue.map((l) => l.id))
@@ -138,6 +169,7 @@ async function loadQueue(): Promise<LoadResult> {
     dailyTarget,
     minCallScore,
     appointments,
+    externalEvents,
     lastEventByLead,
     error: loadErr,
     migrationMissing,
@@ -165,6 +197,7 @@ export default async function AkquiseTasksPage({
     dailyTarget,
     minCallScore,
     appointments,
+    externalEvents,
     lastEventByLead,
     error,
     migrationMissing,
@@ -314,6 +347,7 @@ export default async function AkquiseTasksPage({
               </div>
               <DayCalendar
                 appointments={appointments}
+                externalEvents={externalEvents}
                 className="self-start xl:sticky xl:top-4"
               />
             </div>
@@ -323,6 +357,7 @@ export default async function AkquiseTasksPage({
             <CallSingle
               leads={slicedQueue}
               appointments={appointments}
+              externalEvents={externalEvents}
               eventsByLead={fullEventsByLead}
               index={singleIndex}
             />

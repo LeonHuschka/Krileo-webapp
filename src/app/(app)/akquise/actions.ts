@@ -16,6 +16,7 @@ import {
   type D2DLeadInput,
   type D2DUpdateInput,
 } from "@/lib/lead-engine/d2d";
+import { suggestD2DPrice } from "@/lib/akquise/d2d-pricing";
 import { nextActionAfterNoAnswer } from "@/lib/lead-engine/cascade";
 import {
   createAppointment,
@@ -619,6 +620,13 @@ export async function patchD2DLead(input: D2DUpdateInput) {
   revalidatePath("/akquise");
   revalidatePath("/akquise/d2d");
   revalidatePath("/akquise/leads");
+}
+
+export async function suggestD2DLeadPrice(leadId: string) {
+  const result = await suggestD2DPrice(leadId);
+  revalidatePath("/akquise/d2d");
+  revalidatePath("/akquise/leads");
+  return result;
 }
 
 // ── Live call coach ──────────────────────────────────────────────────

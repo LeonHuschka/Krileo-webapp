@@ -8,9 +8,11 @@ import {
   CalendarClock,
   CheckCircle2,
   ExternalLink,
+  Loader2,
   MapPin,
   Phone,
   Mail,
+  Sparkles,
   Star,
   Trophy,
   User,
@@ -26,6 +28,7 @@ import {
   forceLeadStatus,
   logCallOutcome,
   patchD2DLead,
+  suggestD2DLeadPrice,
   updateLeadNotes,
 } from "@/app/(app)/akquise/actions";
 import { AppointmentDialog } from "@/components/akquise/appointment-dialog";
@@ -44,6 +47,15 @@ function toLocalInputValue(iso: string | null | undefined): string {
   const d = new Date(iso);
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function formatEur(amount: number | null | undefined): string | null {
+  if (amount == null) return null;
+  return new Intl.NumberFormat("de-DE", {
+    style: "currency",
+    currency: "EUR",
+    maximumFractionDigits: 0,
+  }).format(amount);
 }
 
 function formatDate(iso: string | null | undefined): string {
@@ -150,8 +162,27 @@ export function D2DCard({
     });
   }
 
+  function suggestPrice() {
+    startTransition(async () => {
+      try {
+        const r = await suggestD2DLeadPrice(lead.id);
+        toast.success(
+          `${formatEur(r.suggested_price_min_eur)}–${formatEur(r.suggested_price_max_eur)} (${r.fit_offer})`,
+        );
+        router.refresh();
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Fehler");
+      }
+    });
+  }
+
   const isOverdue =
     lead.next_step_at && new Date(lead.next_step_at).getTime() < Date.now();
+
+  const priceRange =
+    lead.suggested_price_min_eur != null && lead.suggested_price_max_eur != null
+      ? `${formatEur(lead.suggested_price_min_eur)}–${formatEur(lead.suggested_price_max_eur)}`
+      : null;
 
   return (
     <Card
@@ -227,6 +258,64 @@ export function D2DCard({
           <p className="leading-snug text-foreground">
             {lead.meeting_notes}
           </p>
+        )}
+      </div>
+
+      {/* Price suggestion (LLM-driven) */}
+      <div className="space-y-2 rounded-lg border border-emerald-500/30 bg-emerald-500/[0.05] p-2.5">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-emerald-300">
+            <Sparkles className="h-3 w-3" />
+            Preis-Vorschlag
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={suggestPrice}
+            disabled={pending}
+            className="h-6 gap-1 text-[10px] text-emerald-300 hover:bg-emerald-500/10"
+          >
+            {pending ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <Sparkles className="h-3 w-3" />
+            )}
+            {priceRange ? "Neu berechnen" : "Berechnen"}
+          </Button>
+        </div>
+        {priceRange ? (
+          <div className="flex flex-wrap items-baseline gap-2">
+            <span className="text-lg font-bold tabular-nums text-emerald-300">
+              {priceRange}
+            </span>
+            {lead.fit_offer && (
+              <Badge
+                variant="outline"
+                className="border-border/60 bg-card text-[10px]"
+              >
+                {lead.fit_offer}
+              </Badge>
+            )}
+            {lead.business_size && (
+              <span className="text-[10px] text-muted-foreground">
+                {lead.business_size}
+              </span>
+            )}
+          </div>
+        ) : (
+          <p className="text-[11px] text-muted-foreground">
+            Klick »Berechnen« — Claude schaut sich Business + Gesprächsnotizen an und schlägt eine Range vor.
+          </p>
+        )}
+        {lead.pain_points && lead.pain_points.length > 0 && (
+          <ul className="space-y-0.5 text-[11px] text-muted-foreground">
+            {lead.pain_points.slice(0, 3).map((p, i) => (
+              <li key={i} className="flex gap-1.5">
+                <span className="text-emerald-300/70">·</span>
+                <span>{p}</span>
+              </li>
+            ))}
+          </ul>
         )}
       </div>
 

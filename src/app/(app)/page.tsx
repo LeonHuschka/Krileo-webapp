@@ -10,11 +10,11 @@ import {
   ArrowRight,
   ClipboardList,
   Users,
-  CheckCircle2,
   Target,
   TrendingUp,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { leadEngine } from "@/lib/lead-engine/supabase";
 import {
   CONTACT_STATUS_COLORS,
   CONTACT_STATUSES,
@@ -80,10 +80,70 @@ export default async function DashboardPage() {
   const allContacts = (contacts ?? []) as ContactRow[];
 
   const weekStart = startOfWeek();
-  const newLeads = allContacts.filter(
-    (c) => new Date(c.created_at) >= weekStart,
-  );
-  const wonContacts = allContacts.filter((c) => c.status === "won").length;
+
+  // ── Akquise-KPIs aus der Lead-Engine-DB ────────────────────
+  let akquiseStats = {
+    totalLeads: 0,
+    hotLeads: 0,
+    newLeadsWeek: 0,
+    callPool: 0,
+    d2dActive: 0,
+    callsDoneThisWeek: 0,
+  };
+  try {
+    const db = leadEngine();
+    const weekStartIso = weekStart.toISOString();
+    const nowIso = new Date().toISOString();
+
+    const [
+      { count: totalLeads },
+      { count: hotLeads },
+      { count: newLeadsWeek },
+      { data: callPoolData },
+      { count: d2dActive },
+      { count: callsDoneThisWeek },
+    ] = await Promise.all([
+      db.from("leads").select("id", { head: true, count: "exact" }),
+      db
+        .from("leads")
+        .select("id", { head: true, count: "exact" })
+        .eq("qualification_tier", "hot")
+        .not("outreach_status", "in", "(lost,suppressed)"),
+      db
+        .from("leads")
+        .select("id", { head: true, count: "exact" })
+        .gte("created_at", weekStartIso),
+      db
+        .from("leads")
+        .select("id")
+        .eq("primary_channel", "call")
+        .eq("lead_source", "cold_call")
+        .not("outreach_status", "in", "(won,lost,suppressed)")
+        .or(`next_action_at.is.null,next_action_at.lte.${nowIso}`),
+      db
+        .from("leads")
+        .select("id", { head: true, count: "exact" })
+        .eq("lead_source", "d2d")
+        .not("outreach_status", "in", "(won,lost,suppressed)"),
+      db
+        .from("daily_tasks")
+        .select("id", { head: true, count: "exact" })
+        .gte("task_date", weekStart.toISOString().slice(0, 10))
+        .eq("channel", "call")
+        .eq("status", "completed"),
+    ]);
+    akquiseStats = {
+      totalLeads: totalLeads ?? 0,
+      hotLeads: hotLeads ?? 0,
+      newLeadsWeek: newLeadsWeek ?? 0,
+      callPool: (callPoolData ?? []).length,
+      d2dActive: d2dActive ?? 0,
+      callsDoneThisWeek: callsDoneThisWeek ?? 0,
+    };
+  } catch {
+    /* swallow — lead engine offline, dashboard still works */
+  }
+
 
   const counts: Record<OrderStatus, number> = {
     angebot: 0,
@@ -153,18 +213,18 @@ export default async function DashboardPage() {
       iconBg: "bg-violet-500/15 text-violet-300",
     },
     {
-      label: "Neue Leads (Woche)",
-      value: newLeads.length,
+      label: "Akquise: Hot",
+      value: akquiseStats.hotLeads,
+      icon: Target,
+      accent: "from-rose-500/15 to-transparent",
+      iconBg: "bg-rose-500/15 text-rose-300",
+    },
+    {
+      label: "Call-Pool",
+      value: akquiseStats.callPool,
       icon: Users,
       accent: "from-amber-500/15 to-transparent",
       iconBg: "bg-amber-500/15 text-amber-300",
-    },
-    {
-      label: "Gewonnen",
-      value: wonContacts,
-      icon: CheckCircle2,
-      accent: "from-emerald-500/15 to-transparent",
-      iconBg: "bg-emerald-500/15 text-emerald-300",
     },
   ];
 

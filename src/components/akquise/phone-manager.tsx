@@ -19,6 +19,18 @@ import {
 import type { AdditionalPhone } from "@/lib/lead-engine/types";
 
 /**
+ * tel: URI handlers (macOS FaceTime, Skype, iOS Phone, Android) are
+ * picky about formatting. They expect digits, an optional leading +,
+ * and nothing else — spaces and parens silently break dialing on
+ * desktop. Strip everything but digits and a leading +.
+ */
+function telHref(num: string | null | undefined): string | undefined {
+  if (!num) return undefined;
+  const cleaned = num.replace(/[^\d+]/g, "").replace(/(?!^)\+/g, "");
+  return cleaned ? `tel:${cleaned}` : undefined;
+}
+
+/**
  * Renders the primary phone (passed in) as a big tel: button, plus
  * any additional phones the user has added, plus a "+" popover to add
  * a new one (label optional, number required).
@@ -76,7 +88,7 @@ export function PhoneManager({
     <div className="space-y-1.5">
       {/* Primary number */}
       <a
-        href={primaryPhone ? `tel:${primaryPhone}` : undefined}
+        href={telHref(primaryPhone)}
         className="flex w-full items-center gap-2 rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
         style={{
           pointerEvents: primaryPhone ? "auto" : "none",
@@ -96,7 +108,7 @@ export function PhoneManager({
       {additional.map((p, i) => (
         <div key={i} className="flex items-center gap-1">
           <a
-            href={`tel:${p.number}`}
+            href={telHref(p.number)}
             className="flex flex-1 items-center gap-2 rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-xs font-mono text-emerald-300 hover:bg-emerald-500/20"
           >
             <Phone className="h-3 w-3" />

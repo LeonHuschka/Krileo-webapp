@@ -87,6 +87,7 @@ async function loadQueue(): Promise<LoadResult> {
       .from("leads")
       .select("*")
       .eq("primary_channel", "call")
+      .eq("lead_source", "cold_call")
       .not("outreach_status", "in", "(won,lost,suppressed)")
       .or(`next_action_at.is.null,next_action_at.lte.${nowIso}`)
       .order("next_action_at", { ascending: true, nullsFirst: false })

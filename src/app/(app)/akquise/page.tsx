@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Phone, Users, Mail, ArrowRight, Inbox } from "lucide-react";
+import { Phone, Users, Mail, ArrowRight, Inbox, DoorOpen } from "lucide-react";
 import { leadEngine } from "@/lib/lead-engine/supabase";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +7,7 @@ import {
   GenerateLeadsDialog,
   type CampaignOption,
 } from "@/components/akquise/generate-leads-dialog";
+import { D2DLeadDialog } from "@/components/akquise/d2d-lead-dialog";
 import { formatLeadEngineError } from "@/lib/lead-engine/format-error";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +25,8 @@ type Stats = {
   callPool: number;
   emailPool: number;
   callsToday: number;
+  d2dActive: number;
+  d2dOverdue: number;
 };
 
 /**
@@ -60,12 +63,37 @@ async function loadCampaigns(): Promise<{
   }
 }
 
+async function d2dStats(
+  db: ReturnType<typeof leadEngine>,
+  nowIso: string,
+): Promise<{ active: number; overdue: number }> {
+  try {
+    const { data, error } = await db
+      .from("leads")
+      .select("id, next_step_at, outreach_status")
+      .eq("lead_source", "d2d")
+      .not("outreach_status", "in", "(won,lost,suppressed)");
+    if (error) return { active: 0, overdue: 0 };
+    const rows = (data ?? []) as Array<{
+      id: string;
+      next_step_at: string | null;
+    }>;
+    const active = rows.length;
+    const overdue = rows.filter(
+      (r) => r.next_step_at && new Date(r.next_step_at).toISOString() < nowIso,
+    ).length;
+    return { active, overdue };
+  } catch {
+    return { active: 0, overdue: 0 };
+  }
+}
+
 async function loadStats(): Promise<Stats> {
   const db = leadEngine();
   const date = todayBerlin();
   const nowIso = new Date().toISOString();
 
-  const [total, unassigned, callPool, emailPool, callsToday] =
+  const [total, unassigned, callPool, emailPool, callsToday, d2d] =
     await Promise.all([
       safeCount(
         db
@@ -107,6 +135,7 @@ async function loadStats(): Promise<Stats> {
           error: unknown;
         }>,
       ),
+      d2dStats(db, nowIso),
     ]);
 
   return {
@@ -115,40 +144,30 @@ async function loadStats(): Promise<Stats> {
     callPool,
     emailPool,
     callsToday,
+    d2dActive: d2d.active,
+    d2dOverdue: d2d.overdue,
   };
 }
 
 /**
- * Active call pool = leads in the call channel that haven't been
- * contacted yet OR whose callback date has rolled around. Returns 0
- * silently if migration 00016 hasn't been applied yet.
+ * Active call pool = leads in the call channel where the next
+ * scheduled action is either now or never set. Matches the query in
+ * /akquise/tasks so the count agrees with what the user sees.
  */
 async function callPoolCount(
   db: ReturnType<typeof leadEngine>,
   nowIso: string,
 ): Promise<number> {
   try {
-    const [freshRes, dueRes] = await Promise.all([
-      db
-        .from("leads")
-        .select("id")
-        .eq("primary_channel", "call")
-        .not("outreach_status", "in", "(won,lost,suppressed)")
-        .is("last_contact_outcome", null),
-      db
-        .from("leads")
-        .select("id")
-        .eq("primary_channel", "call")
-        .not("outreach_status", "in", "(won,lost,suppressed)")
-        .not("callback_at", "is", null)
-        .lte("callback_at", nowIso),
-    ]);
-    if (freshRes.error || dueRes.error) return 0;
-    const ids = new Set<string>();
-    for (const r of (freshRes.data ?? []) as Array<{ id: string }>)
-      ids.add(r.id);
-    for (const r of (dueRes.data ?? []) as Array<{ id: string }>) ids.add(r.id);
-    return ids.size;
+    const { data, error } = await db
+      .from("leads")
+      .select("id", { count: "exact", head: false })
+      .eq("primary_channel", "call")
+      .eq("lead_source", "cold_call")
+      .not("outreach_status", "in", "(won,lost,suppressed)")
+      .or(`next_action_at.is.null,next_action_at.lte.${nowIso}`);
+    if (error) return 0;
+    return (data ?? []).length;
   } catch {
     return 0;
   }
@@ -173,9 +192,12 @@ export default async function AkquisePage() {
             paar Leads, ruf an, schreib Mails.
           </p>
         </div>
-        {campaigns.length > 0 && (
-          <GenerateLeadsDialog campaigns={campaigns} />
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <D2DLeadDialog />
+          {campaigns.length > 0 && (
+            <GenerateLeadsDialog campaigns={campaigns} />
+          )}
+        </div>
       </div>
 
       {campaignError && (
@@ -229,7 +251,7 @@ export default async function AkquisePage() {
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <NavCard
           href="/akquise/tasks"
           icon={Phone}
@@ -238,6 +260,19 @@ export default async function AkquisePage() {
           badge={stats.callPool}
           badgeLabel="im Pool"
           meta={`${stats.callsToday} heute gemacht`}
+        />
+        <NavCard
+          href="/akquise/d2d"
+          icon={DoorOpen}
+          title="D2D-Leads"
+          description="Leute die du persönlich getroffen hast — schon warm, kein Cold-Call nötig."
+          badge={stats.d2dActive}
+          badgeLabel="aktiv"
+          meta={
+            stats.d2dOverdue > 0
+              ? `⚠ ${stats.d2dOverdue} überfällig`
+              : "alle aktuell ✓"
+          }
         />
         <NavCard
           href="/akquise/leads"

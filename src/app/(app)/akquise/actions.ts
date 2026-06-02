@@ -9,6 +9,13 @@ import {
   type CoachSuggestion,
 } from "@/lib/akquise/call-coach";
 import { appendLeadEvent } from "@/lib/lead-engine/events";
+import {
+  createD2DLead,
+  previewMapsUrl,
+  updateD2DLead,
+  type D2DLeadInput,
+  type D2DUpdateInput,
+} from "@/lib/lead-engine/d2d";
 import { nextActionAfterNoAnswer } from "@/lib/lead-engine/cascade";
 import {
   createAppointment,
@@ -590,6 +597,28 @@ async function autoAssignFromCampaign(
     }
   }
   return { updated, calls, emails };
+}
+
+// ── D2D leads (door-to-door, manually added) ─────────────────────────
+
+export async function previewD2DMapsUrl(url: string) {
+  if (!url.trim()) throw new Error("Maps-URL fehlt");
+  return previewMapsUrl(url.trim());
+}
+
+export async function addD2DLead(input: D2DLeadInput) {
+  const lead = await createD2DLead(input);
+  revalidatePath("/akquise");
+  revalidatePath("/akquise/d2d");
+  revalidatePath("/akquise/leads");
+  return lead;
+}
+
+export async function patchD2DLead(input: D2DUpdateInput) {
+  await updateD2DLead(input);
+  revalidatePath("/akquise");
+  revalidatePath("/akquise/d2d");
+  revalidatePath("/akquise/leads");
 }
 
 // ── Live call coach ──────────────────────────────────────────────────

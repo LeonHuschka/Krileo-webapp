@@ -24,6 +24,12 @@ const TIER_COLORS: Record<string, string> = {
   cold: "border-sky-500/40 bg-sky-500/15 text-sky-300",
 };
 
+function telHref(num: string | null | undefined): string | undefined {
+  if (!num) return undefined;
+  const cleaned = num.replace(/[^\d+]/g, "").replace(/(?!^)\+/g, "");
+  return cleaned ? `tel:${cleaned}` : undefined;
+}
+
 function relative(iso: string | null | undefined): string {
   if (!iso) return "—";
   const ms = Date.now() - new Date(iso).getTime();
@@ -164,7 +170,7 @@ export function CallList({
                 <TableCell>
                   {l.phone ? (
                     <a
-                      href={`tel:${l.phone}`}
+                      href={telHref(l.phone)}
                       onClick={(e) => e.stopPropagation()}
                       className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600/15 px-2 py-1 font-mono text-xs text-emerald-300 hover:bg-emerald-600/25"
                     >

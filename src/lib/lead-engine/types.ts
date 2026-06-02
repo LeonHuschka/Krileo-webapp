@@ -65,6 +65,13 @@ export type FitOffer = "website" | "booking" | "automation" | "saas";
  */
 export type PickupProfile = "owner_direct" | "mixed" | "gatekeeper";
 
+/**
+ * How the lead entered the funnel — affects what UI we show and how
+ * we handle outreach (D2D leads skip the cold-call queue, never need
+ * pickup-line/script-coach, default warm).
+ */
+export type LeadSource = "cold_call" | "d2d" | "inbound" | "referral";
+
 export interface AdditionalPhone {
   label?: string | null; // e.g. "Mobil GF", "Direkt"
   number: string;
@@ -172,6 +179,14 @@ export interface Lead {
 
   // Gatekeeper classification (added in 00020_)
   pickup_profile: PickupProfile | null;
+
+  // D2D / source tagging (added in 00022_)
+  lead_source: LeadSource;
+  met_at: string | null;
+  met_location: string | null;
+  meeting_notes: string | null;
+  next_step: string | null;
+  next_step_at: string | null;
 
   // Email artifacts
   email_1_subject: string | null;

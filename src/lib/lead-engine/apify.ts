@@ -297,6 +297,41 @@ async function runWithConcurrency<T>(
 }
 
 /**
+ * Single-URL scrape — used by the D2D-Lead dialog when the user
+ * pastes a Google Maps link. Returns the place data so we can
+ * pre-populate the form. Doesn't touch the database.
+ */
+export async function scrapeMapsUrl(url: string): Promise<ApifyPlace | null> {
+  const token = requireEnv("APIFY_API_TOKEN");
+  const actorId = requireEnv("APIFY_ACTOR_ID");
+
+  const apifyUrl = `${APIFY_BASE}/acts/${actorId}/run-sync-get-dataset-items?token=${token}`;
+  const resp = await fetch(apifyUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      startUrls: [{ url }],
+      maxCrawledPlacesPerSearch: 1,
+      language: "de",
+      countryCode: "de",
+      scrapePlaceDetailPage: true,
+      scrapeContacts: true,
+      scrapeSocialMediaProfiles: { instagrams: true, facebooks: true },
+      maxReviews: 0,
+      maxImages: 0,
+      maxQuestions: 0,
+    }),
+  });
+
+  if (!resp.ok) {
+    const body = await resp.text().catch(() => "");
+    throw new Error(`Maps-URL-Scrape fehlgeschlagen (${resp.status}): ${body.slice(0, 300)}`);
+  }
+  const places: ApifyPlace[] = await resp.json();
+  return Array.isArray(places) && places.length > 0 ? places[0] : null;
+}
+
+/**
  * Run Stage 1 for every active campaign. Parallelised with a small
  * concurrency limit so we don't blow Apify's actor-instance cap or our
  * Vercel function's 300s wall-clock on Hobby.

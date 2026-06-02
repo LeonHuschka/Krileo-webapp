@@ -85,13 +85,19 @@ export async function scrapeCampaign(
   const apifyUrl =
     `${APIFY_BASE}/acts/${actorId}/run-sync-get-dataset-items?token=${token}`;
 
+  // Divide the per-search cap by the number of queries so the total
+  // place count stays close to the user-requested maxResults instead
+  // of multiplying by N queries.
+  const queryCount = Math.max(1, campaign.search_queries.length);
+  const perSearchCap = Math.max(1, Math.ceil(maxResults / queryCount));
+
   const apifyResp = await fetch(apifyUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       searchStringsArray: campaign.search_queries,
       locationQuery: `${campaign.city}, Germany`,
-      maxCrawledPlacesPerSearch: maxResults,
+      maxCrawledPlacesPerSearch: perSearchCap,
       language: "de",
       countryCode: "de",
       skipClosedPlaces: true,
@@ -181,8 +187,12 @@ export async function scrapeCampaign(
   // immediately usable (owner names, scores, prices) without manual
   // button clicks. Errors here don't break the scrape result — we
   // surface counts so the caller can see how far we got.
+  //
+  // Concurrency 8 (up from 4) — Anthropic + Apify both handle this
+  // fine for our volumes, and we have 300s on Vercel Hobby to fit
+  // scrape + enrich + score for 20-30 leads.
   if (opts.pipeline !== false) {
-    const conc = opts.pipelineConcurrency ?? 4;
+    const conc = opts.pipelineConcurrency ?? 8;
     const chained = await chainPipelineForCampaign(
       campaignId,
       campaign.industry as Industry,

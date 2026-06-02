@@ -37,6 +37,7 @@ import {
   autoAssignUnassigned,
   rescoreAll,
   resetAllTiersToCold,
+  scorePendingLeads,
   setLeadChannel,
 } from "@/app/(app)/akquise/actions";
 import { LeadRowActions } from "@/components/akquise/lead-row-actions";
@@ -202,6 +203,25 @@ export function LeadsTable({
     });
   }
 
+  function bulkScorePending() {
+    startTransition(async () => {
+      try {
+        const r = await scorePendingLeads({ limit: 100 });
+        if (r.failed > 0 && r.errors.length > 0) {
+          toast.error(
+            `${r.scored} gescored, ${r.failed} Fehler. Erste Ursache: ${r.errors[0]}`,
+            { duration: 12_000 },
+          );
+        } else {
+          toast.success(`${r.scored} unfertige Leads gescored`);
+        }
+        router.refresh();
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Fehler");
+      }
+    });
+  }
+
   function bulkRescore() {
     if (
       !confirm(
@@ -279,6 +299,21 @@ export function LeadsTable({
             <Sparkles className="h-3.5 w-3.5" />
           )}
           Auto-Assign ({unassignedCount})
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={bulkScorePending}
+          disabled={pending}
+          className="gap-1.5"
+          title="Unfertige Leads (raw/enriched) durchscoren"
+        >
+          {pending ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <RefreshCw className="h-3.5 w-3.5" />
+          )}
+          Pending scoren
         </Button>
         <Button
           variant="outline"

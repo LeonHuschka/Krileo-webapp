@@ -652,6 +652,21 @@ export async function rescoreLead(leadId: string) {
 }
 
 /**
+ * Score every lead still in `raw` or `enriched` state — the cleanup
+ * action for when a previous generation pipeline timed out and left
+ * unscored leads in the DB. Concurrency 8 keeps it fast.
+ */
+export async function scorePendingLeads(opts: { limit?: number } = {}) {
+  const { scoreAllPending } = await import("@/lib/lead-engine/scoring");
+  const result = await scoreAllPending({
+    limit: opts.limit ?? 100,
+    concurrency: 8,
+  });
+  revalidateAll();
+  return result;
+}
+
+/**
  * Bulk-reset every non-final lead's qualification_tier back to 'cold'.
  * Honest housekeeping after a prompt change or for stale data — the
  * tier should only ever move via real outreach outcomes, never via
@@ -793,14 +808,14 @@ export async function findOrCreateCampaign(input: {
   if (findErr) throw new Error(findErr.message);
   if (existing) return (existing as { id: string }).id;
 
-  // Create new. Search queries default to "<readable niche> <city>";
-  // the user-typed industry usually reads better than the slug, so we
-  // use the raw input for the query and the slug for the column.
-  const readableNiche = input.industry.trim().replace(/_/g, " ");
-  const queries = [`${readableNiche} ${city}`, `${readableNiche} in ${city}`];
-
+  // Single search query — two queries double the Apify scrape volume
+  // ("Praxis Stuttgart" + "Praxis in Stuttgart" used to give 40 places
+  // when the user asked for 20). One query is enough; Google Maps is
+  // smart about matching variants. Industry comes in as a slug; the
+  // raw input reads better as a query.
   const readableIndustry = input.industry.trim().replace(/_/g, " ");
   const campaignName = `${readableIndustry} ${city}`;
+  const singleQuery = [`${readableIndustry} ${city}`];
 
   const { data: created, error: insErr } = await db
     .from("campaigns")
@@ -808,7 +823,7 @@ export async function findOrCreateCampaign(input: {
       name: campaignName,
       industry,
       city,
-      search_queries: queries,
+      search_queries: singleQuery,
     })
     .select("id")
     .single();

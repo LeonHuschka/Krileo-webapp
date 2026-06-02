@@ -799,9 +799,13 @@ export async function findOrCreateCampaign(input: {
   const readableNiche = input.industry.trim().replace(/_/g, " ");
   const queries = [`${readableNiche} ${city}`, `${readableNiche} in ${city}`];
 
+  const readableIndustry = input.industry.trim().replace(/_/g, " ");
+  const campaignName = `${readableIndustry} ${city}`;
+
   const { data: created, error: insErr } = await db
     .from("campaigns")
     .insert({
+      name: campaignName,
       industry,
       city,
       search_queries: queries,

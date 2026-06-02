@@ -12,6 +12,7 @@ import {
   Loader2,
   Phone,
   Mail,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  deleteSingleLead,
   forceLeadStatus,
   requeueLeadToCallQueue,
   setLeadChannel,
@@ -148,6 +150,23 @@ export function LeadRowActions({ lead }: { lead: Lead }) {
         >
           <Ban className="h-3.5 w-3.5" />
           DNC (do-not-contact)
+        </DropdownMenuItem>
+
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onClick={() => {
+            if (
+              !confirm(
+                `Lead "${lead.business_name}" endgültig löschen?\n\nNicht rückgängig.`,
+              )
+            )
+              return;
+            run("Lead gelöscht", () => deleteSingleLead(lead.id));
+          }}
+          className="gap-2 text-sm text-rose-300"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+          Lead löschen (endgültig)
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

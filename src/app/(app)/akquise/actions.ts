@@ -600,6 +600,81 @@ async function autoAssignFromCampaign(
   return { updated, calls, emails };
 }
 
+// ── Campaign cleanup (delete bad batches) ────────────────────────────
+
+export type CampaignWithCount = {
+  id: string;
+  industry: string;
+  city: string;
+  name: string | null;
+  lead_count: number;
+};
+
+export async function listCampaignsWithCounts(): Promise<CampaignWithCount[]> {
+  const db = leadEngine();
+  const { data: campaigns, error: cErr } = await db
+    .from("campaigns")
+    .select("id, industry, city, name");
+  if (cErr) throw new Error(cErr.message);
+  const { data: leads, error: lErr } = await db
+    .from("leads")
+    .select("campaign_id");
+  if (lErr) throw new Error(lErr.message);
+
+  const counts = new Map<string, number>();
+  for (const r of (leads ?? []) as Array<{ campaign_id: string | null }>) {
+    if (!r.campaign_id) continue;
+    counts.set(r.campaign_id, (counts.get(r.campaign_id) ?? 0) + 1);
+  }
+
+  return (campaigns ?? [])
+    .map((c) => {
+      const row = c as {
+        id: string;
+        industry: string;
+        city: string;
+        name: string | null;
+      };
+      return {
+        id: row.id,
+        industry: row.industry,
+        city: row.city,
+        name: row.name,
+        lead_count: counts.get(row.id) ?? 0,
+      };
+    })
+    .sort((a, b) => b.lead_count - a.lead_count);
+}
+
+export async function deleteLeadsByCampaign(
+  campaignId: string,
+): Promise<{ deleted: number }> {
+  const db = leadEngine();
+  const { data, error } = await db
+    .from("leads")
+    .delete()
+    .eq("campaign_id", campaignId)
+    .select("id");
+  if (error) throw new Error(error.message);
+  const deleted = (data as { id: string }[] | null)?.length ?? 0;
+  revalidatePath("/akquise");
+  revalidatePath("/akquise/tasks");
+  revalidatePath("/akquise/leads");
+  return { deleted };
+}
+
+export async function deleteSingleLead(
+  leadId: string,
+): Promise<void> {
+  const db = leadEngine();
+  const { error } = await db.from("leads").delete().eq("id", leadId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/akquise");
+  revalidatePath("/akquise/tasks");
+  revalidatePath("/akquise/leads");
+  revalidatePath("/akquise/d2d");
+}
+
 // ── D2D leads (door-to-door, manually added) ─────────────────────────
 
 export async function previewD2DMapsUrl(url: string) {

@@ -42,6 +42,7 @@ import {
 } from "@/app/(app)/akquise/actions";
 import { LeadRowActions } from "@/components/akquise/lead-row-actions";
 import { PickupBadge } from "@/components/akquise/pickup-badge";
+import { CleanupDialog } from "@/components/akquise/cleanup-dialog";
 import type { Channel, Lead, LeadEvent } from "@/lib/lead-engine/types";
 
 const ALL = "__all__";
@@ -330,6 +331,7 @@ export function LeadsTable({
           )}
           Tier-Reset
         </Button>
+        <CleanupDialog />
         <Button
           variant="outline"
           size="sm"

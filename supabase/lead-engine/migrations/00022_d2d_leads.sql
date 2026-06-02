@@ -28,9 +28,10 @@ create index if not exists leads_source_idx on public.leads (lead_source);
 create index if not exists leads_next_step_at_idx on public.leads (next_step_at);
 
 -- Ensure there's a dedicated D2D campaign so the foreign key works
--- without inventing a fake industry/city per lead.
-insert into public.campaigns (industry, city, search_queries)
-select 'd2d', 'manual', array['Door-to-Door manual entry']
+-- without inventing a fake industry/city per lead. The seeded
+-- `campaigns` table has a NOT NULL `name` column we have to provide.
+insert into public.campaigns (name, industry, city, search_queries)
+select 'D2D Manual', 'd2d', 'manual', array['Door-to-Door manual entry']
 where not exists (
   select 1 from public.campaigns where industry = 'd2d' and city = 'manual'
 );

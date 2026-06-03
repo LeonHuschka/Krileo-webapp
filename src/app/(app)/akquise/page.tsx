@@ -277,7 +277,8 @@ export default async function AkquisePage() {
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="space-y-4">
+        {/* Row 1 — Lead-Browser full width */}
         <NavCard
           href="/akquise/leads"
           icon={Users}
@@ -291,28 +292,34 @@ export default async function AkquisePage() {
               : "alle zugewiesen ✓"
           }
         />
-        <NavCard
-          href="/akquise/tasks"
-          icon={Phone}
-          title="Call-Queue"
-          description="Heutige Anrufe nach Score. Bleiben stehen bis du sie wegarbeitest."
-          badge={stats.callPool}
-          badgeLabel="im Pool"
-          meta={`${stats.callsToday} heute gemacht`}
-        />
-        <NavCard
-          href="/akquise/d2d"
-          icon={DoorOpen}
-          title="D2D-Leads"
-          description="Leute die du persönlich getroffen hast — schon warm, kein Cold-Call nötig."
-          badge={stats.d2dActive}
-          badgeLabel="aktiv"
-          meta={
-            stats.d2dOverdue > 0
-              ? `⚠ ${stats.d2dOverdue} überfällig`
-              : "alle aktuell ✓"
-          }
-        />
+
+        {/* Row 2 — Call-Queue + D2D side-by-side */}
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <NavCard
+            href="/akquise/tasks"
+            icon={Phone}
+            title="Call-Queue"
+            description="Heutige Anrufe nach Score. Bleiben stehen bis du sie wegarbeitest."
+            badge={stats.callPool}
+            badgeLabel="im Pool"
+            meta={`${stats.callsToday} heute gemacht`}
+          />
+          <NavCard
+            href="/akquise/d2d"
+            icon={DoorOpen}
+            title="D2D-Leads"
+            description="Leute die du persönlich getroffen hast — schon warm, kein Cold-Call nötig."
+            badge={stats.d2dActive}
+            badgeLabel="aktiv"
+            meta={
+              stats.d2dOverdue > 0
+                ? `⚠ ${stats.d2dOverdue} überfällig`
+                : "alle aktuell ✓"
+            }
+          />
+        </div>
+
+        {/* Row 3 — Closes full width */}
         <NavCard
           href="/akquise/closes"
           icon={Trophy}

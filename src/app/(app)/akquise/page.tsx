@@ -1,5 +1,13 @@
 import Link from "next/link";
-import { Phone, Users, Mail, ArrowRight, Inbox, DoorOpen } from "lucide-react";
+import {
+  Phone,
+  Users,
+  Mail,
+  ArrowRight,
+  Inbox,
+  DoorOpen,
+  Trophy,
+} from "lucide-react";
 import { leadEngine } from "@/lib/lead-engine/supabase";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +35,7 @@ type Stats = {
   callsToday: number;
   d2dActive: number;
   d2dOverdue: number;
+  closesTotal: number;
 };
 
 /**
@@ -93,8 +102,15 @@ async function loadStats(): Promise<Stats> {
   const date = todayBerlin();
   const nowIso = new Date().toISOString();
 
-  const [total, unassigned, callPool, emailPool, callsToday, d2d] =
-    await Promise.all([
+  const [
+    total,
+    unassigned,
+    callPool,
+    emailPool,
+    callsToday,
+    d2d,
+    closesTotal,
+  ] = await Promise.all([
       safeCount(
         db
           .from("leads")
@@ -136,6 +152,15 @@ async function loadStats(): Promise<Stats> {
         }>,
       ),
       d2dStats(db, nowIso),
+      safeCount(
+        db
+          .from("leads")
+          .select("id", { head: true, count: "exact" })
+          .eq("outreach_status", "won") as unknown as PromiseLike<{
+          count: number | null;
+          error: unknown;
+        }>,
+      ),
     ]);
 
   return {
@@ -146,6 +171,7 @@ async function loadStats(): Promise<Stats> {
     callsToday,
     d2dActive: d2d.active,
     d2dOverdue: d2d.overdue,
+    closesTotal,
   };
 }
 
@@ -251,7 +277,7 @@ export default async function AkquisePage() {
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <NavCard
           href="/akquise/tasks"
           icon={Phone}
@@ -273,6 +299,20 @@ export default async function AkquisePage() {
               ? `⚠ ${stats.d2dOverdue} überfällig`
               : "alle aktuell ✓"
           }
+        />
+        <NavCard
+          href="/akquise/closes"
+          icon={Trophy}
+          title="Closes"
+          description="Alle gewonnenen Deals — sortiert nach Datum, mit Volumen-Schätzung."
+          badge={stats.closesTotal}
+          badgeLabel="Verkäufe"
+          meta={
+            stats.closesTotal === 0
+              ? "Noch keine Verkäufe geschlossen"
+              : "→ Alle Closes ansehen"
+          }
+          accent="gold"
         />
         <NavCard
           href="/akquise/leads"
@@ -339,6 +379,7 @@ function NavCard({
   badge,
   badgeLabel,
   meta,
+  accent,
 }: {
   href: string;
   icon: typeof Users;
@@ -347,23 +388,34 @@ function NavCard({
   badge: number;
   badgeLabel: string;
   meta?: string;
+  accent?: "gold";
 }) {
+  const goldHover =
+    accent === "gold" &&
+    "hover:border-amber-500/50 hover:bg-amber-500/[0.04]";
+  const iconCls =
+    accent === "gold"
+      ? "bg-amber-500/15 text-amber-300"
+      : "bg-primary/10 text-primary";
+  const badgeCls =
+    accent === "gold"
+      ? "border-amber-500/40 bg-amber-500/15 text-amber-300"
+      : "border-primary/40 bg-primary/15 text-primary";
   return (
     <Link
       href={href}
-      className="group flex items-start gap-4 rounded-xl border border-border/60 bg-card p-5 transition-all hover:border-primary/40 hover:bg-primary/[0.03]"
+      className={`group flex items-start gap-4 rounded-xl border border-border/60 bg-card p-5 transition-all hover:border-primary/40 hover:bg-primary/[0.03] ${goldHover ?? ""}`}
     >
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+      <div
+        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${iconCls}`}
+      >
         <Icon className="h-5 w-5" />
       </div>
       <div className="min-w-0 flex-1 space-y-1.5">
         <div className="flex items-center justify-between gap-3">
           <span className="font-medium">{title}</span>
           {badge > 0 && (
-            <Badge
-              variant="outline"
-              className="border-primary/40 bg-primary/15 text-primary"
-            >
+            <Badge variant="outline" className={badgeCls}>
               {badge} {badgeLabel}
             </Badge>
           )}

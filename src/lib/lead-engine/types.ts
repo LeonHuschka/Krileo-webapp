@@ -188,6 +188,10 @@ export interface Lead {
   next_step: string | null;
   next_step_at: string | null;
 
+  // Actual negotiated close price (added in 00023_)
+  actual_price_eur: number | null;
+  actual_price_notes: string | null;
+
   // Email artifacts
   email_1_subject: string | null;
   email_1_body: string | null;

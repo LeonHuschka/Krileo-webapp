@@ -28,15 +28,19 @@ function formatEur(amount: number): string {
 
 type LoadResult = {
   closes: Lead[];
-  totalEstimatedMin: number;
-  totalEstimatedMax: number;
+  actualTotal: number;
+  estimatedRemainingMin: number;
+  estimatedRemainingMax: number;
+  countWithActual: number;
   countD2D: number;
   countCold: number;
   monthlyGroups: Array<{
     label: string;
     leads: Lead[];
-    monthMin: number;
-    monthMax: number;
+    monthActual: number;
+    monthEstMin: number;
+    monthEstMax: number;
+    monthActualCount: number;
   }>;
   error: string | null;
 };
@@ -53,13 +57,20 @@ async function loadCloses(): Promise<LoadResult> {
     if (error) throw error;
     const closes = (data ?? []) as Lead[];
 
-    let totalMin = 0;
-    let totalMax = 0;
+    let actualTotal = 0;
+    let estimatedRemainingMin = 0;
+    let estimatedRemainingMax = 0;
+    let countWithActual = 0;
     let countD2D = 0;
     let countCold = 0;
     for (const l of closes) {
-      totalMin += l.suggested_price_min_eur ?? 0;
-      totalMax += l.suggested_price_max_eur ?? 0;
+      if (l.actual_price_eur != null) {
+        actualTotal += l.actual_price_eur;
+        countWithActual += 1;
+      } else {
+        estimatedRemainingMin += l.suggested_price_min_eur ?? 0;
+        estimatedRemainingMax += l.suggested_price_max_eur ?? 0;
+      }
       if (l.lead_source === "d2d") countD2D += 1;
       else countCold += 1;
     }
@@ -81,20 +92,36 @@ async function loadCloses(): Promise<LoadResult> {
           month: "long",
           year: "numeric",
         });
-        let monthMin = 0;
-        let monthMax = 0;
+        let monthActual = 0;
+        let monthEstMin = 0;
+        let monthEstMax = 0;
+        let monthActualCount = 0;
         for (const l of leads) {
-          monthMin += l.suggested_price_min_eur ?? 0;
-          monthMax += l.suggested_price_max_eur ?? 0;
+          if (l.actual_price_eur != null) {
+            monthActual += l.actual_price_eur;
+            monthActualCount += 1;
+          } else {
+            monthEstMin += l.suggested_price_min_eur ?? 0;
+            monthEstMax += l.suggested_price_max_eur ?? 0;
+          }
         }
-        return { label, leads, monthMin, monthMax };
+        return {
+          label,
+          leads,
+          monthActual,
+          monthEstMin,
+          monthEstMax,
+          monthActualCount,
+        };
       })
       .sort((a, b) => (a.label < b.label ? 1 : -1));
 
     return {
       closes,
-      totalEstimatedMin: totalMin,
-      totalEstimatedMax: totalMax,
+      actualTotal,
+      estimatedRemainingMin,
+      estimatedRemainingMax,
+      countWithActual,
       countD2D,
       countCold,
       monthlyGroups,
@@ -103,8 +130,10 @@ async function loadCloses(): Promise<LoadResult> {
   } catch (err) {
     return {
       closes: [],
-      totalEstimatedMin: 0,
-      totalEstimatedMax: 0,
+      actualTotal: 0,
+      estimatedRemainingMin: 0,
+      estimatedRemainingMax: 0,
+      countWithActual: 0,
       countD2D: 0,
       countCold: 0,
       monthlyGroups: [],
@@ -116,15 +145,24 @@ async function loadCloses(): Promise<LoadResult> {
 export default async function ClosesPage() {
   const {
     closes,
-    totalEstimatedMin,
-    totalEstimatedMax,
+    actualTotal,
+    estimatedRemainingMin,
+    estimatedRemainingMax,
+    countWithActual,
     countD2D,
     countCold,
     monthlyGroups,
     error,
   } = await loadCloses();
 
-  const avgMax = closes.length > 0 ? totalEstimatedMax / closes.length : 0;
+  // Average uses actual prices first, falls back to estimate-max for
+  // leads where no actual price is set yet.
+  const sumForAvg =
+    actualTotal +
+    closes
+      .filter((l) => l.actual_price_eur == null)
+      .reduce((s, l) => s + (l.suggested_price_max_eur ?? 0), 0);
+  const avgPerClose = closes.length > 0 ? sumForAvg / closes.length : 0;
 
   return (
     <div className="space-y-6 p-4 md:p-6">
@@ -174,17 +212,23 @@ export default async function ClosesPage() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-muted-foreground">
-                Geschätztes Volumen
+                Verkaufsvolumen
               </span>
               <TrendingUp className="h-3.5 w-3.5 text-emerald-300" />
             </div>
             <div className="mt-2 text-lg font-bold tracking-tight tabular-nums text-emerald-300">
-              {totalEstimatedMin > 0
-                ? `${formatEur(totalEstimatedMin)}–${formatEur(totalEstimatedMax)}`
-                : "—"}
+              {actualTotal > 0
+                ? formatEur(actualTotal)
+                : estimatedRemainingMin > 0
+                  ? `${formatEur(estimatedRemainingMin)}–${formatEur(estimatedRemainingMax)}`
+                  : "—"}
             </div>
             <div className="mt-0.5 text-[10px] text-muted-foreground">
-              basierend auf Preis-Vorschlägen
+              {countWithActual === closes.length && closes.length > 0
+                ? "alles echte Preise"
+                : countWithActual > 0
+                  ? `${countWithActual}× echt, Rest geschätzt: ${formatEur(estimatedRemainingMin)}–${formatEur(estimatedRemainingMax)}`
+                  : "alles geschätzt"}
             </div>
           </CardContent>
         </Card>
@@ -197,7 +241,10 @@ export default async function ClosesPage() {
               <TrendingUp className="h-3.5 w-3.5 text-primary" />
             </div>
             <div className="mt-2 text-lg font-bold tracking-tight tabular-nums">
-              {avgMax > 0 ? formatEur(avgMax) : "—"}
+              {avgPerClose > 0 ? formatEur(avgPerClose) : "—"}
+            </div>
+            <div className="mt-0.5 text-[10px] text-muted-foreground">
+              echt wenn vorhanden, sonst Schätz-Max
             </div>
           </CardContent>
         </Card>
@@ -256,9 +303,13 @@ export default async function ClosesPage() {
                 label={g.label}
                 count={g.leads.length}
                 value={
-                  g.monthMin > 0
-                    ? `${formatEur(g.monthMin)}–${formatEur(g.monthMax)}`
-                    : null
+                  g.monthActual > 0 && g.monthEstMax === 0
+                    ? formatEur(g.monthActual)
+                    : g.monthActual > 0
+                      ? `${formatEur(g.monthActual)} + ${formatEur(g.monthEstMin)}–${formatEur(g.monthEstMax)} geschätzt`
+                      : g.monthEstMin > 0
+                        ? `${formatEur(g.monthEstMin)}–${formatEur(g.monthEstMax)} geschätzt`
+                        : null
                 }
               />
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">

@@ -704,6 +704,74 @@ export async function suggestD2DLeadPrice(leadId: string) {
   return result;
 }
 
+/**
+ * Re-runs the right price estimator for a lead based on its source.
+ * D2D → uses meeting-notes-aware Sonnet pricing.
+ * Anything else → full re-score (also refreshes hook, pain_points,
+ * pickup_profile, etc.).
+ */
+export async function reestimateLeadPrice(leadId: string) {
+  const db = leadEngine();
+  const { data, error } = await db
+    .from("leads")
+    .select("lead_source")
+    .eq("id", leadId)
+    .maybeSingle();
+  if (error || !data) throw new Error("Lead nicht gefunden");
+  const source = (data as { lead_source?: string }).lead_source;
+  if (source === "d2d") {
+    const r = await suggestD2DPrice(leadId);
+    revalidateAll();
+    return {
+      kind: "d2d" as const,
+      min: r.suggested_price_min_eur,
+      max: r.suggested_price_max_eur,
+      fit_offer: r.fit_offer,
+    };
+  }
+  const r = await scoreLead(leadId);
+  revalidateAll();
+  return {
+    kind: "cold_call" as const,
+    min: r.suggested_price_min_eur,
+    max: r.suggested_price_max_eur,
+    fit_offer: r.fit_offer,
+  };
+}
+
+/**
+ * Manually set the negotiated close price on a lead — what the deal
+ * actually went for. Replaces the LLM-suggested range in the closes
+ * aggregates.
+ */
+export async function setActualClosePrice(
+  leadId: string,
+  amount: number | null,
+  notes?: string | null,
+): Promise<void> {
+  const db = leadEngine();
+  const cleaned = amount == null ? null : Math.max(0, Math.round(amount));
+  const { error } = await db
+    .from("leads")
+    .update({
+      actual_price_eur: cleaned,
+      actual_price_notes: notes ?? null,
+    })
+    .eq("id", leadId);
+  if (error) throw new Error(error.message);
+  await appendLeadEvent({
+    leadId,
+    type: "note",
+    notes:
+      cleaned == null
+        ? "Actual-Price gelöscht"
+        : `Actual-Price gesetzt: ${cleaned}€${notes ? ` (${notes})` : ""}`,
+  });
+  revalidatePath("/akquise/closes");
+  revalidatePath("/akquise/leads");
+  revalidatePath(`/akquise/leads/${leadId}`);
+}
+
 // ── Live call coach ──────────────────────────────────────────────────
 
 export async function getCallCoachSuggestions(input: {

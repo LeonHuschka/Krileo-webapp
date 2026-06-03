@@ -13,6 +13,8 @@ import {
   Loader2,
   Snowflake,
   RefreshCw,
+  DoorOpen,
+  Trophy,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -115,6 +117,8 @@ export function LeadsTable({
   const [query, setQuery] = useState("");
   const [tierFilter, setTierFilter] = useState<string>(ALL);
   const [channelFilter, setChannelFilter] = useState<string>(ALL);
+  const [sourceFilter, setSourceFilter] = useState<string>(ALL);
+  const [statusFilter, setStatusFilter] = useState<string>(ALL);
   const [pending, startTransition] = useTransition();
   const [busyLead, setBusyLead] = useState<string | null>(null);
 
@@ -129,16 +133,30 @@ export function LeadsTable({
           return false;
         }
       }
+      if (sourceFilter !== ALL && l.lead_source !== sourceFilter) return false;
+      if (statusFilter !== ALL) {
+        if (statusFilter === "active") {
+          if (
+            l.outreach_status === "won" ||
+            l.outreach_status === "lost" ||
+            l.outreach_status === "suppressed"
+          )
+            return false;
+        } else if (l.outreach_status !== statusFilter) {
+          return false;
+        }
+      }
       if (!q) return true;
       return (
         l.business_name.toLowerCase().includes(q) ||
+        (l.owner_name ?? "").toLowerCase().includes(q) ||
         (l.city ?? "").toLowerCase().includes(q) ||
         (l.category ?? "").toLowerCase().includes(q) ||
         (l.phone ?? "").toLowerCase().includes(q) ||
         (l.owner_email ?? "").toLowerCase().includes(q)
       );
     });
-  }, [leads, query, tierFilter, channelFilter]);
+  }, [leads, query, tierFilter, channelFilter, sourceFilter, statusFilter]);
 
   const unassignedCount = useMemo(
     () =>
@@ -287,6 +305,32 @@ export function LeadsTable({
             <SelectItem value="none">None</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={sourceFilter} onValueChange={setSourceFilter}>
+          <SelectTrigger className="w-[150px]">
+            <SelectValue placeholder="Quelle" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL}>Alle Quellen</SelectItem>
+            <SelectItem value="cold_call">Cold Call</SelectItem>
+            <SelectItem value="d2d">D2D</SelectItem>
+            <SelectItem value="inbound">Inbound</SelectItem>
+            <SelectItem value="referral">Referral</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-[150px]">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL}>Alle Status</SelectItem>
+            <SelectItem value="active">Aktiv (offen)</SelectItem>
+            <SelectItem value="won">Won (Verkauf)</SelectItem>
+            <SelectItem value="replied">Replied</SelectItem>
+            <SelectItem value="scored">Scored</SelectItem>
+            <SelectItem value="lost">Lost</SelectItem>
+            <SelectItem value="suppressed">DNC</SelectItem>
+          </SelectContent>
+        </Select>
         <Button
           variant="outline"
           size="sm"
@@ -380,14 +424,41 @@ export function LeadsTable({
               filtered.map((l) => (
                 <TableRow key={l.id}>
                   <TableCell className="font-medium">
-                    <Link
-                      href={`/akquise/leads/${l.id}`}
-                      className="hover:underline"
-                    >
-                      {l.business_name}
-                    </Link>
+                    <div className="flex items-center gap-1.5">
+                      <Link
+                        href={`/akquise/leads/${l.id}`}
+                        className="hover:underline"
+                      >
+                        {l.owner_name ?? l.business_name}
+                      </Link>
+                      {l.lead_source === "d2d" && (
+                        <Badge
+                          variant="outline"
+                          className="border-primary/40 bg-primary/15 px-1 py-0 text-[9px] uppercase text-primary"
+                          title="Door-to-Door Lead"
+                        >
+                          <DoorOpen className="mr-0.5 h-2.5 w-2.5" />
+                          D2D
+                        </Badge>
+                      )}
+                      {l.outreach_status === "won" && (
+                        <Badge
+                          variant="outline"
+                          className="border-amber-500/40 bg-amber-500/15 px-1 py-0 text-[9px] uppercase text-amber-300"
+                          title="Closed deal"
+                        >
+                          <Trophy className="mr-0.5 h-2.5 w-2.5" />
+                          Won
+                        </Badge>
+                      )}
+                    </div>
+                    {l.owner_name && (
+                      <div className="text-[11px] text-muted-foreground">
+                        {l.business_name}
+                      </div>
+                    )}
                     {l.category && (
-                      <div className="text-xs text-muted-foreground">
+                      <div className="text-xs text-muted-foreground/80">
                         {l.category}
                       </div>
                     )}

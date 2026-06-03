@@ -279,6 +279,19 @@ export default async function AkquisePage() {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <NavCard
+          href="/akquise/leads"
+          icon={Users}
+          title="Lead-Browser"
+          description="Alle Leads filtern, Tier setzen, Channel zuweisen — inkl. D2D + Closes."
+          badge={stats.unassigned}
+          badgeLabel="ohne Channel"
+          meta={
+            stats.unassigned > 0
+              ? "→ Auto-Assign oder einzeln zuweisen"
+              : "alle zugewiesen ✓"
+          }
+        />
+        <NavCard
           href="/akquise/tasks"
           icon={Phone}
           title="Call-Queue"
@@ -313,19 +326,6 @@ export default async function AkquisePage() {
               : "→ Alle Closes ansehen"
           }
           accent="gold"
-        />
-        <NavCard
-          href="/akquise/leads"
-          icon={Users}
-          title="Lead-Browser"
-          description="Alle Leads filtern, Tier setzen, Channel zuweisen."
-          badge={stats.unassigned}
-          badgeLabel="ohne Channel"
-          meta={
-            stats.unassigned > 0
-              ? "→ Auto-Assign oder einzeln zuweisen"
-              : "alle zugewiesen ✓"
-          }
         />
       </div>
     </div>

@@ -20,14 +20,17 @@ import {
   Check,
   X,
   Pencil,
+  FileText,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   reestimateLeadPrice,
   setActualClosePrice,
+  setCloseScope,
 } from "@/app/(app)/akquise/actions";
 import { cn } from "@/lib/utils";
 import type { Lead } from "@/lib/lead-engine/types";
@@ -66,11 +69,15 @@ export function ClosedLeadCard({ lead }: { lead: Lead }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [editing, setEditing] = useState(false);
+  const [editingScope, setEditingScope] = useState(false);
   const [draftPrice, setDraftPrice] = useState<string>(
     lead.actual_price_eur != null ? String(lead.actual_price_eur) : "",
   );
   const [draftNotes, setDraftNotes] = useState<string>(
     lead.actual_price_notes ?? "",
+  );
+  const [draftScope, setDraftScope] = useState<string>(
+    lead.close_scope ?? "",
   );
 
   const suggested =
@@ -112,6 +119,37 @@ export function ClosedLeadCard({ lead }: { lead: Lead }) {
         toast.success(
           `Neu geschätzt: ${formatEur(r.min)}–${formatEur(r.max)} (${r.fit_offer})`,
         );
+        router.refresh();
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Fehler");
+      }
+    });
+  }
+
+  function saveScope() {
+    const trimmed = draftScope.trim();
+    startTransition(async () => {
+      try {
+        await setCloseScope(lead.id, trimmed || null);
+        toast.success(trimmed ? "Scope gespeichert" : "Scope gelöscht");
+        setEditingScope(false);
+        router.refresh();
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Fehler");
+      }
+    });
+  }
+
+  async function saveScopeAndReestimate() {
+    const trimmed = draftScope.trim();
+    startTransition(async () => {
+      try {
+        await setCloseScope(lead.id, trimmed || null);
+        const r = await reestimateLeadPrice(lead.id);
+        toast.success(
+          `Scope + Schätzung: ${formatEur(r.min)}–${formatEur(r.max)}`,
+        );
+        setEditingScope(false);
         router.refresh();
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Fehler");
@@ -198,6 +236,102 @@ export function ClosedLeadCard({ lead }: { lead: Lead }) {
           </div>
         </div>
       </Link>
+
+      {/* Scope — what's actually being delivered */}
+      <div className="rounded-lg border border-sky-500/20 bg-sky-500/[0.04] p-2.5">
+        {!editingScope ? (
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-sky-300/80">
+                <FileText className="h-3 w-3" />
+                Lieferumfang (Scope)
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => setEditingScope(true)}
+                disabled={pending}
+                className="h-6 gap-1 px-1.5 text-[10px] text-sky-300 hover:bg-sky-500/15"
+              >
+                <Pencil className="h-3 w-3" />
+                {lead.close_scope ? "Edit" : "Eintragen"}
+              </Button>
+            </div>
+            {lead.close_scope ? (
+              <p className="whitespace-pre-wrap text-[11px] leading-snug text-foreground">
+                {lead.close_scope}
+              </p>
+            ) : (
+              <p className="text-[10px] italic text-muted-foreground">
+                Wenn vom ursprünglichen Pitch abweichend (z.B. nur
+                Frontend, weniger Module), hier eintragen — die Schätzung
+                richtet sich danach.
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-sky-300/80">
+              <FileText className="h-3 w-3" />
+              Lieferumfang
+            </div>
+            <Textarea
+              autoFocus
+              rows={4}
+              value={draftScope}
+              onChange={(e) => setDraftScope(e.target.value)}
+              placeholder="z.B. »Nur Frontend-Redesign, kein neues Backend, kein Booking-Modul«"
+              className="text-xs leading-snug"
+            />
+            <div className="flex flex-wrap justify-end gap-1">
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setEditingScope(false);
+                  setDraftScope(lead.close_scope ?? "");
+                }}
+                disabled={pending}
+                className="h-7 gap-1 px-2 text-[11px]"
+              >
+                <X className="h-3 w-3" />
+                Abbrechen
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={saveScope}
+                disabled={pending}
+                className="h-7 gap-1 px-2 text-[11px]"
+              >
+                {pending ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Check className="h-3 w-3" />
+                )}
+                Nur speichern
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={saveScopeAndReestimate}
+                disabled={pending}
+                className="h-7 gap-1 bg-sky-500 px-2 text-[11px] text-sky-950 hover:bg-sky-400"
+              >
+                {pending ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3 w-3" />
+                )}
+                Speichern + neu schätzen
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Value block (editable) */}
       <div className="rounded-lg border border-amber-500/20 bg-amber-500/[0.04] p-2.5">

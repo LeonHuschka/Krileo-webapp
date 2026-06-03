@@ -192,6 +192,11 @@ export interface Lead {
   actual_price_eur: number | null;
   actual_price_notes: string | null;
 
+  // What's actually being delivered (added in 00024_) — used by
+  // scope-aware re-estimation when the deal scope differs from the
+  // LLM-assumed ideal package.
+  close_scope: string | null;
+
   // Email artifacts
   email_1_subject: string | null;
   email_1_body: string | null;

@@ -705,25 +705,39 @@ export async function suggestD2DLeadPrice(leadId: string) {
 }
 
 /**
- * Re-runs the right price estimator for a lead based on its source.
- * D2D → uses meeting-notes-aware Sonnet pricing.
- * Anything else → full re-score (also refreshes hook, pain_points,
- * pickup_profile, etc.).
+ * Re-runs the right price estimator for a lead.
+ *
+ *  - D2D leads OR closed deals OR leads with a close_scope set
+ *    → use the scope-aware Sonnet pricing (suggestD2DPrice was
+ *    generalised in this commit; it now consumes close_scope as
+ *    primary signal when present).
+ *  - Everything else (cold_call still in pre-sale phase, no scope
+ *    yet) → full re-score so hook + pain_points + pickup_profile
+ *    refresh together with the price.
  */
 export async function reestimateLeadPrice(leadId: string) {
   const db = leadEngine();
   const { data, error } = await db
     .from("leads")
-    .select("lead_source")
+    .select("lead_source, close_scope, outreach_status")
     .eq("id", leadId)
     .maybeSingle();
   if (error || !data) throw new Error("Lead nicht gefunden");
-  const source = (data as { lead_source?: string }).lead_source;
-  if (source === "d2d") {
+  const row = data as {
+    lead_source?: string;
+    close_scope?: string | null;
+    outreach_status?: string;
+  };
+  const useScopeAware =
+    row.lead_source === "d2d" ||
+    !!row.close_scope?.trim() ||
+    row.outreach_status === "won";
+
+  if (useScopeAware) {
     const r = await suggestD2DPrice(leadId);
     revalidateAll();
     return {
-      kind: "d2d" as const,
+      kind: "scope_aware" as const,
       min: r.suggested_price_min_eur,
       max: r.suggested_price_max_eur,
       fit_offer: r.fit_offer,
@@ -737,6 +751,34 @@ export async function reestimateLeadPrice(leadId: string) {
     max: r.suggested_price_max_eur,
     fit_offer: r.fit_offer,
   };
+}
+
+/**
+ * Update what's actually being delivered. When set, the next price
+ * re-estimation uses this as the primary signal (overrides the LLM's
+ * assumptions about the ideal Krileo package).
+ */
+export async function setCloseScope(
+  leadId: string,
+  scope: string | null,
+): Promise<void> {
+  const db = leadEngine();
+  const cleaned = scope?.trim() ? scope.trim() : null;
+  const { error } = await db
+    .from("leads")
+    .update({ close_scope: cleaned })
+    .eq("id", leadId);
+  if (error) throw new Error(error.message);
+  await appendLeadEvent({
+    leadId,
+    type: "note",
+    notes: cleaned
+      ? `Scope geändert: ${cleaned.length > 80 ? cleaned.slice(0, 80) + "…" : cleaned}`
+      : "Scope gelöscht",
+  });
+  revalidatePath("/akquise/closes");
+  revalidatePath("/akquise/leads");
+  revalidatePath(`/akquise/leads/${leadId}`);
 }
 
 /**

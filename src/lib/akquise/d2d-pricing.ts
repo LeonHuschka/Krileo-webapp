@@ -60,22 +60,43 @@ function buildLeadContext(lead: Lead): string {
     );
   if (lead.phone) lines.push(`Telefon: ${lead.phone}`);
   if (lead.owner_email) lines.push(`E-Mail: ${lead.owner_email}`);
+  lines.push(`Lead-Source: ${lead.lead_source}`);
+  if (lead.outreach_status === "won") {
+    lines.push(`Status: ABGESCHLOSSEN (won)`);
+  }
 
-  lines.push("");
-  lines.push("PERSÖNLICHE BEGEGNUNG:");
-  if (lead.met_at) {
-    lines.push(
-      `Getroffen am: ${new Date(lead.met_at).toLocaleDateString("de-DE")}`,
-    );
+  // The killer field — when set, this is the actual scope of the deal
+  if (lead.close_scope) {
+    lines.push("");
+    lines.push("CLOSE_SCOPE (was tatsächlich verkauft wird):");
+    lines.push(lead.close_scope);
   }
-  if (lead.met_location) lines.push(`Wo: ${lead.met_location}`);
-  if (lead.meeting_notes) {
-    lines.push(`Was wurde besprochen: ${lead.meeting_notes}`);
-  } else {
-    lines.push("Was wurde besprochen: (keine Notizen)");
+
+  // Meeting context — relevant for D2D + early-stage cold-call
+  if (
+    lead.lead_source === "d2d" ||
+    lead.met_at ||
+    lead.met_location ||
+    lead.meeting_notes
+  ) {
+    lines.push("");
+    lines.push("KONTEXT GESPRÄCH / BEGEGNUNG:");
+    if (lead.met_at) {
+      lines.push(
+        `Getroffen am: ${new Date(lead.met_at).toLocaleDateString("de-DE")}`,
+      );
+    }
+    if (lead.met_location) lines.push(`Wo: ${lead.met_location}`);
+    if (lead.meeting_notes) {
+      lines.push(`Besprochen: ${lead.meeting_notes}`);
+    }
+    if (lead.next_step) lines.push(`Next Step: ${lead.next_step}`);
   }
-  if (lead.next_step) lines.push(`Vereinbarter Next Step: ${lead.next_step}`);
-  if (lead.notes) lines.push(`Weitere Notizen: ${lead.notes}`);
+
+  if (lead.notes) {
+    lines.push("");
+    lines.push(`Weitere Notizen: ${lead.notes}`);
+  }
 
   return lines.join("\n");
 }
@@ -100,9 +121,9 @@ export async function suggestD2DPrice(
     .single();
   if (error || !data) throw new Error(`Lead nicht gefunden: ${leadId}`);
   const lead = data as unknown as Lead;
-  if (lead.lead_source !== "d2d") {
-    throw new Error("Preis-Vorschlag nur für D2D-Leads");
-  }
+  // No source restriction anymore — this prompt now handles D2D,
+  // closed cold-call leads with edited close_scope, and any case
+  // where scope-aware pricing is needed.
 
   const userMsg = buildLeadContext(lead);
 

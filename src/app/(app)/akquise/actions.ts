@@ -553,6 +553,7 @@ export async function generateLeads(input: GenerateLeadsInput) {
   return {
     scraped: scrape.scraped,
     inserted: scrape.inserted,
+    duplicates: scrape.duplicates,
     scored: scrape.scored ?? 0,
     enriched: scrape.enriched ?? 0,
     autoAssigned: assigned,

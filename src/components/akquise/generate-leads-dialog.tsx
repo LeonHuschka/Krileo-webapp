@@ -138,16 +138,20 @@ export function GenerateLeadsDialog({
           count,
           autoAssign: autoAssignToggle,
         });
+        const dupes =
+          r.duplicates > 0
+            ? ` · ${r.duplicates} bereits vorhanden`
+            : "";
         const assignSummary =
           r.autoAssigned > 0
             ? ` · ${r.autoAssignCalls ?? 0} Call / ${r.autoAssignEmails ?? 0} Mail`
             : "";
         const cost =
           typeof r.scrapeCostUsd === "number"
-            ? ` · $${r.scrapeCostUsd.toFixed(4)} Scrape-Cost`
+            ? ` · $${r.scrapeCostUsd.toFixed(4)}`
             : "";
         toast.success(
-          `${r.inserted} neue Leads — ${r.scored} gescored${assignSummary}${cost}`,
+          `${r.inserted} neue Leads — ${r.scored} gescored${dupes}${assignSummary}${cost}`,
         );
         setOpen(false);
         router.refresh();

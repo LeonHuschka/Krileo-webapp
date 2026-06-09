@@ -20,6 +20,8 @@ export type ScrapeResult = {
   city: string;
   scraped: number;
   inserted: number;
+  /** Places that already existed in the DB (dedupe hits). */
+  duplicates: number;
   skipped: number;
   enriched?: number;
   scored?: number;
@@ -107,16 +109,20 @@ export async function scrapeCampaign(
     collected.push(...r.places);
   }
 
-  // Dedupe within this batch by place_id BEFORE upsert (saves DB work).
+  // Dedupe within this batch by place_id BEFORE upsert (saves DB work)
+  // + HARD CAP at maxResults so we never over-deliver. DataForSEO
+  // sometimes returns depth+1 or +2 places per search; capping here
+  // matches the user's exact request count.
   const seen = new Set<string>();
-  const places = collected.filter((p) => {
+  const placesAll = collected.filter((p) => {
     const id = p.place_id;
     if (!id) return false;
     if (seen.has(id)) return false;
     seen.add(id);
     return true;
   });
-  const scraped = places.length + (collected.length - places.length);
+  const places = placesAll.slice(0, maxResults);
+  const scraped = places.length;
 
   // 3. Transform DataForSEO place → our leads row shape.
   const valid = places.filter(
@@ -155,21 +161,41 @@ export async function scrapeCampaign(
     raw_data: p as unknown as Record<string, unknown>,
   }));
 
-  // 4. Upsert (ignore duplicates by (source, source_place_id))
+  // 4. Pre-check existing place_ids so we can report duplicates
+  //    accurately (Supabase upsert with ignoreDuplicates returns the
+  //    *processed* count, not the *new* count — we have to compute
+  //    duplicates ourselves).
   let inserted = 0;
+  let duplicates = 0;
   if (leads.length > 0) {
-    const { error: upsertError, count } = await db
+    const placeIds = leads.map((l) => l.source_place_id);
+    const { data: existing } = await db
       .from("leads")
-      .upsert(leads, {
-        onConflict: "source,source_place_id",
-        ignoreDuplicates: true,
-        count: "exact",
-      });
+      .select("source_place_id")
+      .eq("source", "google_maps")
+      .in("source_place_id", placeIds);
+    const existingIds = new Set(
+      ((existing ?? []) as Array<{ source_place_id: string }>).map(
+        (r) => r.source_place_id,
+      ),
+    );
+    duplicates = existingIds.size;
 
-    if (upsertError) {
-      throw new Error(`Leads upsert failed: ${upsertError.message}`);
+    const newLeads = leads.filter(
+      (l) => !existingIds.has(l.source_place_id),
+    );
+    if (newLeads.length > 0) {
+      const { error: upsertError } = await db
+        .from("leads")
+        .upsert(newLeads, {
+          onConflict: "source,source_place_id",
+          ignoreDuplicates: true,
+        });
+      if (upsertError) {
+        throw new Error(`Leads upsert failed: ${upsertError.message}`);
+      }
+      inserted = newLeads.length;
     }
-    inserted = count ?? leads.length;
   }
 
   const result: ScrapeResult = {
@@ -178,6 +204,7 @@ export async function scrapeCampaign(
     city: campaign.city,
     scraped,
     inserted,
+    duplicates,
     skipped,
     scrapeCostUsd: aggregatedScrapeCost > 0 ? aggregatedScrapeCost : null,
   };

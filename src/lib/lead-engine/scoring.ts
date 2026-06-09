@@ -34,6 +34,9 @@ export type ScoringResult = {
   suggested_price_max_eur: number;
   pain_points: string[];
   personalized_hook: string;
+  pickup_line: string;
+  gatekeeper_line: string;
+  fit_offer_pitch: string;
 };
 
 const SCORING_SCHEMA = {
@@ -78,6 +81,9 @@ const SCORING_SCHEMA = {
       items: { type: "string" },
     },
     personalized_hook: { type: "string" },
+    pickup_line: { type: "string" },
+    gatekeeper_line: { type: "string" },
+    fit_offer_pitch: { type: "string" },
   },
   required: [
     "score_breakdown",
@@ -88,6 +94,9 @@ const SCORING_SCHEMA = {
     "suggested_price_max_eur",
     "pain_points",
     "personalized_hook",
+    "pickup_line",
+    "gatekeeper_line",
+    "fit_offer_pitch",
   ],
   additionalProperties: false,
 } as const;
@@ -198,6 +207,9 @@ export async function scoreLead(leadId: string): Promise<ScoringResult> {
       suggested_price_max_eur: parsed.suggested_price_max_eur,
       pain_points: parsed.pain_points,
       personalized_hook: parsed.personalized_hook,
+      pickup_line: parsed.pickup_line,
+      gatekeeper_line: parsed.gatekeeper_line,
+      fit_offer_pitch: parsed.fit_offer_pitch,
       outreach_status: "scored",
     })
     .eq("id", leadId);

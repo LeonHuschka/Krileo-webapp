@@ -38,7 +38,6 @@ import {
 } from "@/app/(app)/akquise/actions";
 import { AppointmentDialog } from "@/components/akquise/appointment-dialog";
 import { CallbackDialog } from "@/components/akquise/callback-dialog";
-import { CallCoachSheet } from "@/components/akquise/call-coach-sheet";
 import { LeadHistoryStrip } from "@/components/akquise/lead-history-strip";
 import { PhoneManager } from "@/components/akquise/phone-manager";
 import { PickupBadge } from "@/components/akquise/pickup-badge";
@@ -213,14 +212,13 @@ export function CallCard({
               </span>
             )}
           </div>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
+          <div className="mt-2">
             <PickupBadge
               leadId={lead.id}
               profile={lead.pickup_profile ?? null}
               ownerName={lead.owner_name}
               variant="full"
             />
-            <CallCoachSheet lead={lead} />
           </div>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
@@ -340,31 +338,73 @@ export function CallCard({
         })}
       </div>
 
-      {/* Hook */}
+      {/* Pickup Lines — sprechbar, mit Owner-Name */}
+      {(lead.pickup_line || lead.gatekeeper_line) && (
+        <div className="space-y-1.5">
+          {/* Gatekeeper-Line first if needed */}
+          {lead.gatekeeper_line && lead.pickup_profile !== "owner_direct" && (
+            <div className="rounded-lg border border-rose-500/30 bg-rose-500/[0.04] p-2.5">
+              <div className="mb-0.5 text-[10px] uppercase tracking-wider text-rose-300/80">
+                Wenn Empfangskraft rangeht
+              </div>
+              <p className="text-[13px] leading-snug text-foreground">
+                «{lead.gatekeeper_line}»
+              </p>
+            </div>
+          )}
+          {/* Owner direct pickup line */}
+          {lead.pickup_line && (
+            <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/[0.05] p-2.5">
+              <div className="mb-0.5 text-[10px] uppercase tracking-wider text-emerald-300/80">
+                {lead.pickup_profile === "owner_direct"
+                  ? "Direkt zum Inhaber"
+                  : "Wenn Inhaber rangeht"}
+              </div>
+              <p className="text-[13px] leading-snug text-foreground">
+                «{lead.pickup_line}»
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Hook — Customer-Perspektive Story */}
       {lead.personalized_hook && (
         <div className="rounded-lg border border-primary/30 bg-primary/[0.05] p-3 text-sm leading-snug">
+          <div className="mb-1 text-[10px] uppercase tracking-wider text-primary/80">
+            Hook (wenn durchgekommen)
+          </div>
           {lead.personalized_hook}
         </div>
       )}
 
-      {/* Price + fit offer */}
+      {/* Price + fit offer (mit Satz-Erklärung) */}
       {(priceRange || lead.fit_offer || lead.business_size) && (
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          {lead.fit_offer && (
-            <Badge
-              variant="outline"
-              className="border-border/60 bg-card text-[10px]"
-            >
-              {lead.fit_offer}
-            </Badge>
-          )}
-          {priceRange && (
-            <span className="font-semibold tabular-nums text-emerald-300">
-              {priceRange}
-            </span>
-          )}
-          {lead.business_size && (
-            <span className="text-muted-foreground">· {lead.business_size}</span>
+        <div className="space-y-1">
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            {priceRange && (
+              <span className="font-semibold tabular-nums text-emerald-300">
+                {priceRange}
+              </span>
+            )}
+            {lead.fit_offer && (
+              <Badge
+                variant="outline"
+                className="border-border/60 bg-card text-[10px]"
+              >
+                {lead.fit_offer}
+              </Badge>
+            )}
+            {lead.business_size && (
+              <span className="text-muted-foreground">
+                · {lead.business_size}
+              </span>
+            )}
+          </div>
+          {lead.fit_offer_pitch && (
+            <p className="text-[11px] italic leading-snug text-muted-foreground">
+              {lead.fit_offer_pitch}
+            </p>
           )}
         </div>
       )}

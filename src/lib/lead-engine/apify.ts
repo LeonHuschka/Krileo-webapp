@@ -90,13 +90,18 @@ export async function scrapeCampaign(
   const collected: RawPlace[] = [];
 
   for (const q of campaign.search_queries) {
+    // Skip locationName — DataForSEO requires it to match their
+    // canonical location-DB exactly (e.g. "Stuttgart, Stuttgart Region,
+    // Baden-Württemberg, Germany"), and plain "City,Germany" gets
+    // rejected as Invalid Field. The keyword itself already carries
+    // the city name (campaign.search_queries are built like
+    // "Friseur Stuttgart"), so country-level location_code is enough
+    // for Google Maps to localise the search.
     const r = await searchPlaces({
       keyword: q,
       depth: maxResults,
       languageCode: "de",
-      locationName: campaign.city
-        ? `${campaign.city},Germany`
-        : "Germany",
+      locationCode: 2276, // Germany
     });
     if (typeof r.cost === "number") aggregatedScrapeCost += r.cost;
     collected.push(...r.places);

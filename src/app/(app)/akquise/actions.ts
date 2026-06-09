@@ -950,6 +950,106 @@ export async function setMinCallScore(score: number): Promise<void> {
   revalidatePath("/akquise");
 }
 
+export type AutoGenSettings = {
+  daily_lead_target: number;
+  auto_gen_niches: string[];
+  auto_gen_cities: string[];
+};
+
+export async function getAutoGenSettings(): Promise<AutoGenSettings> {
+  const db = leadEngine();
+  try {
+    const { data } = await db
+      .from("app_settings")
+      .select("daily_lead_target, auto_gen_niches, auto_gen_cities")
+      .eq("id", 1)
+      .maybeSingle();
+    const row = data as {
+      daily_lead_target?: number;
+      auto_gen_niches?: string[];
+      auto_gen_cities?: string[];
+    } | null;
+    return {
+      daily_lead_target: row?.daily_lead_target ?? 0,
+      auto_gen_niches: row?.auto_gen_niches ?? [],
+      auto_gen_cities: row?.auto_gen_cities ?? [],
+    };
+  } catch {
+    return { daily_lead_target: 0, auto_gen_niches: [], auto_gen_cities: [] };
+  }
+}
+
+export async function setAutoGenSettings(
+  input: AutoGenSettings,
+): Promise<void> {
+  const db = leadEngine();
+  const target = Math.max(0, Math.min(500, Math.round(input.daily_lead_target)));
+  const niches = input.auto_gen_niches
+    .map((n) => n.trim())
+    .filter((n) => n.length > 0);
+  const cities = input.auto_gen_cities
+    .map((c) => c.trim())
+    .filter((c) => c.length > 0);
+  const { error } = await db
+    .from("app_settings")
+    .update({
+      daily_lead_target: target,
+      auto_gen_niches: niches,
+      auto_gen_cities: cities,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", 1);
+  if (error) throw new Error(error.message);
+  revalidatePath("/akquise");
+}
+
+/**
+ * Manual trigger for the same rotation generator the cron uses —
+ * lets the user fill the pool now without waiting for tomorrow's
+ * 05:00 cron. Returns the aggregate result for a toast.
+ */
+export async function runAutoGenerationNow(target?: number) {
+  const settings = await getAutoGenSettings();
+  if (!settings.auto_gen_niches.length || !settings.auto_gen_cities.length) {
+    throw new Error(
+      "Bitte erst Niches + Städte in den Auto-Gen-Settings hinterlegen",
+    );
+  }
+  const { runAutoGeneration } = await import("@/lib/akquise/auto-generation");
+  const { enrichAllPending } = await import("@/lib/lead-engine/enrichment");
+  const { scoreAllPending } = await import("@/lib/lead-engine/scoring");
+  const { routePendingLeads } = await import(
+    "@/lib/lead-engine/channel-router"
+  );
+
+  const r = await runAutoGeneration({
+    target: target ?? settings.daily_lead_target,
+    niches: settings.auto_gen_niches,
+    cities: settings.auto_gen_cities,
+    batchSize: 20,
+  });
+
+  if (r.newLeads > 0) {
+    try {
+      await enrichAllPending({ limit: r.newLeads + 50, concurrency: 8 });
+    } catch {
+      /* */
+    }
+    try {
+      await scoreAllPending({ limit: r.newLeads + 50, concurrency: 8 });
+    } catch {
+      /* */
+    }
+    try {
+      await routePendingLeads({ limit: 500 });
+    } catch {
+      /* */
+    }
+  }
+  revalidateAll();
+  return r;
+}
+
 // ── Campaign find-or-create (for ad-hoc niches) ──────────────────────
 
 function slugifyIndustry(raw: string): string {

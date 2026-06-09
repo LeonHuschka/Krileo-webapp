@@ -4,6 +4,7 @@ import { leadEngine } from "@/lib/lead-engine/supabase";
 import { enrichLead } from "@/lib/lead-engine/enrichment";
 import { scoreLead } from "@/lib/lead-engine/scoring";
 import { assignChannel } from "@/lib/lead-engine/channel-router";
+import { searchPlaces } from "@/lib/lead-engine/dataforseo";
 import type {
   ApifyPlace,
   Campaign,
@@ -23,6 +24,8 @@ export type ScrapeResult = {
   enriched?: number;
   scored?: number;
   routed?: number;
+  /** USD cost reported by the scraper (DataForSEO only). */
+  scrapeCostUsd?: number | null;
 };
 
 export type ScrapeOptions = {
@@ -57,9 +60,6 @@ export async function scrapeCampaign(
   maxResults = 50,
   opts: ScrapeOptions = {},
 ): Promise<ScrapeResult> {
-  const token = requireEnv("APIFY_API_TOKEN");
-  const actorId = requireEnv("APIFY_ACTOR_ID");
-
   const db = leadEngine();
 
   // 1. Look up campaign
@@ -81,78 +81,71 @@ export async function scrapeCampaign(
     throw new Error(`Campaign ${campaignId} has no search_queries`);
   }
 
-  // 2. Run Apify actor synchronously, get dataset items inline
-  const apifyUrl =
-    `${APIFY_BASE}/acts/${actorId}/run-sync-get-dataset-items?token=${token}`;
+  // 2. DataForSEO Live Maps SERP — synchronous, ~6 sec turnaround.
+  //    Each search returns up to `depth` places ($0.002 per search).
+  //    Multiple search_queries → multiple searches, dedupe later via
+  //    upsert on (source, source_place_id).
+  let aggregatedScrapeCost = 0;
+  type RawPlace = Awaited<ReturnType<typeof searchPlaces>>["places"][number];
+  const collected: RawPlace[] = [];
 
-  // Divide the per-search cap by the number of queries so the total
-  // place count stays close to the user-requested maxResults instead
-  // of multiplying by N queries.
-  const queryCount = Math.max(1, campaign.search_queries.length);
-  const perSearchCap = Math.max(1, Math.ceil(maxResults / queryCount));
-
-  const apifyResp = await fetch(apifyUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      searchStringsArray: campaign.search_queries,
-      locationQuery: `${campaign.city}, Germany`,
-      maxCrawledPlacesPerSearch: perSearchCap,
-      language: "de",
-      countryCode: "de",
-      skipClosedPlaces: true,
-      scrapePlaceDetailPage: true,
-      scrapeContacts: true,
-      scrapeSocialMediaProfiles: {
-        instagrams: true,
-        facebooks: true,
-      },
-      maxReviews: 0,
-      maxImages: 0,
-      maxQuestions: 0,
-    }),
-    // Apify run-sync can take a while; we don't enforce a client timeout
-    // here. Vercel cron is the entry point, which has its own ceiling.
-  });
-
-  if (!apifyResp.ok) {
-    const body = await apifyResp.text().catch(() => "");
-    throw new Error(
-      `Apify request failed ${apifyResp.status}: ${body.slice(0, 500)}`,
-    );
+  for (const q of campaign.search_queries) {
+    const r = await searchPlaces({
+      keyword: q,
+      depth: maxResults,
+      languageCode: "de",
+      locationName: campaign.city
+        ? `${campaign.city},Germany`
+        : "Germany",
+    });
+    if (typeof r.cost === "number") aggregatedScrapeCost += r.cost;
+    collected.push(...r.places);
   }
 
-  const places: ApifyPlace[] = await apifyResp.json();
-  const scraped = Array.isArray(places) ? places.length : 0;
+  // Dedupe within this batch by place_id BEFORE upsert (saves DB work).
+  const seen = new Set<string>();
+  const places = collected.filter((p) => {
+    const id = p.place_id;
+    if (!id) return false;
+    if (seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+  const scraped = places.length + (collected.length - places.length);
 
-  // 3. Transform
-  const valid = (places ?? []).filter(
-    (p): p is ApifyPlace =>
-      typeof p?.title === "string" && typeof p?.placeId === "string",
+  // 3. Transform DataForSEO place → our leads row shape.
+  const valid = places.filter(
+    (p) => typeof p.title === "string" && typeof p.place_id === "string",
   );
   const skipped = scraped - valid.length;
 
   const leads = valid.map((p) => ({
     campaign_id: campaignId,
     source: "google_maps",
-    source_place_id: p.placeId!,
+    source_place_id: p.place_id!,
     business_name: p.title!,
-    category: p.categoryName ?? null,
+    category: p.category ?? null,
     address: p.address ?? null,
-    street: p.street ?? null,
-    postal_code: p.postalCode ?? null,
-    city: p.city ?? null,
-    country: (p.countryCode ?? "DE").toUpperCase(),
-    latitude: p.location?.lat ?? null,
-    longitude: p.location?.lng ?? null,
-    phone: p.phoneUnformatted ?? p.phone ?? null,
-    website_url: p.website ?? null,
-    google_url: p.url ?? null,
-    google_rating: p.totalScore ?? null,
-    google_reviews_count: p.reviewsCount ?? 0,
-    owner_email: p.emails?.[0] ?? null,
-    instagram_url: p.instagrams?.[0] ?? null,
-    facebook_url: p.facebooks?.[0] ?? null,
+    street: p.address_info?.address ?? null,
+    postal_code: p.address_info?.zip ?? null,
+    city: p.address_info?.city ?? campaign.city ?? null,
+    country: (p.address_info?.country_code ?? "DE").toUpperCase(),
+    latitude: p.latitude ?? null,
+    longitude: p.longitude ?? null,
+    phone: p.phone ?? null,
+    website_url: p.url ?? null,
+    google_url: p.cid
+      ? `https://maps.google.com/?cid=${p.cid}`
+      : p.place_id
+        ? `https://www.google.com/maps/place/?q=place_id:${p.place_id}`
+        : null,
+    google_rating: p.rating?.value ?? null,
+    google_reviews_count: p.rating?.votes_count ?? 0,
+    // DataForSEO Maps SERP doesn't include owner email or social media —
+    // we enrich those separately via the impressum scraper + Haiku.
+    owner_email: null,
+    instagram_url: null,
+    facebook_url: null,
     outreach_status: "raw" as const,
     raw_data: p as unknown as Record<string, unknown>,
   }));
@@ -181,6 +174,7 @@ export async function scrapeCampaign(
     scraped,
     inserted,
     skipped,
+    scrapeCostUsd: aggregatedScrapeCost > 0 ? aggregatedScrapeCost : null,
   };
 
   // Chain the rest of the pipeline so a freshly scraped campaign is

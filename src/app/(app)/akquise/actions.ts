@@ -559,6 +559,7 @@ export async function generateLeads(input: GenerateLeadsInput) {
     autoAssignCalls: assignedCalls,
     autoAssignEmails: assignedEmails,
     autoAssignForced: count > AUTO_ASSIGN_THRESHOLD,
+    scrapeCostUsd: scrape.scrapeCostUsd ?? null,
   };
 }
 

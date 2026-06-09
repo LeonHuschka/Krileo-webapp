@@ -142,8 +142,12 @@ export function GenerateLeadsDialog({
           r.autoAssigned > 0
             ? ` · ${r.autoAssignCalls ?? 0} Call / ${r.autoAssignEmails ?? 0} Mail`
             : "";
+        const cost =
+          typeof r.scrapeCostUsd === "number"
+            ? ` · $${r.scrapeCostUsd.toFixed(4)} Scrape-Cost`
+            : "";
         toast.success(
-          `${r.inserted} neue Leads — ${r.scored} gescored${assignSummary}`,
+          `${r.inserted} neue Leads — ${r.scored} gescored${assignSummary}${cost}`,
         );
         setOpen(false);
         router.refresh();

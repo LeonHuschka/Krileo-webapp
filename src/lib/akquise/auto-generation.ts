@@ -2,6 +2,7 @@ import "server-only";
 
 import { leadEngine } from "@/lib/lead-engine/supabase";
 import { scrapeCampaign } from "@/lib/lead-engine/apify";
+import { expandScope } from "@/lib/akquise/geography";
 
 /**
  * Auto-rotation lead generator. Picks niche × city combos until
@@ -16,7 +17,10 @@ import { scrapeCampaign } from "@/lib/lead-engine/apify";
 export type AutoGenInput = {
   target: number;
   niches: string[];
+  /** Explicit cities + free-text towns. */
   cities: string[];
+  /** Bundesländer — expanded to their >50k cities at runtime. */
+  bundeslaender?: string[];
   /** Leads to fetch per single search call. Default 20. */
   batchSize?: number;
 };
@@ -45,7 +49,10 @@ export async function runAutoGeneration(
   const target = Math.max(1, input.target);
   const batchSize = Math.max(5, Math.min(100, input.batchSize ?? 20));
   const niches = input.niches.filter((n) => n?.trim()).map((n) => n.trim());
-  const cities = input.cities.filter((c) => c?.trim()).map((c) => c.trim());
+  const cities = expandScope({
+    bundeslaender: input.bundeslaender,
+    cities: input.cities,
+  });
 
   if (niches.length === 0 || cities.length === 0) {
     return {
@@ -59,25 +66,32 @@ export async function runAutoGeneration(
     };
   }
 
-  // Build combo list — round-robin to spread evenly
-  const combos: Array<{ niche: string; city: string }> = [];
-  for (const c of cities) {
-    for (const n of niches) {
-      combos.push({ niche: n, city: c });
-    }
-  }
+  // Order combos so we hit the freshest ground first: never-scraped →
+  // least-recently-scraped → already-saturated last. This is what keeps
+  // the run from re-pulling exhausted towns into duplicates.
+  const sat = await loadSaturationMap();
+  const ordered = cities
+    .flatMap((city) => niches.map((niche) => ({ niche, city })))
+    .map((cb) => {
+      const st = sat[comboKey(cb.niche, cb.city)];
+      const scrapedBefore = !!st?.last_scraped_at;
+      const priority = !scrapedBefore ? 0 : st!.saturated ? 2 : 1;
+      const ts = st?.last_scraped_at ? new Date(st.last_scraped_at).getTime() : 0;
+      return { ...cb, priority, ts };
+    })
+    .sort((a, b) => a.priority - b.priority || a.ts - b.ts);
 
   let newLeads = 0;
   let duplicates = 0;
   let cost = 0;
   const used: AutoGenResult["combos"] = [];
-  let comboIdx = 0;
-  let exhaustedRoundCount = 0;
+  let attempted = 0;
 
-  while (newLeads < target) {
+  for (const combo of ordered) {
+    if (newLeads >= target) break;
     if (Date.now() - t0 > TIME_BUDGET_MS) {
       return {
-        attempted: comboIdx,
+        attempted,
         newLeads,
         duplicates,
         combos: used,
@@ -86,16 +100,11 @@ export async function runAutoGeneration(
         stoppedReason: "time_budget",
       };
     }
-
-    const combo = combos[comboIdx % combos.length];
-    comboIdx += 1;
-
-    const campaignId = await findOrCreateCampaign(combo.niche, combo.city);
-
+    attempted += 1;
     try {
-      // Don't run the full enrich+score pipeline here — that gets
-      // chained outside of this loop by the cron, in one batched run
-      // over everything we inserted.
+      // Don't run the full enrich+score pipeline here — the caller
+      // batches that over everything inserted, once.
+      const campaignId = await findOrCreateCampaign(combo.niche, combo.city);
       const r = await scrapeCampaign(campaignId, batchSize, {
         pipeline: false,
       });
@@ -108,35 +117,91 @@ export async function runAutoGeneration(
         inserted: r.inserted,
         duplicates: r.duplicates,
       });
-      if (r.inserted === 0) exhaustedRoundCount += 1;
-      else exhaustedRoundCount = 0;
     } catch {
       /* skip combo on error, continue */
-    }
-
-    // Exhaustion = went through every combo and got 0 new leads in
-    // each. Either no fresh data left or all niches/cities saturated.
-    if (exhaustedRoundCount >= combos.length) {
-      return {
-        attempted: comboIdx,
-        newLeads,
-        duplicates,
-        combos: used,
-        elapsedMs: Date.now() - t0,
-        cost,
-        stoppedReason: "exhausted",
-      };
     }
   }
 
   return {
-    attempted: comboIdx,
+    attempted,
     newLeads,
     duplicates,
     combos: used,
     elapsedMs: Date.now() - t0,
     cost,
-    stoppedReason: "target_reached",
+    // Ran out of fresh combos before hitting target → exhausted.
+    stoppedReason: newLeads >= target ? "target_reached" : "exhausted",
+  };
+}
+
+// ── Saturation + coverage ─────────────────────────────────────────────
+
+type SaturationState = { saturated: boolean; last_scraped_at: string | null };
+
+function comboKey(niche: string, city: string): string {
+  return `${slugifyIndustry(niche)}|${titleCase(city)}`;
+}
+
+async function loadSaturationMap(): Promise<Record<string, SaturationState>> {
+  const db = leadEngine();
+  const { data } = await db
+    .from("campaigns")
+    .select("industry, city, saturated, last_scraped_at");
+  const map: Record<string, SaturationState> = {};
+  for (const row of (data ?? []) as Array<{
+    industry: string;
+    city: string;
+    saturated: boolean | null;
+    last_scraped_at: string | null;
+  }>) {
+    map[`${row.industry}|${row.city}`] = {
+      saturated: !!row.saturated,
+      last_scraped_at: row.last_scraped_at,
+    };
+  }
+  return map;
+}
+
+export type CoverageResult = {
+  totalCombos: number;
+  scrapedCombos: number;
+  saturatedCombos: number;
+  pct: number; // % of niche×city combos already exhausted
+};
+
+/**
+ * How much of the configured scope is already scraped dry — so the UI
+ * can show "X% ausgeschöpft" and the user knows when to widen the scope.
+ */
+export async function computeCoverage(input: {
+  niches: string[];
+  cities: string[];
+  bundeslaender?: string[];
+}): Promise<CoverageResult> {
+  const niches = input.niches.filter((n) => n?.trim()).map((n) => n.trim());
+  const cities = expandScope({
+    bundeslaender: input.bundeslaender,
+    cities: input.cities,
+  });
+  const total = niches.length * cities.length;
+  if (total === 0) {
+    return { totalCombos: 0, scrapedCombos: 0, saturatedCombos: 0, pct: 0 };
+  }
+  const sat = await loadSaturationMap();
+  let scraped = 0;
+  let saturated = 0;
+  for (const city of cities) {
+    for (const niche of niches) {
+      const st = sat[comboKey(niche, city)];
+      if (st?.last_scraped_at) scraped += 1;
+      if (st?.saturated) saturated += 1;
+    }
+  }
+  return {
+    totalCombos: total,
+    scrapedCombos: scraped,
+    saturatedCombos: saturated,
+    pct: Math.round((saturated / total) * 100),
   };
 }
 

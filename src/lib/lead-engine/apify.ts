@@ -67,9 +67,9 @@ export async function scrapeCampaign(
   // 1. Look up campaign
   const { data: campaign, error: campaignError } = await db
     .from("campaigns")
-    .select("id, industry, city, search_queries")
+    .select("id, industry, city, search_queries, total_inserted")
     .eq("id", campaignId)
-    .single<Campaign>();
+    .single<Campaign & { total_inserted?: number }>();
 
   if (campaignError) {
     throw new Error(
@@ -208,6 +208,25 @@ export async function scrapeCampaign(
     skipped,
     scrapeCostUsd: aggregatedScrapeCost > 0 ? aggregatedScrapeCost : null,
   };
+
+  // Record saturation so the generator can skip exhausted combos next
+  // time. Saturated = this scrape produced 0 new leads (either all dupes
+  // or nothing left to find here). Best-effort — never block the scrape.
+  try {
+    const prevTotal =
+      (campaign as { total_inserted?: number }).total_inserted ?? 0;
+    await db
+      .from("campaigns")
+      .update({
+        last_scraped_at: new Date().toISOString(),
+        last_inserted: inserted,
+        total_inserted: prevTotal + inserted,
+        saturated: inserted === 0,
+      })
+      .eq("id", campaignId);
+  } catch {
+    /* saturation tracking is best-effort */
+  }
 
   // Chain the rest of the pipeline so a freshly scraped campaign is
   // immediately usable (owner names, scores, prices) without manual

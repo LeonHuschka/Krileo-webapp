@@ -970,6 +970,7 @@ export type AutoGenSettings = {
   daily_lead_target: number;
   auto_gen_niches: string[];
   auto_gen_cities: string[];
+  auto_gen_bundeslaender: string[];
 };
 
 export async function getAutoGenSettings(): Promise<AutoGenSettings> {
@@ -977,21 +978,30 @@ export async function getAutoGenSettings(): Promise<AutoGenSettings> {
   try {
     const { data } = await db
       .from("app_settings")
-      .select("daily_lead_target, auto_gen_niches, auto_gen_cities")
+      .select(
+        "daily_lead_target, auto_gen_niches, auto_gen_cities, auto_gen_bundeslaender",
+      )
       .eq("id", 1)
       .maybeSingle();
     const row = data as {
       daily_lead_target?: number;
       auto_gen_niches?: string[];
       auto_gen_cities?: string[];
+      auto_gen_bundeslaender?: string[];
     } | null;
     return {
       daily_lead_target: row?.daily_lead_target ?? 0,
       auto_gen_niches: row?.auto_gen_niches ?? [],
       auto_gen_cities: row?.auto_gen_cities ?? [],
+      auto_gen_bundeslaender: row?.auto_gen_bundeslaender ?? [],
     };
   } catch {
-    return { daily_lead_target: 0, auto_gen_niches: [], auto_gen_cities: [] };
+    return {
+      daily_lead_target: 0,
+      auto_gen_niches: [],
+      auto_gen_cities: [],
+      auto_gen_bundeslaender: [],
+    };
   }
 }
 
@@ -1006,17 +1016,31 @@ export async function setAutoGenSettings(
   const cities = input.auto_gen_cities
     .map((c) => c.trim())
     .filter((c) => c.length > 0);
+  const bundeslaender = (input.auto_gen_bundeslaender ?? [])
+    .map((b) => b.trim())
+    .filter((b) => b.length > 0);
   const { error } = await db
     .from("app_settings")
     .update({
       daily_lead_target: target,
       auto_gen_niches: niches,
       auto_gen_cities: cities,
+      auto_gen_bundeslaender: bundeslaender,
       updated_at: new Date().toISOString(),
     })
     .eq("id", 1);
   if (error) throw new Error(error.message);
   revalidatePath("/akquise");
+}
+
+export async function getAutoGenCoverage() {
+  const settings = await getAutoGenSettings();
+  const { computeCoverage } = await import("@/lib/akquise/auto-generation");
+  return computeCoverage({
+    niches: settings.auto_gen_niches,
+    cities: settings.auto_gen_cities,
+    bundeslaender: settings.auto_gen_bundeslaender,
+  });
 }
 
 /**
@@ -1026,9 +1050,12 @@ export async function setAutoGenSettings(
  */
 export async function runAutoGenerationNow(target?: number) {
   const settings = await getAutoGenSettings();
-  if (!settings.auto_gen_niches.length || !settings.auto_gen_cities.length) {
+  const hasScope =
+    settings.auto_gen_cities.length > 0 ||
+    settings.auto_gen_bundeslaender.length > 0;
+  if (!settings.auto_gen_niches.length || !hasScope) {
     throw new Error(
-      "Bitte erst Niches + Städte in den Auto-Gen-Settings hinterlegen",
+      "Bitte erst Niches + Gebiet (Bundesland oder Stadt) in den Auto-Gen-Settings hinterlegen",
     );
   }
   const { runAutoGeneration } = await import("@/lib/akquise/auto-generation");
@@ -1042,6 +1069,7 @@ export async function runAutoGenerationNow(target?: number) {
     target: target ?? settings.daily_lead_target,
     niches: settings.auto_gen_niches,
     cities: settings.auto_gen_cities,
+    bundeslaender: settings.auto_gen_bundeslaender,
     batchSize: 20,
   });
 

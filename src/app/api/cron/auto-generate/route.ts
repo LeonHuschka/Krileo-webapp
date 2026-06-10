@@ -22,12 +22,15 @@ async function loadSettings(): Promise<{
   target: number;
   niches: string[];
   cities: string[];
+  bundeslaender: string[];
 } | null> {
   try {
     const db = leadEngine();
     const { data, error } = await db
       .from("app_settings")
-      .select("daily_lead_target, auto_gen_niches, auto_gen_cities")
+      .select(
+        "daily_lead_target, auto_gen_niches, auto_gen_cities, auto_gen_bundeslaender",
+      )
       .eq("id", 1)
       .maybeSingle();
     if (error || !data) return null;
@@ -35,12 +38,14 @@ async function loadSettings(): Promise<{
       daily_lead_target?: number;
       auto_gen_niches?: string[];
       auto_gen_cities?: string[];
+      auto_gen_bundeslaender?: string[];
     };
     if (!s.daily_lead_target || s.daily_lead_target <= 0) return null;
     return {
       target: s.daily_lead_target,
       niches: s.auto_gen_niches ?? [],
       cities: s.auto_gen_cities ?? [],
+      bundeslaender: s.auto_gen_bundeslaender ?? [],
     };
   } catch {
     return null;
@@ -81,6 +86,7 @@ export async function GET(req: Request) {
     target: settings.target,
     niches: settings.niches,
     cities: settings.cities,
+    bundeslaender: settings.bundeslaender,
     batchSize: 20,
   });
 

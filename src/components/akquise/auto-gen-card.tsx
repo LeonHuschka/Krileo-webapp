@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -11,6 +11,7 @@ import {
   Sparkles,
   X,
   Plus,
+  MapPin,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,15 +19,29 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  BUNDESLAENDER,
+  GERMAN_CITIES_50K,
+  expandScope,
+} from "@/lib/akquise/geography";
+import {
   runAutoGenerationNow,
   setAutoGenSettings,
   type AutoGenSettings,
 } from "@/app/(app)/akquise/actions";
 
+export type AutoGenCoverage = {
+  totalCombos: number;
+  scrapedCombos: number;
+  saturatedCombos: number;
+  pct: number;
+};
+
 export function AutoGenCard({
   initial,
+  coverage,
 }: {
   initial: AutoGenSettings;
+  coverage?: AutoGenCoverage;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -34,13 +49,25 @@ export function AutoGenCard({
   const [target, setTarget] = useState<number>(initial.daily_lead_target);
   const [niches, setNiches] = useState<string[]>(initial.auto_gen_niches);
   const [cities, setCities] = useState<string[]>(initial.auto_gen_cities);
+  const [bundeslaender, setBundeslaender] = useState<string[]>(
+    initial.auto_gen_bundeslaender ?? [],
+  );
   const [draftNiche, setDraftNiche] = useState("");
   const [draftCity, setDraftCity] = useState("");
 
+  const hasScope =
+    initial.auto_gen_cities.length > 0 ||
+    initial.auto_gen_bundeslaender.length > 0;
   const configured =
     initial.daily_lead_target > 0 &&
     initial.auto_gen_niches.length > 0 &&
-    initial.auto_gen_cities.length > 0;
+    hasScope;
+
+  // How many distinct towns the current scope expands to (live preview).
+  const expandedCount = useMemo(
+    () => expandScope({ bundeslaender, cities }).length,
+    [bundeslaender, cities],
+  );
 
   function save() {
     startTransition(async () => {
@@ -49,6 +76,7 @@ export function AutoGenCard({
           daily_lead_target: target,
           auto_gen_niches: niches,
           auto_gen_cities: cities,
+          auto_gen_bundeslaender: bundeslaender,
         });
         toast.success("Auto-Gen Settings gespeichert");
         setEditing(false);
@@ -61,12 +89,12 @@ export function AutoGenCard({
 
   function runNow() {
     if (!configured) {
-      toast.error("Erst Niches + Städte konfigurieren");
+      toast.error("Erst Niches + Gebiet konfigurieren");
       return;
     }
     if (
       !confirm(
-        `Auto-Generation starten — Ziel: ${initial.daily_lead_target} Leads aus ${initial.auto_gen_niches.length} Niches × ${initial.auto_gen_cities.length} Städten. Kann 2-4 Min dauern.`,
+        `Auto-Generation starten — Ziel: ${initial.daily_lead_target} Leads aus ${initial.auto_gen_niches.length} Niches. Zieht clever frische Orte zuerst. Kann 2-4 Min dauern.`,
       )
     )
       return;
@@ -74,7 +102,7 @@ export function AutoGenCard({
       try {
         const r = await runAutoGenerationNow();
         toast.success(
-          `${r.newLeads} neue Leads (${r.duplicates} doppelt) · $${r.cost.toFixed(4)} · ${Math.round(r.elapsedMs / 1000)}s · Reason: ${r.stoppedReason}`,
+          `${r.newLeads} neue Leads (${r.duplicates} doppelt) · $${r.cost.toFixed(4)} · ${Math.round(r.elapsedMs / 1000)}s · ${r.stoppedReason}`,
           { duration: 12_000 },
         );
         router.refresh();
@@ -99,11 +127,17 @@ export function AutoGenCard({
     const v = draftCity.trim();
     if (!v) return;
     if (cities.includes(v)) {
-      toast.error("Stadt schon drin");
+      toast.error("Ort schon drin");
       return;
     }
     setCities([...cities, v]);
     setDraftCity("");
+  }
+
+  function toggleBundesland(bl: string) {
+    setBundeslaender((prev) =>
+      prev.includes(bl) ? prev.filter((x) => x !== bl) : [...prev, bl],
+    );
   }
 
   return (
@@ -117,8 +151,8 @@ export function AutoGenCard({
             </div>
             <p className="text-xs text-muted-foreground">
               {configured
-                ? `Täglich 05:00 — Ziel: ${initial.daily_lead_target} Leads aus ${initial.auto_gen_niches.length} Niches × ${initial.auto_gen_cities.length} Städten.`
-                : "Konfiguriere Ziel + Niches + Städte. Dann läuft täglich ein Cron der dir frische Leads scrapt."}
+                ? `Täglich 05:00 — Ziel: ${initial.daily_lead_target} Leads aus ${initial.auto_gen_niches.length} Niches × ${expandedCount} Orten. Frische Orte zuerst, ausgeschöpfte werden übersprungen.`
+                : "Konfiguriere Ziel + Niches + Gebiet (Bundesland oder Stadt). Dann läuft täglich ein Cron der dir frische Leads scrapt."}
             </p>
           </div>
           <div className="flex gap-1">
@@ -152,6 +186,22 @@ export function AutoGenCard({
           </div>
         </div>
 
+        {/* Coverage readout */}
+        {configured && coverage && coverage.totalCombos > 0 && (
+          <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full bg-emerald-500/70"
+                style={{ width: `${coverage.pct}%` }}
+              />
+            </div>
+            <span className="shrink-0">
+              {coverage.pct}% ausgeschöpft ({coverage.saturatedCombos}/
+              {coverage.totalCombos} Niche×Ort)
+            </span>
+          </div>
+        )}
+
         {configured && !editing && (
           <div className="flex flex-wrap gap-1.5 pt-1">
             {initial.auto_gen_niches.map((n) => (
@@ -161,6 +211,15 @@ export function AutoGenCard({
                 className="border-emerald-500/40 bg-emerald-500/15 text-[10px] text-emerald-300"
               >
                 {n}
+              </Badge>
+            ))}
+            {initial.auto_gen_bundeslaender.map((b) => (
+              <Badge
+                key={b}
+                variant="outline"
+                className="border-violet-500/40 bg-violet-500/15 text-[10px] text-violet-300"
+              >
+                {b}
               </Badge>
             ))}
             {initial.auto_gen_cities.map((c) => (
@@ -192,8 +251,11 @@ export function AutoGenCard({
               />
             </div>
 
+            {/* Niches */}
             <div className="space-y-1.5">
-              <Label className="text-xs">Niches (z.B. Friseur, Praxis, Druckerei)</Label>
+              <Label className="text-xs">
+                Niches (z.B. Friseur, Praxis, Druckerei)
+              </Label>
               <div className="flex gap-1">
                 <Input
                   value={draftNiche}
@@ -232,13 +294,44 @@ export function AutoGenCard({
               </div>
             </div>
 
+            {/* Bundesländer */}
             <div className="space-y-1.5">
-              <Label className="text-xs">Städte (z.B. Stuttgart, München, Berlin)</Label>
+              <Label className="text-xs">
+                Bundesländer (= alle Städte &gt;50k darin, breit)
+              </Label>
+              <div className="flex flex-wrap gap-1">
+                {BUNDESLAENDER.map((bl) => {
+                  const on = bundeslaender.includes(bl);
+                  return (
+                    <button
+                      key={bl}
+                      type="button"
+                      onClick={() => toggleBundesland(bl)}
+                      className={`rounded border px-1.5 py-0.5 text-[10px] transition-colors ${
+                        on
+                          ? "border-violet-500/50 bg-violet-500/20 text-violet-200"
+                          : "border-border/50 text-muted-foreground hover:border-violet-500/40"
+                      }`}
+                    >
+                      {bl}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Cities (>50k via datalist) + custom free-text */}
+            <div className="space-y-1.5">
+              <Label className="text-xs">
+                Einzelne Städte / Orte (Tippen = Vorschläge &gt;50k, oder
+                freie Eingabe wie Nürtingen)
+              </Label>
               <div className="flex gap-1">
                 <Input
+                  list="cities50k"
                   value={draftCity}
                   onChange={(e) => setDraftCity(e.target.value)}
-                  placeholder="Stadt eingeben…"
+                  placeholder="Stadt/Ort eingeben…"
                   className="h-7 text-xs"
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
@@ -247,6 +340,11 @@ export function AutoGenCard({
                     }
                   }}
                 />
+                <datalist id="cities50k">
+                  {GERMAN_CITIES_50K.map((c) => (
+                    <option key={c.name} value={c.name} />
+                  ))}
+                </datalist>
                 <Button
                   type="button"
                   size="sm"
@@ -286,8 +384,11 @@ export function AutoGenCard({
               Settings speichern
             </Button>
 
-            <p className="text-[10px] text-muted-foreground">
-              Cron läuft jeden Tag um 05:00 Berlin. Bei {niches.length}×{cities.length} = {niches.length * cities.length} Kombis rotiert er bis zum Ziel von {target}. Stoppt automatisch wenn nur noch Duplikate kommen.
+            <p className="flex items-center gap-1 text-[10px] text-muted-foreground">
+              <MapPin className="h-3 w-3" />
+              {niches.length} Niches × {expandedCount} Orte ={" "}
+              {niches.length * expandedCount} Kombis. Rotiert frische zuerst,
+              überspringt ausgeschöpfte, stoppt bei Ziel {target}.
             </p>
           </div>
         )}

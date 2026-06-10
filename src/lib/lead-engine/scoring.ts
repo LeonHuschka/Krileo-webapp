@@ -3,6 +3,7 @@ import "server-only";
 import { claude, firstTextBlock } from "@/lib/lead-engine/claude";
 import { leadEngine } from "@/lib/lead-engine/supabase";
 import { LEAD_SCORING_SYSTEM } from "@/lib/lead-engine/prompts/lead-scoring";
+import { SCORING_VERIFY_SYSTEM } from "@/lib/lead-engine/prompts/scoring-verify";
 import {
   fetchWebsiteContext,
   renderWebsiteContext,
@@ -168,10 +169,97 @@ function buildUserPrompt(
   return fields.join("\n");
 }
 
+// ── Self-verification pass ────────────────────────────────────────────
+
+type VerifyResult = {
+  contradiction: boolean;
+  reason: string;
+  fixed_fit_offer: FitOffer;
+  fixed_fit_offer_pitch: string;
+  fixed_pain_points: string[];
+  severity_penalty: number;
+};
+
+const VERIFY_SCHEMA = {
+  type: "object",
+  properties: {
+    contradiction: { type: "boolean" },
+    reason: { type: "string" },
+    fixed_fit_offer: {
+      type: "string",
+      enum: ["website", "booking", "automation", "saas"],
+    },
+    fixed_fit_offer_pitch: { type: "string" },
+    fixed_pain_points: { type: "array", items: { type: "string" } },
+    severity_penalty: { type: "integer" },
+  },
+  required: [
+    "contradiction",
+    "reason",
+    "fixed_fit_offer",
+    "fixed_fit_offer_pitch",
+    "fixed_pain_points",
+    "severity_penalty",
+  ],
+  additionalProperties: false,
+} as const;
+
+/**
+ * Independent second pass: re-checks the proposed offer against the real
+ * website so we never ship one that contradicts what the business
+ * already has. Returns null on any failure (verification is best-effort
+ * — a check that errors must not block scoring).
+ */
+async function verifyOffer(
+  websiteCtx: WebsiteContext,
+  proposed: ScoringResult,
+): Promise<VerifyResult | null> {
+  try {
+    const userPrompt = [
+      renderWebsiteContext(websiteCtx),
+      "",
+      "VORGESCHLAGENE OFFER (vom Scorer):",
+      `fit_offer: ${proposed.fit_offer}`,
+      `fit_offer_pitch: ${proposed.fit_offer_pitch}`,
+      `pain_points: ${proposed.pain_points.join(" | ")}`,
+      `website_assessment.already_has_online_ordering: ${proposed.website_assessment.already_has_online_ordering}`,
+      `website_assessment.already_has_online_booking: ${proposed.website_assessment.already_has_online_booking}`,
+      `website_assessment.design_quality: ${proposed.website_assessment.design_quality}`,
+      `suggested_price: ${proposed.suggested_price_min_eur}-${proposed.suggested_price_max_eur} EUR`,
+    ].join("\n");
+
+    const response = await claude().messages.create({
+      model: "claude-haiku-4-5",
+      max_tokens: 700,
+      output_config: {
+        format: {
+          type: "json_schema",
+          schema: VERIFY_SCHEMA as unknown as Record<string, unknown>,
+        },
+      } as unknown as Record<string, unknown>,
+      system: [
+        {
+          type: "text",
+          text: SCORING_VERIFY_SYSTEM,
+          cache_control: { type: "ephemeral" },
+        },
+      ],
+      messages: [{ role: "user", content: userPrompt }],
+    });
+    const text = firstTextBlock(response.content);
+    if (!text) return null;
+    return JSON.parse(text) as VerifyResult;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Score a single lead. Uses Claude Sonnet 4.6 with structured outputs
- * (json_schema) so we get a deterministic JSON back. Writes the result
- * onto the lead and bumps outreach_status to 'scored'.
+ * (json_schema) so we get a deterministic JSON back, then runs an
+ * independent Haiku verification pass that auto-corrects any offer
+ * contradicting the real website. Writes the result onto the lead and
+ * bumps outreach_status to 'scored'.
  */
 export async function scoreLead(leadId: string): Promise<ScoringResult> {
   const db = leadEngine();
@@ -231,6 +319,33 @@ export async function scoreLead(leadId: string): Promise<ScoringResult> {
     throw new Error(
       `Scoring response was not valid JSON: ${err instanceof Error ? err.message : String(err)}`,
     );
+  }
+
+  // Independent verification pass — auto-corrects an offer that
+  // contradicts the real website (the "copy shop already has ordering"
+  // class of bug) and penalizes invented pain. Best-effort: a failed
+  // check leaves the original scoring untouched.
+  const verdict = await verifyOffer(websiteCtx, parsed);
+  if (verdict?.contradiction) {
+    parsed.fit_offer = verdict.fixed_fit_offer;
+    if (verdict.fixed_fit_offer_pitch?.trim()) {
+      parsed.fit_offer_pitch = verdict.fixed_fit_offer_pitch.trim();
+    }
+    if (verdict.fixed_pain_points?.length) {
+      parsed.pain_points = verdict.fixed_pain_points;
+    }
+    const penalty = Math.max(0, Math.min(25, Math.round(verdict.severity_penalty)));
+    parsed.score_breakdown.pain_severity = Math.max(
+      0,
+      parsed.score_breakdown.pain_severity - penalty,
+    );
+    parsed.score_breakdown.fit_confidence = Math.max(
+      0,
+      parsed.score_breakdown.fit_confidence - Math.round(penalty / 2),
+    );
+    parsed.score_breakdown.rationale =
+      `⚠ Auto-Check korrigierte die Offer (${verdict.reason}). ` +
+      parsed.score_breakdown.rationale;
   }
 
   // Compute total score as the sum of the five components — natural

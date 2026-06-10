@@ -29,6 +29,10 @@ import {
   getReplies,
   pushLeadsToCampaign,
 } from "@/lib/smartlead/service";
+import {
+  clearCampaignNiche,
+  setCampaignNiche,
+} from "@/lib/smartlead/storage";
 import { nextActionAfterNoAnswer } from "@/lib/lead-engine/cascade";
 import {
   createAppointment,
@@ -1211,6 +1215,36 @@ export async function createSmartleadCampaign(name: string) {
   const res = await slCreateCampaign(trimmed);
   revalidatePath("/akquise/mail");
   return res;
+}
+
+/**
+ * Create a Smartlead campaign that is immediately bound to a lead niche.
+ * The binding means this campaign can only ever be fed that niche's
+ * leads — that's how we prevent cross-niche pushes structurally.
+ */
+export async function createSmartleadCampaignForNiche(input: {
+  name: string;
+  niche: string;
+}) {
+  const name = input.name.trim();
+  if (!name) throw new Error("Kampagnen-Name fehlt");
+  if (!input.niche.trim()) throw new Error("Niche fehlt");
+  const res = await slCreateCampaign(name);
+  await setCampaignNiche(res.id, input.niche.trim());
+  revalidatePath("/akquise/mail");
+  return res;
+}
+
+export async function assignSmartleadCampaignNiche(
+  campaignId: number,
+  niche: string,
+) {
+  if (!niche.trim()) {
+    await clearCampaignNiche(campaignId);
+  } else {
+    await setCampaignNiche(campaignId, niche.trim());
+  }
+  revalidatePath("/akquise/mail");
 }
 
 export async function setSmartleadCampaignStatus(

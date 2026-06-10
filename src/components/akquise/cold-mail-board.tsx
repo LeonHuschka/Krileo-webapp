@@ -16,16 +16,15 @@ import {
   Inbox,
   Eye,
   Ban,
-  TriangleAlert,
   Copy,
   ExternalLink,
   Tag,
+  Link2,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -36,28 +35,34 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SMARTLEAD_MERGE_TAGS } from "@/lib/smartlead/mapping";
 import {
-  createSmartleadCampaign,
+  assignSmartleadCampaignNiche,
+  createSmartleadCampaignForNiche,
   pushLeadsToSmartlead,
   registerSmartleadWebhook,
   setSmartleadCampaignStatus,
 } from "@/app/(app)/akquise/actions";
 import type { PoolLead, ReplyLead } from "@/app/(app)/akquise/mail/page";
 
+type Analytics = {
+  sent: number;
+  opened: number;
+  replied: number;
+  bounced: number;
+  clicked: number;
+  unsubscribed: number;
+  total: number;
+};
+
 type CampaignView = {
   id: number;
   name: string;
   status: string;
   localPushed: number;
-  analytics: {
-    sent: number;
-    opened: number;
-    replied: number;
-    bounced: number;
-    clicked: number;
-    unsubscribed: number;
-    total: number;
-  };
+  niche: string | null;
+  analytics: Analytics;
 };
+
+const SMARTLEAD_APP_URL = "https://app.smartlead.ai";
 
 export function ColdMailBoard({
   configured,
@@ -73,82 +78,58 @@ export function ColdMailBoard({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
-  // Group the pool by niche (derived from each lead's source campaign)
-  // so a copy-shop campaign never gets fed physio leads.
-  const niches = useMemo(() => {
-    const m = new Map<string, number>();
+  // Pool leads grouped by niche, preserving the server's score order.
+  const poolByNiche = useMemo(() => {
+    const m: Record<string, PoolLead[]> = {};
     for (const l of poolLeads) {
       const k = l.niche ?? "Sonstige";
-      m.set(k, (m.get(k) ?? 0) + 1);
+      (m[k] ??= []).push(l);
     }
-    return Array.from(m.entries())
-      .map(([niche, n]) => ({ niche, n }))
-      .sort((a, b) => b.n - a.n);
+    return m;
   }, [poolLeads]);
 
-  const poolCount = poolLeads.length;
-  const [campaignId, setCampaignId] = useState<string>(
-    campaigns[0] ? String(campaigns[0].id) : "",
-  );
-  const [niche, setNiche] = useState<string>(niches[0]?.niche ?? "__all__");
-  const [newName, setNewName] = useState("");
-
-  const filteredPool = useMemo(
+  const poolNiches = useMemo(
     () =>
-      niche === "__all__"
-        ? poolLeads
-        : poolLeads.filter((l) => (l.niche ?? "Sonstige") === niche),
-    [poolLeads, niche],
-  );
-  const filteredCount = filteredPool.length;
-  const [count, setCount] = useState<number>(Math.min(filteredCount, 25) || 0);
-
-  function changeNiche(v: string) {
-    setNiche(v);
-    const fc =
-      v === "__all__"
-        ? poolLeads.length
-        : poolLeads.filter((l) => (l.niche ?? "Sonstige") === v).length;
-    setCount(Math.min(fc, 25) || 0);
-  }
-
-  const selectedCampaign = useMemo(
-    () => campaigns.find((c) => String(c.id) === campaignId),
-    [campaigns, campaignId],
+      Object.entries(poolByNiche)
+        .map(([niche, leads]) => ({ niche, count: leads.length }))
+        .sort((a, b) => b.count - a.count),
+    [poolByNiche],
   );
 
-  function handlePush() {
-    if (!campaignId) {
-      toast.error("Wähle zuerst eine Kampagne");
+  const boundCampaigns = campaigns.filter((c) => c.niche);
+  const unboundCampaigns = campaigns.filter((c) => !c.niche);
+  const nichesWithCampaign = new Set(
+    boundCampaigns.map((c) => c.niche as string),
+  );
+  const openNiches = poolNiches.filter(
+    (n) => !nichesWithCampaign.has(n.niche),
+  );
+
+  // ── handlers ────────────────────────────────────────────────────────
+  function handlePush(
+    campaignId: number,
+    campName: string,
+    niche: string,
+    leadIds: string[],
+  ) {
+    if (leadIds.length === 0) {
+      toast.error("Keine neuen Leads für diese Niche");
       return;
     }
-    // Push EXACTLY the leads shown for the selected niche (top N by
-    // score), by explicit id — never a blind "top N of everything".
-    const n = Math.max(1, Math.min(count || 0, filteredCount));
-    const ids = filteredPool.slice(0, n).map((l) => l.id);
-    if (ids.length === 0) {
-      toast.error("Keine Leads in dieser Niche");
-      return;
-    }
-    const campName = selectedCampaign?.name ?? `#${campaignId}`;
-    const nicheLabel = niche === "__all__" ? "gemischte" : niche;
     if (
       !window.confirm(
-        `${ids.length} ${nicheLabel} Leads in „${campName}" pushen?`,
+        `${leadIds.length} ${niche}-Leads in „${campName}" pushen?`,
       )
     ) {
       return;
     }
     startTransition(async () => {
       try {
-        const res = await pushLeadsToSmartlead({
-          campaignId: Number(campaignId),
-          leadIds: ids,
-        });
+        const res = await pushLeadsToSmartlead({ campaignId, leadIds });
         toast.success(
           `${res.uploaded} gepusht${res.duplicates ? ` · ${res.duplicates} Dups` : ""}${
             res.invalid ? ` · ${res.invalid} ungültig` : ""
-          }${res.noEmail ? ` · ${res.noEmail} ohne Mail` : ""}`,
+          }`,
         );
         router.refresh();
       } catch (err) {
@@ -157,18 +138,36 @@ export function ColdMailBoard({
     });
   }
 
-  function handleCreate() {
-    const name = newName.trim();
-    if (!name) return;
+  function handleCreateForNiche(niche: string) {
+    const name = window.prompt(
+      `Name der Smartlead-Kampagne für „${niche}":`,
+      `${niche} – Cold Mail`,
+    );
+    if (name === null) return;
+    const trimmed = name.trim();
+    if (!trimmed) return;
     startTransition(async () => {
       try {
-        const res = await createSmartleadCampaign(name);
-        toast.success(`Kampagne "${res.name}" angelegt (#${res.id})`);
-        setNewName("");
-        setCampaignId(String(res.id));
+        const res = await createSmartleadCampaignForNiche({
+          name: trimmed,
+          niche,
+        });
+        toast.success(`„${res.name}" angelegt & an ${niche} gebunden`);
         router.refresh();
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Anlegen fehlgeschlagen");
+      }
+    });
+  }
+
+  function handleAssignNiche(campaignId: number, niche: string) {
+    startTransition(async () => {
+      try {
+        await assignSmartleadCampaignNiche(campaignId, niche);
+        toast.success(`Kampagne an ${niche} gebunden`);
+        router.refresh();
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Zuordnen fehlgeschlagen");
       }
     });
   }
@@ -196,10 +195,12 @@ export function ColdMailBoard({
     });
   }
 
+  const poolCount = poolLeads.length;
+
   return (
     <Tabs defaultValue="push" className="space-y-4">
       <TabsList>
-        <TabsTrigger value="push">Push &amp; Kampagnen</TabsTrigger>
+        <TabsTrigger value="push">Kampagnen &amp; Push</TabsTrigger>
         <TabsTrigger value="replies" className="gap-1.5">
           <Reply className="h-3.5 w-3.5" /> Replies
           {replies.length > 0 && (
@@ -211,216 +212,82 @@ export function ColdMailBoard({
         <TabsTrigger value="vars">Merge-Variablen</TabsTrigger>
       </TabsList>
 
-      {/* ── PUSH + CAMPAIGNS ─────────────────────────────────────────── */}
-      <TabsContent value="push" className="space-y-4">
-        {/* Push panel */}
-        <Card className="border-primary/30 bg-primary/[0.03]">
-          <CardContent className="space-y-4 p-5">
-            <div className="flex items-center gap-2">
-              <Send className="h-4 w-4 text-primary" />
-              <h2 className="font-medium">Leads in Kampagne pushen</h2>
-              <Badge variant="outline" className="ml-auto border-border/60">
-                {filteredCount} bereit
-                {niche !== "__all__" ? ` · ${niche}` : ""}
-              </Badge>
-            </div>
-
-            {poolCount === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Kein E-Mail-Lead bereit. Im Lead-Browser Leads auf Channel{" "}
-                <strong>E-Mail</strong> setzen (oder Auto-Assign) — dann tauchen
-                sie hier auf.
-              </p>
-            ) : (
-              <>
-                <div className="flex flex-wrap items-end gap-3">
-                  <div className="space-y-1.5">
-                    <Label className="flex items-center gap-1 text-xs">
-                      <Tag className="h-3 w-3" /> Niche
-                    </Label>
-                    <Select value={niche} onValueChange={changeNiche}>
-                      <SelectTrigger className="w-[210px]">
-                        <SelectValue placeholder="Niche wählen" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {niches.map((n) => (
-                          <SelectItem key={n.niche} value={n.niche}>
-                            {n.niche} ({n.n})
-                          </SelectItem>
-                        ))}
-                        <SelectItem value="__all__">
-                          Alle gemischt ({poolCount})
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Kampagne</Label>
-                    <Select value={campaignId} onValueChange={setCampaignId}>
-                      <SelectTrigger className="w-[250px]">
-                        <SelectValue placeholder="Kampagne wählen" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {campaigns.map((c) => (
-                          <SelectItem key={c.id} value={String(c.id)}>
-                            {c.name} · {c.status}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Anzahl (Top n. Score)</Label>
-                    <Input
-                      type="number"
-                      min={1}
-                      max={filteredCount}
-                      value={count}
-                      onChange={(e) => setCount(Number(e.target.value))}
-                      className="w-24"
+      {/* ── KAMPAGNEN & PUSH ─────────────────────────────────────────── */}
+      <TabsContent value="push" className="space-y-6">
+        {!configured ? null : (
+          <>
+            {/* Bound campaigns — push lives inside each card, niche-scoped */}
+            {boundCampaigns.length > 0 && (
+              <section className="space-y-3">
+                <h2 className="text-sm font-medium text-muted-foreground">
+                  Kampagnen
+                </h2>
+                <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                  {boundCampaigns.map((c) => (
+                    <CampaignCard
+                      key={c.id}
+                      c={c}
+                      nicheLeads={poolByNiche[c.niche as string] ?? []}
+                      pending={pending}
+                      onPush={handlePush}
+                      onStatus={handleStatus}
+                      onWebhook={handleWebhook}
                     />
-                  </div>
-                  <Button
-                    onClick={handlePush}
-                    disabled={pending || !campaignId || filteredCount === 0}
-                  >
-                    {pending ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Send className="h-4 w-4" />
-                    )}
-                    {count > 0
-                      ? `${Math.min(count, filteredCount)} pushen`
-                      : "Pushen"}
-                  </Button>
-                  <button
-                    type="button"
-                    className="text-xs text-muted-foreground underline-offset-2 hover:underline"
-                    onClick={() => setCount(filteredCount)}
-                  >
-                    alle {filteredCount}
-                  </button>
+                  ))}
                 </div>
-
-                <p className="text-xs text-muted-foreground">
-                  Du pushst{" "}
-                  <strong className="text-foreground">
-                    {Math.min(count || 0, filteredCount)}{" "}
-                    {niche === "__all__" ? "gemischte" : niche}
-                  </strong>{" "}
-                  Leads →{" "}
-                  <strong className="text-foreground">
-                    {selectedCampaign?.name ?? "—"}
-                  </strong>
-                  . Niche &amp; Kampagne müssen zusammenpassen.
-                </p>
-
-                {niche === "__all__" && (
-                  <p className="flex items-center gap-1.5 text-xs text-rose-300">
-                    <TriangleAlert className="h-3.5 w-3.5" />
-                    Gemischte Niches — nur nutzen wenn die Kampagne
-                    niche-unabhängig getextet ist.
-                  </p>
-                )}
-              </>
+              </section>
             )}
 
-            {selectedCampaign &&
-              selectedCampaign.status !== "ACTIVE" &&
-              filteredCount > 0 && (
-                <p className="flex items-center gap-1.5 text-xs text-amber-300/90">
-                  <TriangleAlert className="h-3.5 w-3.5" />
-                  Kampagne ist {selectedCampaign.status} — Leads landen drin,
-                  aber es wird erst gesendet wenn du sie startest.
-                </p>
-              )}
-          </CardContent>
-        </Card>
+            {/* Niches present in the pool that have no campaign yet */}
+            {openNiches.length > 0 && (
+              <section className="space-y-3">
+                <h2 className="text-sm font-medium text-muted-foreground">
+                  Niches ohne Kampagne
+                </h2>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                  {openNiches.map((n) => (
+                    <NicheCreateCard
+                      key={n.niche}
+                      niche={n.niche}
+                      count={n.count}
+                      pending={pending}
+                      onCreate={handleCreateForNiche}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
 
-        {/* Pool preview (filtered by niche) */}
-        {filteredCount > 0 && (
-          <Card>
-            <CardContent className="p-4">
-              <div className="mb-2 text-xs font-medium text-muted-foreground">
-                Nächste{niche !== "__all__" ? ` ${niche}` : ""} im Pool — Top{" "}
-                {Math.min(filteredCount, 10)}
-              </div>
-              <div className="space-y-1">
-                {filteredPool.slice(0, 10).map((l) => (
-                  <div key={l.id} className="flex items-center gap-2 text-sm">
-                    <span className="font-medium">{l.business_name}</span>
-                    <span className="truncate text-xs text-muted-foreground">
-                      {l.owner_email}
-                    </span>
-                    {l.niche && (
-                      <Badge
-                        variant="outline"
-                        className="shrink-0 border-border/50 text-[10px] text-muted-foreground"
-                      >
-                        {l.niche}
-                      </Badge>
-                    )}
-                    {l.lead_score != null && (
-                      <Badge
-                        variant="outline"
-                        className="ml-auto shrink-0 border-border/60 text-[11px]"
-                      >
-                        {l.lead_score}
-                      </Badge>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+            {/* Existing Smartlead campaigns not yet bound to a niche */}
+            {unboundCampaigns.length > 0 && (
+              <section className="space-y-3">
+                <h2 className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+                  <Link2 className="h-3.5 w-3.5" /> Nicht zugeordnete Kampagnen
+                </h2>
+                <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                  {unboundCampaigns.map((c) => (
+                    <UnboundCampaignCard
+                      key={c.id}
+                      c={c}
+                      poolNiches={poolNiches}
+                      pending={pending}
+                      onAssign={handleAssignNiche}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
 
-        {/* Create campaign */}
-        <Card>
-          <CardContent className="flex flex-wrap items-end gap-3 p-4">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Neue Smartlead-Kampagne</Label>
-              <Input
-                placeholder="z.B. Friseure Stuttgart – Website"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                className="w-[320px]"
-              />
-            </div>
-            <Button
-              variant="outline"
-              onClick={handleCreate}
-              disabled={pending || !newName.trim()}
-            >
-              <Plus className="h-4 w-4" /> Anlegen
-            </Button>
-            <p className="text-xs text-muted-foreground">
-              Wird als <code>DRAFTED</code> angelegt — Sequenz, Sender &amp;
-              Schedule danach in Smartlead einrichten.
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Campaign cards */}
-        {!configured ? null : campaigns.length === 0 ? (
-          <Card>
-            <CardContent className="p-6 text-sm text-muted-foreground">
-              Noch keine Kampagnen. Leg oben eine an oder erstelle sie in
-              Smartlead.
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            {campaigns.map((c) => (
-              <CampaignCard
-                key={c.id}
-                c={c}
-                pending={pending}
-                onStatus={handleStatus}
-                onWebhook={handleWebhook}
-              />
-            ))}
-          </div>
+            {poolCount === 0 && boundCampaigns.length === 0 && (
+              <Card>
+                <CardContent className="p-6 text-sm text-muted-foreground">
+                  Kein E-Mail-Lead bereit. Im Lead-Browser Leads auf Channel{" "}
+                  <strong>E-Mail</strong> setzen (oder Auto-Assign) — dann
+                  erscheinen hier pro Niche Cards.
+                </CardContent>
+              </Card>
+            )}
+          </>
         )}
       </TabsContent>
 
@@ -503,43 +370,83 @@ export function ColdMailBoard({
   );
 }
 
-function MergeTagRow({ tag, desc }: { tag: string; desc: string }) {
+// ── Niche create card ──────────────────────────────────────────────────
+function NicheCreateCard({
+  niche,
+  count,
+  pending,
+  onCreate,
+}: {
+  niche: string;
+  count: number;
+  pending: boolean;
+  onCreate: (niche: string) => void;
+}) {
   return (
     <button
       type="button"
-      className="flex items-center gap-2 rounded-md border border-border/50 bg-muted/30 px-2.5 py-1.5 text-left transition-colors hover:border-primary/40"
-      onClick={() => {
-        navigator.clipboard?.writeText(`{{${tag}}}`);
-        toast.success(`{{${tag}}} kopiert`);
-      }}
+      disabled={pending}
+      onClick={() => onCreate(niche)}
+      className="group flex min-h-[140px] flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border/60 bg-card p-4 text-center transition-all hover:border-primary/50 hover:bg-primary/[0.04] disabled:opacity-60"
     >
-      <code className="shrink-0 text-xs text-primary">{`{{${tag}}}`}</code>
-      <span className="truncate text-xs text-muted-foreground">{desc}</span>
-      <Copy className="ml-auto h-3 w-3 shrink-0 text-muted-foreground/50" />
+      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary/20">
+        <Plus className="h-5 w-5" />
+      </div>
+      <div className="font-medium capitalize">{niche}</div>
+      <div className="text-xs text-muted-foreground">
+        {count} Lead{count === 1 ? "" : "s"} bereit
+      </div>
+      <div className="text-[11px] text-muted-foreground/70">
+        Kampagne anlegen
+      </div>
     </button>
   );
 }
 
+// ── Bound campaign card (push inside) ──────────────────────────────────
 function CampaignCard({
   c,
+  nicheLeads,
   pending,
+  onPush,
   onStatus,
   onWebhook,
 }: {
   c: CampaignView;
+  nicheLeads: PoolLead[];
   pending: boolean;
+  onPush: (
+    campaignId: number,
+    campName: string,
+    niche: string,
+    leadIds: string[],
+  ) => void;
   onStatus: (id: number, status: "START" | "PAUSED") => void;
   onWebhook: (id: number) => void;
 }) {
+  const available = nicheLeads.length;
+  const [count, setCount] = useState<number>(Math.min(available, 25) || 0);
   const isActive = c.status === "ACTIVE";
   const a = c.analytics;
+  const niche = c.niche as string;
+
   return (
     <Card>
       <CardContent className="space-y-3 p-4">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <div className="truncate font-medium">{c.name}</div>
-            <div className="text-xs text-muted-foreground">#{c.id}</div>
+            <div className="flex items-center gap-2">
+              <span className="truncate font-medium">{c.name}</span>
+              <Badge
+                variant="outline"
+                className="shrink-0 border-primary/40 bg-primary/10 text-[10px] capitalize text-primary"
+              >
+                {niche}
+              </Badge>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              #{c.id} · {c.localPushed} gepusht
+            </div>
           </div>
           <Badge
             variant="outline"
@@ -562,16 +469,53 @@ function CampaignCard({
           <Stat icon={Ban} label="Bounces" value={a.bounced} accent="text-rose-300" />
         </div>
 
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>{c.localPushed} von hier gepusht</span>
-          {a.sent > 0 && (
-            <span>
-              {Math.round((a.replied / a.sent) * 100)}% Reply-Rate
-            </span>
+        {/* In-card push — scoped to THIS campaign's niche only */}
+        <div className="rounded-md border border-border/50 bg-muted/20 p-2.5">
+          {available === 0 ? (
+            <p className="text-xs text-muted-foreground">
+              Keine neuen <span className="capitalize">{niche}</span>-Leads im
+              Pool.
+            </p>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Tag className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">
+                {available} bereit
+              </span>
+              <Input
+                type="number"
+                min={1}
+                max={available}
+                value={count}
+                onChange={(e) => setCount(Number(e.target.value))}
+                className="ml-auto h-8 w-20"
+              />
+              <Button
+                size="sm"
+                disabled={pending}
+                onClick={() =>
+                  onPush(
+                    c.id,
+                    c.name,
+                    niche,
+                    nicheLeads
+                      .slice(0, Math.max(1, Math.min(count, available)))
+                      .map((l) => l.id),
+                  )
+                }
+              >
+                {pending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Send className="h-3.5 w-3.5" />
+                )}
+                pushen
+              </Button>
+            </div>
           )}
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {isActive ? (
             <Button
               size="sm"
@@ -600,7 +544,7 @@ function CampaignCard({
             <Webhook className="h-3.5 w-3.5" /> Webhook
           </Button>
           <a
-            href="https://app.smartlead.ai"
+            href={SMARTLEAD_APP_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="ml-auto"
@@ -613,6 +557,80 @@ function CampaignCard({
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+// ── Unbound campaign card (assign a niche) ─────────────────────────────
+function UnboundCampaignCard({
+  c,
+  poolNiches,
+  pending,
+  onAssign,
+}: {
+  c: CampaignView;
+  poolNiches: { niche: string; count: number }[];
+  pending: boolean;
+  onAssign: (campaignId: number, niche: string) => void;
+}) {
+  return (
+    <Card className="border-dashed">
+      <CardContent className="space-y-3 p-4">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <div className="truncate font-medium">{c.name}</div>
+            <div className="text-xs text-muted-foreground">
+              #{c.id} · {c.status}
+            </div>
+          </div>
+          <a
+            href={SMARTLEAD_APP_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="In Smartlead öffnen"
+          >
+            <Button size="sm" variant="ghost">
+              <ExternalLink className="h-3.5 w-3.5" />
+            </Button>
+          </a>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Welche Lead-Niche soll diese Kampagne bekommen? Danach kannst du nur
+          noch diese Niche reinpushen.
+        </p>
+        <Select
+          onValueChange={(v) => onAssign(c.id, v)}
+          disabled={pending || poolNiches.length === 0}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Niche zuordnen…" />
+          </SelectTrigger>
+          <SelectContent>
+            {poolNiches.map((n) => (
+              <SelectItem key={n.niche} value={n.niche}>
+                <span className="capitalize">{n.niche}</span> ({n.count})
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </CardContent>
+    </Card>
+  );
+}
+
+function MergeTagRow({ tag, desc }: { tag: string; desc: string }) {
+  return (
+    <button
+      type="button"
+      className="flex items-center gap-2 rounded-md border border-border/50 bg-muted/30 px-2.5 py-1.5 text-left transition-colors hover:border-primary/40"
+      onClick={() => {
+        navigator.clipboard?.writeText(`{{${tag}}}`);
+        toast.success(`{{${tag}}} kopiert`);
+      }}
+    >
+      <code className="shrink-0 text-xs text-primary">{`{{${tag}}}`}</code>
+      <span className="truncate text-xs text-muted-foreground">{desc}</span>
+      <Copy className="ml-auto h-3 w-3 shrink-0 text-muted-foreground/50" />
+    </button>
   );
 }
 

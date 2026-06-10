@@ -13,6 +13,7 @@ import {
   type SmartleadCampaign,
 } from "@/lib/smartlead/client";
 import { leadToSmartleadPayload } from "@/lib/smartlead/mapping";
+import { loadSmartleadConfig } from "@/lib/smartlead/storage";
 
 const TERMINAL = "(won,lost,suppressed)";
 const PUSH_CHUNK = 100; // Smartlead bulk add — safe legacy cap.
@@ -60,6 +61,7 @@ export async function getConnectionStatus(): Promise<ConnectionStatus> {
 export type CampaignWithStats = SmartleadCampaign & {
   analytics: CampaignAnalytics;
   localPushed: number; // leads we've pushed from this app
+  niche: string | null; // bound lead niche (null = not assigned yet)
 };
 
 export async function getCampaignsWithStats(): Promise<{
@@ -68,7 +70,10 @@ export async function getCampaignsWithStats(): Promise<{
 }> {
   if (!smartleadConfigured()) return { campaigns: [], error: null };
   try {
-    const campaigns = await listCampaigns();
+    const [campaigns, cfg] = await Promise.all([
+      listCampaigns(),
+      loadSmartleadConfig(),
+    ]);
     const localCounts = await localPushCounts();
     const withStats = await Promise.all(
       campaigns.map(async (c) => {
@@ -90,6 +95,7 @@ export async function getCampaignsWithStats(): Promise<{
           ...c,
           analytics,
           localPushed: localCounts[String(c.id)] ?? 0,
+          niche: cfg.campaign_niche[String(c.id)] ?? null,
         };
       }),
     );

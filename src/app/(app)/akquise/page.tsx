@@ -35,6 +35,7 @@ type Stats = {
   callPool: number;
   emailPool: number;
   callsToday: number;
+  mailPool: number;
   d2dActive: number;
   d2dOverdue: number;
   closesTotal: number;
@@ -110,6 +111,7 @@ async function loadStats(): Promise<Stats> {
     callPool,
     emailPool,
     callsToday,
+    mailPool,
     d2d,
     closesTotal,
   ] = await Promise.all([
@@ -153,6 +155,18 @@ async function loadStats(): Promise<Stats> {
           error: unknown;
         }>,
       ),
+      safeCount(
+        db
+          .from("leads")
+          .select("id", { head: true, count: "exact" })
+          .eq("primary_channel", "email")
+          .is("smartlead_campaign_id", null)
+          .not("owner_email", "is", null)
+          .not("outreach_status", "in", "(won,lost,suppressed)") as unknown as PromiseLike<{
+          count: number | null;
+          error: unknown;
+        }>,
+      ),
       d2dStats(db, nowIso),
       safeCount(
         db
@@ -171,6 +185,7 @@ async function loadStats(): Promise<Stats> {
     callPool,
     emailPool,
     callsToday,
+    mailPool,
     d2dActive: d2d.active,
     d2dOverdue: d2d.overdue,
     closesTotal,
@@ -298,8 +313,8 @@ export default async function AkquisePage() {
           }
         />
 
-        {/* Row 2 — Call-Queue + D2D side-by-side */}
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        {/* Row 2 — Call-Queue + Cold-Mail + D2D side-by-side */}
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <NavCard
             href="/akquise/tasks"
             icon={Phone}
@@ -308,6 +323,19 @@ export default async function AkquisePage() {
             badge={stats.callPool}
             badgeLabel="im Pool"
             meta={`${stats.callsToday} heute gemacht`}
+          />
+          <NavCard
+            href="/akquise/mail"
+            icon={Mail}
+            title="Cold Mail"
+            description="E-Mail-Leads in Smartlead-Kampagnen pushen — personalisiert per Merge-Variablen."
+            badge={stats.mailPool}
+            badgeLabel="bereit"
+            meta={
+              stats.mailPool > 0
+                ? "→ in Kampagne pushen"
+                : "Pool leer — Channel zuweisen"
+            }
           />
           <NavCard
             href="/akquise/d2d"

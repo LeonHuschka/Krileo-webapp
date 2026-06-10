@@ -211,8 +211,16 @@ export interface Lead {
   email_3_subject: string | null;
   email_3_body: string | null;
 
-  // Smartlead linkage
+  // Smartlead linkage (added in 00026_)
   smartlead_lead_id: string | null;
+  smartlead_campaign_id: string | null;
+  smartlead_synced_at: string | null;
+  smartlead_status: string | null;
+  smartlead_last_event_at: string | null;
+  smartlead_last_reply_at: string | null;
+  smartlead_last_reply_text: string | null;
+  smartlead_open_count: number;
+  smartlead_reply_count: number;
 
   // State
   outreach_status: OutreachStatus;

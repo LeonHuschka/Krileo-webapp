@@ -17,6 +17,18 @@ import {
   type D2DUpdateInput,
 } from "@/lib/lead-engine/d2d";
 import { suggestD2DPrice } from "@/lib/akquise/d2d-pricing";
+import {
+  createCampaign as slCreateCampaign,
+  updateCampaignStatus as slUpdateCampaignStatus,
+  upsertCampaignWebhook,
+} from "@/lib/smartlead/client";
+import {
+  getCampaignsWithStats,
+  getConnectionStatus,
+  getEmailPool,
+  getReplies,
+  pushLeadsToCampaign,
+} from "@/lib/smartlead/service";
 import { nextActionAfterNoAnswer } from "@/lib/lead-engine/cascade";
 import {
   createAppointment,
@@ -1179,4 +1191,73 @@ function todayBerlin(): string {
   return new Date(d.getTime() + 2 * 60 * 60 * 1000)
     .toISOString()
     .slice(0, 10);
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Smartlead cold-mail
+// ─────────────────────────────────────────────────────────────────────
+
+export async function listSmartleadCampaigns() {
+  return getCampaignsWithStats();
+}
+
+export async function smartleadConnection() {
+  return getConnectionStatus();
+}
+
+export async function createSmartleadCampaign(name: string) {
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error("Kampagnen-Name fehlt");
+  const res = await slCreateCampaign(trimmed);
+  revalidatePath("/akquise/mail");
+  return res;
+}
+
+export async function setSmartleadCampaignStatus(
+  campaignId: number,
+  status: "START" | "PAUSED" | "STOPPED",
+) {
+  await slUpdateCampaignStatus(campaignId, status);
+  revalidatePath("/akquise/mail");
+}
+
+export async function pushLeadsToSmartlead(args: {
+  campaignId: number;
+  leadIds?: string[];
+  max?: number;
+}) {
+  const res = await pushLeadsToCampaign(args);
+  revalidatePath("/akquise");
+  revalidatePath("/akquise/mail");
+  revalidatePath("/akquise/leads");
+  return res;
+}
+
+export async function loadEmailPool() {
+  const leads = await getEmailPool(500);
+  return leads;
+}
+
+export async function loadSmartleadReplies() {
+  return getReplies(50);
+}
+
+/**
+ * Register the Krileo reply/sent/bounce webhook on a Smartlead campaign
+ * so events flow back into the app. The webhook URL embeds a shared
+ * secret that the route validates.
+ */
+export async function registerSmartleadWebhook(campaignId: number) {
+  const base =
+    process.env.NEXT_PUBLIC_APP_URL ?? "https://krileo-webapp.vercel.app";
+  const secret = process.env.SMARTLEAD_WEBHOOK_SECRET ?? "";
+  const url = `${base}/api/smartlead/webhook${secret ? `?secret=${encodeURIComponent(secret)}` : ""}`;
+  await upsertCampaignWebhook(campaignId, url, [
+    "EMAIL_SENT",
+    "EMAIL_OPEN",
+    "EMAIL_REPLY",
+    "EMAIL_BOUNCE",
+    "LEAD_UNSUBSCRIBED",
+  ]);
+  revalidatePath("/akquise/mail");
 }

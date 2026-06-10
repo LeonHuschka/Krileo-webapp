@@ -3,8 +3,17 @@ import { NextResponse, type NextRequest } from "next/server";
 
 const PUBLIC_ROUTES = ["/login", "/signup", "/auth"];
 
+// Machine-to-machine endpoints that authenticate themselves (webhook
+// shared-secret, cron Bearer/UA). They must NOT be redirected to /login
+// since the caller (Smartlead, Vercel Cron) has no Supabase session.
+const MACHINE_ROUTES = ["/api/smartlead/webhook", "/api/cron"];
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
+
+  if (MACHINE_ROUTES.some((r) => request.nextUrl.pathname.startsWith(r))) {
+    return supabaseResponse;
+  }
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

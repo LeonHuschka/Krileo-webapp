@@ -1044,6 +1044,79 @@ export async function getAutoGenCoverage() {
 }
 
 /**
+ * Manual one-off generation over a geography scope — same
+ * saturation-aware engine as the auto-gen/cron, but for a scope the
+ * user picks right now (Bundesländer + cities + free-text towns). Pulls
+ * fresh combos first, skips exhausted ones, then enrich→score→route.
+ */
+export async function generateLeadsForScope(input: {
+  niche: string;
+  cities: string[];
+  bundeslaender: string[];
+  count: number;
+  autoAssign: boolean;
+}) {
+  const niche = input.niche.trim();
+  if (!niche) throw new Error("Niche fehlt");
+  const cities = input.cities.map((c) => c.trim()).filter(Boolean);
+  const bundeslaender = input.bundeslaender.map((b) => b.trim()).filter(Boolean);
+  if (cities.length === 0 && bundeslaender.length === 0) {
+    throw new Error("Gebiet fehlt — wähle ein Bundesland oder eine Stadt");
+  }
+  const count = Math.max(1, Math.min(500, Math.round(input.count)));
+
+  const { runAutoGeneration } = await import("@/lib/akquise/auto-generation");
+  const { enrichAllPending } = await import("@/lib/lead-engine/enrichment");
+  const { scoreAllPending } = await import("@/lib/lead-engine/scoring");
+  const { routePendingLeads } = await import(
+    "@/lib/lead-engine/channel-router"
+  );
+
+  const gen = await runAutoGeneration({
+    target: count,
+    niches: [niche],
+    cities,
+    bundeslaender,
+    batchSize: 20,
+  });
+
+  let scored = 0;
+  if (gen.newLeads > 0) {
+    try {
+      await enrichAllPending({ limit: gen.newLeads + 50, concurrency: 8 });
+    } catch {
+      /* */
+    }
+    try {
+      const s = await scoreAllPending({
+        limit: gen.newLeads + 50,
+        concurrency: 8,
+      });
+      scored = s.scored;
+    } catch {
+      /* */
+    }
+    if (input.autoAssign || count > AUTO_ASSIGN_THRESHOLD) {
+      try {
+        await routePendingLeads({ limit: 500 });
+      } catch {
+        /* */
+      }
+    }
+  }
+  revalidateAll();
+  revalidatePath("/akquise/mail");
+  return {
+    inserted: gen.newLeads,
+    duplicates: gen.duplicates,
+    scored,
+    cost: gen.cost,
+    attempted: gen.attempted,
+    stoppedReason: gen.stoppedReason,
+  };
+}
+
+/**
  * Manual trigger for the same rotation generator the cron uses —
  * lets the user fill the pool now without waiting for tomorrow's
  * 05:00 cron. Returns the aggregate result for a toast.

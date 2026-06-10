@@ -3,6 +3,11 @@ import "server-only";
 import { claude, firstTextBlock } from "@/lib/lead-engine/claude";
 import { leadEngine } from "@/lib/lead-engine/supabase";
 import { LEAD_SCORING_SYSTEM } from "@/lib/lead-engine/prompts/lead-scoring";
+import {
+  fetchWebsiteContext,
+  renderWebsiteContext,
+  type WebsiteContext,
+} from "@/lib/lead-engine/website";
 import type {
   BusinessSize,
   FitOffer,
@@ -18,6 +23,15 @@ import type {
 //   - "Verkauf!"     → won (terminal, not a tier change)
 // Or via the manual hot/warm/cold buttons on the call card.
 
+export type WebsiteAssessment = {
+  has_website: boolean;
+  reachable: boolean;
+  already_has_online_ordering: boolean;
+  already_has_online_booking: boolean;
+  design_quality: "modern" | "ok" | "dated" | "very_dated" | "none";
+  summary: string;
+};
+
 export type ScoringResult = {
   score_breakdown: {
     pain_severity: number;
@@ -27,6 +41,7 @@ export type ScoringResult = {
     buying_signals: number;
     rationale: string;
   };
+  website_assessment: WebsiteAssessment;
   business_size: BusinessSize;
   fit_offer: FitOffer;
   pickup_profile: PickupProfile;
@@ -62,6 +77,29 @@ const SCORING_SCHEMA = {
       ],
       additionalProperties: false,
     },
+    website_assessment: {
+      type: "object",
+      properties: {
+        has_website: { type: "boolean" },
+        reachable: { type: "boolean" },
+        already_has_online_ordering: { type: "boolean" },
+        already_has_online_booking: { type: "boolean" },
+        design_quality: {
+          type: "string",
+          enum: ["modern", "ok", "dated", "very_dated", "none"],
+        },
+        summary: { type: "string" },
+      },
+      required: [
+        "has_website",
+        "reachable",
+        "already_has_online_ordering",
+        "already_has_online_booking",
+        "design_quality",
+        "summary",
+      ],
+      additionalProperties: false,
+    },
     business_size: {
       type: "string",
       enum: ["small", "medium", "large"],
@@ -87,6 +125,7 @@ const SCORING_SCHEMA = {
   },
   required: [
     "score_breakdown",
+    "website_assessment",
     "business_size",
     "fit_offer",
     "pickup_profile",
@@ -101,20 +140,30 @@ const SCORING_SCHEMA = {
   additionalProperties: false,
 } as const;
 
-function buildUserPrompt(lead: Lead, campaign: { industry: string; city: string }) {
+function buildUserPrompt(
+  lead: Lead,
+  campaign: { industry: string; city: string },
+  websiteCtx: WebsiteContext,
+) {
   const fields: string[] = [
     `Branche: ${campaign.industry}`,
     `Stadt: ${campaign.city}`,
     `Business-Name: ${lead.business_name}`,
   ];
   if (lead.category) fields.push(`Kategorie: ${lead.category}`);
-  if (lead.website_url) fields.push(`Website: ${lead.website_url}`);
-  if (!lead.website_url) fields.push(`Website: (keine bekannt)`);
+  fields.push("");
+  fields.push(renderWebsiteContext(websiteCtx));
+  fields.push("");
   if (lead.google_rating != null)
-    fields.push(`Google Rating: ${lead.google_rating} (${lead.google_reviews_count ?? 0} Bewertungen)`);
-  if (lead.phone) fields.push(`Telefon: ${lead.phone}`);
-  if (lead.owner_email) fields.push(`E-Mail: ${lead.owner_email}`);
+    fields.push(
+      `Google: ${lead.google_rating}★ (${lead.google_reviews_count ?? 0} Bewertungen)`,
+    );
+  else fields.push("Google: keine Bewertungsdaten");
   if (lead.instagram_url) fields.push(`Instagram: ${lead.instagram_url}`);
+  if (lead.facebook_url) fields.push(`Facebook: ${lead.facebook_url}`);
+  if (lead.owner_name) fields.push(`Inhaber (Impressum): ${lead.owner_name}`);
+  if (lead.owner_email) fields.push(`E-Mail: ${lead.owner_email}`);
+  if (lead.phone) fields.push(`Telefon: ${lead.phone}`);
   if (lead.address) fields.push(`Adresse: ${lead.address}`);
   return fields.join("\n");
 }
@@ -142,11 +191,17 @@ export async function scoreLead(leadId: string): Promise<ScoringResult> {
     throw new Error(`Campaign join missing for lead ${leadId}`);
   }
 
-  const userPrompt = buildUserPrompt(lead as unknown as Lead, campaign);
+  // Read the ACTUAL website so the offer is grounded in what they
+  // already have — not guessed from the category.
+  const websiteCtx = await fetchWebsiteContext(
+    (lead as unknown as Lead).website_url,
+  );
+
+  const userPrompt = buildUserPrompt(lead as unknown as Lead, campaign, websiteCtx);
 
   const response = await claude().messages.create({
     model: "claude-sonnet-4-6",
-    max_tokens: 1024,
+    max_tokens: 1500,
     output_config: {
       effort: "medium",
       format: {
@@ -197,6 +252,7 @@ export async function scoreLead(leadId: string): Promise<ScoringResult> {
     .update({
       lead_score: computedScore,
       score_breakdown: parsed.score_breakdown,
+      website_assessment: parsed.website_assessment,
       // Fresh leads default to cold — tier moves to warm/hot via
       // outreach outcomes (Interessiert / Demo gebucht) or manual override.
       qualification_tier: "cold",

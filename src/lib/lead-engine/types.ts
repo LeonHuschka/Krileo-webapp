@@ -87,6 +87,19 @@ export interface ScoreBreakdown {
 }
 
 /**
+ * The scorer's factual read of the lead's real website (added in 00027_).
+ * Drives offer selection so we never propose what they already have.
+ */
+export interface WebsiteAssessment {
+  has_website: boolean;
+  reachable: boolean;
+  already_has_online_ordering: boolean;
+  already_has_online_booking: boolean;
+  design_quality: "modern" | "ok" | "dated" | "very_dated" | "none";
+  summary: string;
+}
+
+/**
  * Industry is a free-form string — the seeded niches are listed below
  * for UX defaults, but the user can punch in any new niche at scrape
  * time and we'll create a fresh campaign for it.
@@ -176,6 +189,9 @@ export interface Lead {
   // Extra contact + score detail (added in 00019_)
   additional_phones: AdditionalPhone[] | null;
   score_breakdown: ScoreBreakdown | null;
+
+  // Scorer's factual website read (added in 00027_)
+  website_assessment: WebsiteAssessment | null;
 
   // Gatekeeper classification (added in 00020_)
   pickup_profile: PickupProfile | null;

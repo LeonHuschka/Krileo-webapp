@@ -46,6 +46,7 @@ export default async function ColdMailPage() {
   let campaignError: string | null = null;
   let poolLeads: PoolLead[] = [];
   let replies: ReplyLead[] = [];
+  let allNiches: string[] = [];
   let dbError: string | null = null;
 
   try {
@@ -62,6 +63,15 @@ export default async function ColdMailPage() {
       getReplies(50),
       getCampaignNicheMap(),
     ]);
+    // Full niche universe (all scrape industries) — so an already-emptied
+    // niche like copy_shops can still be assigned to its campaign.
+    allNiches = Array.from(
+      new Set(
+        Object.values(nicheMap)
+          .map((c) => c.industry?.trim())
+          .filter((x): x is string => !!x && x !== "d2d"),
+      ),
+    ).sort();
     poolLeads = pool.map((l) => {
       const camp = nicheMap[l.campaign_id];
       const niche = camp?.industry?.trim() || l.category?.trim() || null;
@@ -194,6 +204,7 @@ export default async function ColdMailPage() {
         campaigns={campaigns}
         poolLeads={poolLeads}
         replies={replies}
+        allNiches={allNiches}
       />
     </div>
   );

@@ -64,16 +64,23 @@ type CampaignView = {
 
 const SMARTLEAD_APP_URL = "https://app.smartlead.ai";
 
+/** copy_shops → "Copy Shops" (display only; raw slug stays the key). */
+function prettyNiche(n: string): string {
+  return n.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 export function ColdMailBoard({
   configured,
   campaigns,
   poolLeads,
   replies,
+  allNiches,
 }: {
   configured: boolean;
   campaigns: CampaignView[];
   poolLeads: PoolLead[];
   replies: ReplyLead[];
+  allNiches: string[];
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -95,6 +102,21 @@ export function ColdMailBoard({
         .sort((a, b) => b.count - a.count),
     [poolByNiche],
   );
+
+  const poolCountByNiche = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const [n, leads] of Object.entries(poolByNiche)) m[n] = leads.length;
+    return m;
+  }, [poolByNiche]);
+
+  // Niches a still-unbound campaign can be assigned to: the full scrape
+  // universe (so already-emptied niches stay assignable), plus any pool
+  // niche not in that list (e.g. category fallbacks).
+  const assignableNiches = useMemo(() => {
+    const set = new Set<string>(allNiches);
+    for (const n of poolNiches) set.add(n.niche);
+    return Array.from(set).sort();
+  }, [allNiches, poolNiches]);
 
   const boundCampaigns = campaigns.filter((c) => c.niche);
   const unboundCampaigns = campaigns.filter((c) => !c.niche);
@@ -118,7 +140,7 @@ export function ColdMailBoard({
     }
     if (
       !window.confirm(
-        `${leadIds.length} ${niche}-Leads in „${campName}" pushen?`,
+        `${leadIds.length} ${prettyNiche(niche)}-Leads in „${campName}" pushen?`,
       )
     ) {
       return;
@@ -140,8 +162,8 @@ export function ColdMailBoard({
 
   function handleCreateForNiche(niche: string) {
     const name = window.prompt(
-      `Name der Smartlead-Kampagne für „${niche}":`,
-      `${niche} – Cold Mail`,
+      `Name der Smartlead-Kampagne für „${prettyNiche(niche)}":`,
+      `${prettyNiche(niche)} – Cold Mail`,
     );
     if (name === null) return;
     const trimmed = name.trim();
@@ -152,7 +174,7 @@ export function ColdMailBoard({
           name: trimmed,
           niche,
         });
-        toast.success(`„${res.name}" angelegt & an ${niche} gebunden`);
+        toast.success(`„${res.name}" angelegt & an ${prettyNiche(niche)} gebunden`);
         router.refresh();
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Anlegen fehlgeschlagen");
@@ -164,7 +186,7 @@ export function ColdMailBoard({
     startTransition(async () => {
       try {
         await assignSmartleadCampaignNiche(campaignId, niche);
-        toast.success(`Kampagne an ${niche} gebunden`);
+        toast.success(`Kampagne an ${prettyNiche(niche)} gebunden`);
         router.refresh();
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Zuordnen fehlgeschlagen");
@@ -269,7 +291,8 @@ export function ColdMailBoard({
                     <UnboundCampaignCard
                       key={c.id}
                       c={c}
-                      poolNiches={poolNiches}
+                      niches={assignableNiches}
+                      poolCount={poolCountByNiche}
                       pending={pending}
                       onAssign={handleAssignNiche}
                     />
@@ -392,7 +415,7 @@ function NicheCreateCard({
       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary/20">
         <Plus className="h-5 w-5" />
       </div>
-      <div className="font-medium capitalize">{niche}</div>
+      <div className="font-medium">{prettyNiche(niche)}</div>
       <div className="text-xs text-muted-foreground">
         {count} Lead{count === 1 ? "" : "s"} bereit
       </div>
@@ -439,9 +462,9 @@ function CampaignCard({
               <span className="truncate font-medium">{c.name}</span>
               <Badge
                 variant="outline"
-                className="shrink-0 border-primary/40 bg-primary/10 text-[10px] capitalize text-primary"
+                className="shrink-0 border-primary/40 bg-primary/10 text-[10px] text-primary"
               >
-                {niche}
+                {prettyNiche(niche)}
               </Badge>
             </div>
             <div className="text-xs text-muted-foreground">
@@ -473,8 +496,7 @@ function CampaignCard({
         <div className="rounded-md border border-border/50 bg-muted/20 p-2.5">
           {available === 0 ? (
             <p className="text-xs text-muted-foreground">
-              Keine neuen <span className="capitalize">{niche}</span>-Leads im
-              Pool.
+              Keine neuen {prettyNiche(niche)}-Leads im Pool.
             </p>
           ) : (
             <div className="flex items-center gap-2">
@@ -563,12 +585,14 @@ function CampaignCard({
 // ── Unbound campaign card (assign a niche) ─────────────────────────────
 function UnboundCampaignCard({
   c,
-  poolNiches,
+  niches,
+  poolCount,
   pending,
   onAssign,
 }: {
   c: CampaignView;
-  poolNiches: { niche: string; count: number }[];
+  niches: string[];
+  poolCount: Record<string, number>;
   pending: boolean;
   onAssign: (campaignId: number, niche: string) => void;
 }) {
@@ -599,15 +623,16 @@ function UnboundCampaignCard({
         </p>
         <Select
           onValueChange={(v) => onAssign(c.id, v)}
-          disabled={pending || poolNiches.length === 0}
+          disabled={pending || niches.length === 0}
         >
           <SelectTrigger className="w-full">
             <SelectValue placeholder="Niche zuordnen…" />
           </SelectTrigger>
           <SelectContent>
-            {poolNiches.map((n) => (
-              <SelectItem key={n.niche} value={n.niche}>
-                <span className="capitalize">{n.niche}</span> ({n.count})
+            {niches.map((n) => (
+              <SelectItem key={n} value={n}>
+                {prettyNiche(n)}
+                {poolCount[n] ? ` · ${poolCount[n]} im Pool` : ""}
               </SelectItem>
             ))}
           </SelectContent>

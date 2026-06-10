@@ -139,6 +139,28 @@ export async function getEmailPool(limit = 500): Promise<Lead[]> {
   return (data ?? []) as Lead[];
 }
 
+/**
+ * Map campaign_id → its niche (industry) + city. Used to label each
+ * pool lead so the UI can keep niches apart and never push a physio
+ * into a copy-shop campaign.
+ */
+export async function getCampaignNicheMap(): Promise<
+  Record<string, { industry: string | null; city: string | null }>
+> {
+  const db = leadEngine();
+  const { data } = await db.from("campaigns").select("id, industry, city");
+  const map: Record<string, { industry: string | null; city: string | null }> =
+    {};
+  for (const row of (data ?? []) as Array<{
+    id: string;
+    industry: string | null;
+    city: string | null;
+  }>) {
+    map[row.id] = { industry: row.industry, city: row.city };
+  }
+  return map;
+}
+
 export async function getEmailPoolCount(): Promise<number> {
   const db = leadEngine();
   const { count } = await db

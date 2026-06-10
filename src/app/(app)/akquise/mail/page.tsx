@@ -1,9 +1,11 @@
 import Link from "next/link";
-import { ArrowLeft, Mail } from "lucide-react";
+import { ArrowLeft, ExternalLink, Mail } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { ColdMailBoard } from "@/components/akquise/cold-mail-board";
 import {
+  getCampaignNicheMap,
   getCampaignsWithStats,
   getConnectionStatus,
   getEmailPool,
@@ -21,6 +23,10 @@ export type PoolLead = {
   city: string | null;
   lead_score: number | null;
   fit_offer: string | null;
+  category: string | null;
+  /** Niche derived from the lead's source campaign — the grouping we
+   *  push by, so only matching leads enter a niche campaign. */
+  niche: string | null;
 };
 
 export type ReplyLead = {
@@ -51,16 +57,26 @@ export default async function ColdMailPage() {
   }
 
   try {
-    const [pool, reps] = await Promise.all([getEmailPool(500), getReplies(50)]);
-    poolLeads = pool.map((l) => ({
-      id: l.id,
-      business_name: l.business_name,
-      owner_name: l.owner_name,
-      owner_email: l.owner_email,
-      city: l.city,
-      lead_score: l.lead_score,
-      fit_offer: l.fit_offer,
-    }));
+    const [pool, reps, nicheMap] = await Promise.all([
+      getEmailPool(500),
+      getReplies(50),
+      getCampaignNicheMap(),
+    ]);
+    poolLeads = pool.map((l) => {
+      const camp = nicheMap[l.campaign_id];
+      const niche = camp?.industry?.trim() || l.category?.trim() || null;
+      return {
+        id: l.id,
+        business_name: l.business_name,
+        owner_name: l.owner_name,
+        owner_email: l.owner_email,
+        city: l.city,
+        lead_score: l.lead_score,
+        fit_offer: l.fit_offer,
+        category: l.category,
+        niche,
+      };
+    });
     replies = reps.map((l) => ({
       id: l.id,
       business_name: l.business_name,
@@ -95,6 +111,15 @@ export default async function ColdMailPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 text-xs">
+          <a
+            href="https://app.smartlead.ai"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Button size="sm" variant="outline" className="gap-1.5">
+              <ExternalLink className="h-3.5 w-3.5" /> Smartlead öffnen
+            </Button>
+          </a>
           {connection.configured ? (
             <Badge
               variant="outline"

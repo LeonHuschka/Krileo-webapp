@@ -19,6 +19,7 @@ import {
   TriangleAlert,
   Copy,
   ExternalLink,
+  Tag,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -72,12 +73,44 @@ export function ColdMailBoard({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
+  // Group the pool by niche (derived from each lead's source campaign)
+  // so a copy-shop campaign never gets fed physio leads.
+  const niches = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const l of poolLeads) {
+      const k = l.niche ?? "Sonstige";
+      m.set(k, (m.get(k) ?? 0) + 1);
+    }
+    return Array.from(m.entries())
+      .map(([niche, n]) => ({ niche, n }))
+      .sort((a, b) => b.n - a.n);
+  }, [poolLeads]);
+
   const poolCount = poolLeads.length;
   const [campaignId, setCampaignId] = useState<string>(
     campaigns[0] ? String(campaigns[0].id) : "",
   );
-  const [count, setCount] = useState<number>(Math.min(poolCount, 25) || 0);
+  const [niche, setNiche] = useState<string>(niches[0]?.niche ?? "__all__");
   const [newName, setNewName] = useState("");
+
+  const filteredPool = useMemo(
+    () =>
+      niche === "__all__"
+        ? poolLeads
+        : poolLeads.filter((l) => (l.niche ?? "Sonstige") === niche),
+    [poolLeads, niche],
+  );
+  const filteredCount = filteredPool.length;
+  const [count, setCount] = useState<number>(Math.min(filteredCount, 25) || 0);
+
+  function changeNiche(v: string) {
+    setNiche(v);
+    const fc =
+      v === "__all__"
+        ? poolLeads.length
+        : poolLeads.filter((l) => (l.niche ?? "Sonstige") === v).length;
+    setCount(Math.min(fc, 25) || 0);
+  }
 
   const selectedCampaign = useMemo(
     () => campaigns.find((c) => String(c.id) === campaignId),
@@ -89,12 +122,28 @@ export function ColdMailBoard({
       toast.error("Wähle zuerst eine Kampagne");
       return;
     }
-    const n = Math.max(1, Math.min(count || 0, poolCount));
+    // Push EXACTLY the leads shown for the selected niche (top N by
+    // score), by explicit id — never a blind "top N of everything".
+    const n = Math.max(1, Math.min(count || 0, filteredCount));
+    const ids = filteredPool.slice(0, n).map((l) => l.id);
+    if (ids.length === 0) {
+      toast.error("Keine Leads in dieser Niche");
+      return;
+    }
+    const campName = selectedCampaign?.name ?? `#${campaignId}`;
+    const nicheLabel = niche === "__all__" ? "gemischte" : niche;
+    if (
+      !window.confirm(
+        `${ids.length} ${nicheLabel} Leads in „${campName}" pushen?`,
+      )
+    ) {
+      return;
+    }
     startTransition(async () => {
       try {
         const res = await pushLeadsToSmartlead({
           campaignId: Number(campaignId),
-          max: n,
+          leadIds: ids,
         });
         toast.success(
           `${res.uploaded} gepusht${res.duplicates ? ` · ${res.duplicates} Dups` : ""}${
@@ -171,7 +220,8 @@ export function ColdMailBoard({
               <Send className="h-4 w-4 text-primary" />
               <h2 className="font-medium">Leads in Kampagne pushen</h2>
               <Badge variant="outline" className="ml-auto border-border/60">
-                {poolCount} im Pool
+                {filteredCount} bereit
+                {niche !== "__all__" ? ` · ${niche}` : ""}
               </Badge>
             </div>
 
@@ -182,54 +232,102 @@ export function ColdMailBoard({
                 sie hier auf.
               </p>
             ) : (
-              <div className="flex flex-wrap items-end gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Kampagne</Label>
-                  <Select value={campaignId} onValueChange={setCampaignId}>
-                    <SelectTrigger className="w-[260px]">
-                      <SelectValue placeholder="Kampagne wählen" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {campaigns.map((c) => (
-                        <SelectItem key={c.id} value={String(c.id)}>
-                          {c.name} · {c.status}
+              <>
+                <div className="flex flex-wrap items-end gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="flex items-center gap-1 text-xs">
+                      <Tag className="h-3 w-3" /> Niche
+                    </Label>
+                    <Select value={niche} onValueChange={changeNiche}>
+                      <SelectTrigger className="w-[210px]">
+                        <SelectValue placeholder="Niche wählen" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {niches.map((n) => (
+                          <SelectItem key={n.niche} value={n.niche}>
+                            {n.niche} ({n.n})
+                          </SelectItem>
+                        ))}
+                        <SelectItem value="__all__">
+                          Alle gemischt ({poolCount})
                         </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Kampagne</Label>
+                    <Select value={campaignId} onValueChange={setCampaignId}>
+                      <SelectTrigger className="w-[250px]">
+                        <SelectValue placeholder="Kampagne wählen" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {campaigns.map((c) => (
+                          <SelectItem key={c.id} value={String(c.id)}>
+                            {c.name} · {c.status}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Anzahl (Top n. Score)</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={filteredCount}
+                      value={count}
+                      onChange={(e) => setCount(Number(e.target.value))}
+                      className="w-24"
+                    />
+                  </div>
+                  <Button
+                    onClick={handlePush}
+                    disabled={pending || !campaignId || filteredCount === 0}
+                  >
+                    {pending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                    {count > 0
+                      ? `${Math.min(count, filteredCount)} pushen`
+                      : "Pushen"}
+                  </Button>
+                  <button
+                    type="button"
+                    className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+                    onClick={() => setCount(filteredCount)}
+                  >
+                    alle {filteredCount}
+                  </button>
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Anzahl (Top nach Score)</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={poolCount}
-                    value={count}
-                    onChange={(e) => setCount(Number(e.target.value))}
-                    className="w-28"
-                  />
-                </div>
-                <Button onClick={handlePush} disabled={pending || !campaignId}>
-                  {pending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4" />
-                  )}
-                  {count > 0 ? `${Math.min(count, poolCount)} pushen` : "Pushen"}
-                </Button>
-                <button
-                  type="button"
-                  className="text-xs text-muted-foreground underline-offset-2 hover:underline"
-                  onClick={() => setCount(poolCount)}
-                >
-                  alle {poolCount}
-                </button>
-              </div>
+
+                <p className="text-xs text-muted-foreground">
+                  Du pushst{" "}
+                  <strong className="text-foreground">
+                    {Math.min(count || 0, filteredCount)}{" "}
+                    {niche === "__all__" ? "gemischte" : niche}
+                  </strong>{" "}
+                  Leads →{" "}
+                  <strong className="text-foreground">
+                    {selectedCampaign?.name ?? "—"}
+                  </strong>
+                  . Niche &amp; Kampagne müssen zusammenpassen.
+                </p>
+
+                {niche === "__all__" && (
+                  <p className="flex items-center gap-1.5 text-xs text-rose-300">
+                    <TriangleAlert className="h-3.5 w-3.5" />
+                    Gemischte Niches — nur nutzen wenn die Kampagne
+                    niche-unabhängig getextet ist.
+                  </p>
+                )}
+              </>
             )}
 
             {selectedCampaign &&
               selectedCampaign.status !== "ACTIVE" &&
-              poolCount > 0 && (
+              filteredCount > 0 && (
                 <p className="flex items-center gap-1.5 text-xs text-amber-300/90">
                   <TriangleAlert className="h-3.5 w-3.5" />
                   Kampagne ist {selectedCampaign.status} — Leads landen drin,
@@ -239,27 +337,28 @@ export function ColdMailBoard({
           </CardContent>
         </Card>
 
-        {/* Pool preview */}
-        {poolCount > 0 && (
+        {/* Pool preview (filtered by niche) */}
+        {filteredCount > 0 && (
           <Card>
             <CardContent className="p-4">
               <div className="mb-2 text-xs font-medium text-muted-foreground">
-                Nächste im Pool (Top {Math.min(poolCount, 10)})
+                Nächste{niche !== "__all__" ? ` ${niche}` : ""} im Pool — Top{" "}
+                {Math.min(filteredCount, 10)}
               </div>
               <div className="space-y-1">
-                {poolLeads.slice(0, 10).map((l) => (
-                  <div
-                    key={l.id}
-                    className="flex items-center gap-2 text-sm"
-                  >
+                {filteredPool.slice(0, 10).map((l) => (
+                  <div key={l.id} className="flex items-center gap-2 text-sm">
                     <span className="font-medium">{l.business_name}</span>
                     <span className="truncate text-xs text-muted-foreground">
                       {l.owner_email}
                     </span>
-                    {l.city && (
-                      <span className="text-xs text-muted-foreground/70">
-                        {l.city}
-                      </span>
+                    {l.niche && (
+                      <Badge
+                        variant="outline"
+                        className="shrink-0 border-border/50 text-[10px] text-muted-foreground"
+                      >
+                        {l.niche}
+                      </Badge>
                     )}
                     {l.lead_score != null && (
                       <Badge
@@ -500,6 +599,17 @@ function CampaignCard({
           >
             <Webhook className="h-3.5 w-3.5" /> Webhook
           </Button>
+          <a
+            href="https://app.smartlead.ai"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ml-auto"
+            title="In Smartlead öffnen"
+          >
+            <Button size="sm" variant="ghost">
+              <ExternalLink className="h-3.5 w-3.5" />
+            </Button>
+          </a>
         </div>
       </CardContent>
     </Card>

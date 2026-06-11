@@ -104,10 +104,14 @@ export async function runAutoGeneration(
     try {
       // Don't run the full enrich+score pipeline here — the caller
       // batches that over everything inserted, once.
+      // Never fetch more than we still need — "10 Leads holen" must
+      // produce exactly 10, not a full batch of 20.
       const campaignId = await findOrCreateCampaign(combo.niche, combo.city);
-      const r = await scrapeCampaign(campaignId, batchSize, {
-        pipeline: false,
-      });
+      const r = await scrapeCampaign(
+        campaignId,
+        Math.min(batchSize, Math.max(1, target - newLeads)),
+        { pipeline: false },
+      );
       newLeads += r.inserted;
       duplicates += r.duplicates;
       if (typeof r.scrapeCostUsd === "number") cost += r.scrapeCostUsd;

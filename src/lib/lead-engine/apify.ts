@@ -46,6 +46,20 @@ function requireEnv(name: string): string {
   return v;
 }
 
+/** Lowercase + fold umlauts so "Tübingen" matches "Tuebingen". */
+function normalizeGeo(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/ä/g, "a")
+    .replace(/ö/g, "o")
+    .replace(/ü/g, "u")
+    .replace(/ae/g, "a")
+    .replace(/oe/g, "o")
+    .replace(/ue/g, "u")
+    .replace(/ß/g, "ss")
+    .trim();
+}
+
 /**
  * Stage 1 — Google Maps scrape via Apify.
  *
@@ -121,7 +135,27 @@ export async function scrapeCampaign(
     seen.add(id);
     return true;
   });
-  const places = placesAll.slice(0, maxResults);
+
+  // Geo guard: Google pads city searches with results from elsewhere
+  // (incl. national online shops). Keep only places that are actually
+  // in the searched city — out-of-area towns get scraped when their
+  // own city is in scope, so nothing real is lost.
+  const cityToken = normalizeGeo(campaign.city).split(/\s+/)[0] ?? "";
+  const placesInArea =
+    cityToken.length >= 3
+      ? placesAll.filter((p) => {
+          const placeCity = normalizeGeo(p.address_info?.city ?? "");
+          const address = normalizeGeo(
+            (p.address as string | undefined) ?? "",
+          );
+          const cityMatch =
+            placeCity.length >= 3 &&
+            (placeCity.includes(cityToken) || cityToken.includes(placeCity));
+          return cityMatch || address.includes(cityToken);
+        })
+      : placesAll;
+
+  const places = placesInArea.slice(0, maxResults);
   const scraped = places.length;
 
   // 3. Transform DataForSEO place → our leads row shape.

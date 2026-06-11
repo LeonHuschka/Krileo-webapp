@@ -3,6 +3,7 @@ import "server-only";
 import { claude, firstTextBlock } from "@/lib/lead-engine/claude";
 import { leadEngine } from "@/lib/lead-engine/supabase";
 import { IMPRESSUM_EXTRACT_SYSTEM } from "@/lib/lead-engine/prompts/impressum-extract";
+import type { ContactChannel } from "@/lib/lead-engine/types";
 
 const FETCH_TIMEOUT_MS = 10_000;
 const MAX_HTML_BYTES = 200_000;
@@ -206,6 +207,152 @@ async function findImpressumUrl(baseUrl: string): Promise<string | null> {
   return null;
 }
 
+// ── Deep contact extraction ──────────────────────────────────────────
+// Collect EVERY contact path on the site (emails, phones, socials) and
+// tag each with how likely it funnels straight to the owner.
+
+const EMAIL_RE = /[a-zA-Z0-9][a-zA-Z0-9._%+-]*@[a-zA-Z0-9][a-zA-Z0-9.-]*\.[a-zA-Z]{2,}/g;
+const PHONE_RE = /(?:\+49|0049|0)[1-9][\d\s\-\/().]{5,18}\d/g;
+const NOISE_EMAIL =
+  /\.(png|jpe?g|gif|webp|svg|css|js|woff2?)$|@(example|sentry|wixpress|sentry-next|domain|email|2x|3x)\./i;
+
+function normalizePhone(raw: string): string | null {
+  let digits = raw.replace(/[^\d+]/g, "");
+  if (digits.startsWith("0049")) digits = `+49${digits.slice(4)}`;
+  else if (digits.startsWith("0")) digits = `+49${digits.slice(1)}`;
+  if (!digits.startsWith("+49")) return null;
+  if (digits.length < 9 || digits.length > 15) return null;
+  return digits;
+}
+
+function isMobile(phone: string): boolean {
+  return /^\+491(5|6|7)/.test(phone);
+}
+
+function classifyEmail(
+  email: string,
+  ownerName: string | null,
+): ContactChannel["owner_likelihood"] {
+  const local = email.split("@")[0]?.toLowerCase() ?? "";
+  const cleaned = local.replace(/[^a-zäöüß.]/g, "");
+  if (GENERIC_MAIL_PREFIXES.has(cleaned.replace(/\./g, ""))) return "low";
+  if (GENERIC_MAIL_PREFIXES.has(cleaned.split(".")[0] ?? "")) return "low";
+  if (ownerName) {
+    const tokens = ownerName
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((t) => t.length > 2);
+    if (tokens.some((t) => local.includes(t))) return "high";
+  }
+  // first.last pattern looks personal even without a known owner name
+  if (/^[a-zäöüß]{2,}[._-][a-zäöüß]{2,}$/.test(local)) return "high";
+  return "medium";
+}
+
+/** Pull all contact paths out of raw page HTML. */
+function extractContactChannels(
+  htmlPages: string[],
+  ownerName: string | null,
+  knownPhone: string | null,
+): ContactChannel[] {
+  const html = htmlPages.join("\n");
+  const channels: ContactChannel[] = [];
+
+  // Emails (incl. mailto: links)
+  const emails = new Set<string>();
+  for (const m of Array.from(html.matchAll(EMAIL_RE))) {
+    const e = m[0].toLowerCase().replace(/^mailto:/, "");
+    if (!NOISE_EMAIL.test(e) && e.length < 80) emails.add(e);
+  }
+  for (const e of Array.from(emails)) {
+    const likelihood = classifyEmail(e, ownerName);
+    channels.push({
+      type: "email",
+      value: e,
+      label:
+        likelihood === "high"
+          ? "persönlich (namensbasiert)"
+          : likelihood === "low"
+            ? "Sammelpostfach"
+            : "evtl. persönlich",
+      owner_likelihood: likelihood,
+    });
+  }
+
+  // Phones
+  const phones = new Set<string>();
+  const knownNorm = knownPhone ? normalizePhone(knownPhone) : null;
+  for (const m of Array.from(html.matchAll(PHONE_RE))) {
+    const p = normalizePhone(m[0]);
+    if (p && p !== knownNorm) phones.add(p);
+  }
+  for (const p of Array.from(phones)) {
+    const mobile = isMobile(p);
+    channels.push({
+      type: "phone",
+      value: p,
+      label: mobile ? "Mobil — oft direkt Inhaber" : "Festnetz",
+      owner_likelihood: mobile ? "high" : "low",
+    });
+  }
+
+  // Socials
+  const firstMatch = (re: RegExp) => html.match(re)?.[0] ?? null;
+  const insta = firstMatch(
+    /https?:\/\/(?:www\.)?instagram\.com\/(?!p\/|reel\/|explore)[A-Za-z0-9_.]{2,40}/,
+  );
+  if (insta)
+    channels.push({
+      type: "instagram",
+      value: insta,
+      label: "Instagram",
+      owner_likelihood: "medium",
+    });
+  const fb = firstMatch(
+    /https?:\/\/(?:www\.)?facebook\.com\/(?!sharer|share|plugins)[A-Za-z0-9_.\-]{2,60}/,
+  );
+  if (fb)
+    channels.push({
+      type: "facebook",
+      value: fb,
+      label: "Facebook",
+      owner_likelihood: "low",
+    });
+  const liPerson = firstMatch(
+    /https?:\/\/(?:www\.)?linkedin\.com\/in\/[A-Za-z0-9\-_%]{3,80}/,
+  );
+  const liCompany = firstMatch(
+    /https?:\/\/(?:www\.)?linkedin\.com\/company\/[A-Za-z0-9\-_%]{2,80}/,
+  );
+  if (liPerson)
+    channels.push({
+      type: "linkedin",
+      value: liPerson,
+      label: "LinkedIn-Profil (Person)",
+      owner_likelihood: "high",
+    });
+  else if (liCompany)
+    channels.push({
+      type: "linkedin",
+      value: liCompany,
+      label: "LinkedIn (Firma)",
+      owner_likelihood: "low",
+    });
+
+  const rank = { high: 0, medium: 1, low: 2 } as const;
+  return channels.sort(
+    (a, b) => rank[a.owner_likelihood] - rank[b.owner_likelihood],
+  );
+}
+
+async function findKontaktUrl(baseUrl: string, homeHtml: string | null): Promise<string | null> {
+  const m = homeHtml?.match(
+    /href=["']([^"']*(?:kontakt|contact)[^"']*)["']/i,
+  );
+  if (m?.[1]) return resolveUrl(baseUrl, m[1]);
+  return resolveUrl(baseUrl, "/kontakt");
+}
+
 async function extractFromText(text: string): Promise<ExtractResult | null> {
   try {
     const response = await claude().messages.create({
@@ -254,7 +401,7 @@ export async function enrichLead(leadId: string): Promise<EnrichResult> {
   const { data: lead } = await db
     .from("leads")
     .select(
-      "id, website_url, owner_name, owner_email, raw_data",
+      "id, website_url, owner_name, owner_email, phone, raw_data, instagram_url, facebook_url, owner_linkedin_url",
     )
     .eq("id", leadId)
     .single();
@@ -273,31 +420,48 @@ export async function enrichLead(leadId: string): Promise<EnrichResult> {
     owner_name: string | null;
     owner_email: string | null;
     website_url: string | null;
+    phone: string | null;
     raw_data: unknown;
+    instagram_url: string | null;
+    facebook_url: string | null;
+    owner_linkedin_url: string | null;
   };
 
   const website = existing.website_url;
 
-  // Try impressum first (most reliable when available)
+  // Collect up to 3 pages of raw HTML (homepage + impressum + kontakt)
+  // — the impressum feeds the Haiku owner extraction, ALL pages feed
+  // the contact-channel sweep (emails, phones, socials).
   let extracted: ExtractResult | null = null;
   let source: EnrichResult["source"] = "none";
+  const htmlPages: string[] = [];
 
   if (website) {
-    let impressumUrl = await findImpressumUrl(website);
-    let html: string | null = null;
+    const homeHtml = await fetchWithTimeout(website);
+    if (homeHtml) htmlPages.push(homeHtml);
+
+    let impressumHtml: string | null = null;
+    const impressumUrl = await findImpressumUrl(website);
     if (impressumUrl) {
-      html = await fetchWithTimeout(impressumUrl);
+      impressumHtml = await fetchWithTimeout(impressumUrl);
+      if (impressumHtml) htmlPages.push(impressumHtml);
     }
-    if (!html) {
-      html = await fetchWithTimeout(website);
-      impressumUrl = null;
+
+    const kontaktUrl = await findKontaktUrl(website, homeHtml);
+    if (kontaktUrl && kontaktUrl !== impressumUrl) {
+      const kontaktHtml = await fetchWithTimeout(kontaktUrl);
+      if (kontaktHtml && /kontakt|contact|impressum/i.test(kontaktHtml)) {
+        htmlPages.push(kontaktHtml);
+      }
     }
-    if (html) {
-      const text = stripHtml(html);
+
+    const ownerSourceHtml = impressumHtml ?? homeHtml;
+    if (ownerSourceHtml) {
+      const text = stripHtml(ownerSourceHtml);
       if (text.length >= 50) {
         extracted = await extractFromText(text);
         if (extracted?.owner_name) {
-          source = impressumUrl ? "impressum" : "homepage";
+          source = impressumHtml ? "impressum" : "homepage";
         }
       }
     }
@@ -342,11 +506,58 @@ export async function enrichLead(leadId: string): Promise<EnrichResult> {
       patch.owner_first_name = extracted.owner_name;
     }
   }
-  if (extracted?.owner_email && !existing.owner_email) {
-    patch.owner_email = extracted.owner_email;
-  }
   if (extracted?.legal_form) {
     patch.legal_form = extracted.legal_form;
+  }
+
+  // Deep contact sweep over everything we fetched.
+  const ownerNameForRanking =
+    (patch.owner_name as string | undefined) ?? existing.owner_name;
+  const channels = htmlPages.length
+    ? extractContactChannels(htmlPages, ownerNameForRanking ?? null, existing.phone)
+    : [];
+
+  if (channels.length > 0) {
+    patch.contact_channels = channels;
+
+    // Best email wins: high > medium > low (channels are pre-sorted).
+    // Always fill an empty owner_email — a generic info@ still beats no
+    // email at all. Upgrade an existing generic one only when we found
+    // a name-based (high) address.
+    const bestEmail = channels.find((c) => c.type === "email");
+    const haikuEmail = extracted?.owner_email?.toLowerCase() ?? null;
+    const candidate = bestEmail?.value ?? haikuEmail;
+    if (candidate) {
+      if (!existing.owner_email) {
+        patch.owner_email = candidate;
+      } else if (
+        bestEmail?.owner_likelihood === "high" &&
+        classifyEmail(existing.owner_email, ownerNameForRanking ?? null) !== "high"
+      ) {
+        patch.owner_email = bestEmail.value;
+      }
+    }
+
+    // Extra phones → additional_phones (call card's PhoneManager).
+    const phones = channels.filter((c) => c.type === "phone").slice(0, 4);
+    if (phones.length > 0) {
+      patch.additional_phones = phones.map((p) => ({
+        label: p.label ?? null,
+        number: p.value,
+      }));
+    }
+
+    // Socials onto their dedicated columns when still empty.
+    const insta = channels.find((c) => c.type === "instagram");
+    if (insta && !existing.instagram_url) patch.instagram_url = insta.value;
+    const fb = channels.find((c) => c.type === "facebook");
+    if (fb && !existing.facebook_url) patch.facebook_url = fb.value;
+    const li = channels.find((c) => c.type === "linkedin");
+    if (li && !existing.owner_linkedin_url) {
+      patch.owner_linkedin_url = li.value;
+    }
+  } else if (extracted?.owner_email && !existing.owner_email) {
+    patch.owner_email = extracted.owner_email;
   }
 
   // Always nudge status forward — we don't want to retry indefinitely.

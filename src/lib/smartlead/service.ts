@@ -251,7 +251,8 @@ export async function pushLeadsToCampaign(args: {
     result.invalid += res.invalid;
     result.blocked += res.blocked;
 
-    // Link locally regardless of dup/uploaded so the lead leaves the pool.
+    // Link locally regardless of dup/uploaded so the lead leaves the
+    // pool. A pushed lead IS the email channel by definition.
     const nowIso = new Date().toISOString();
     const ids = chunk.map((l) => l.id);
     await db
@@ -261,6 +262,8 @@ export async function pushLeadsToCampaign(args: {
         smartlead_synced_at: nowIso,
         smartlead_status: "queued",
         outreach_status: "queued",
+        primary_channel: "email",
+        channel_assigned_at: nowIso,
       })
       .in("id", ids);
 
@@ -387,17 +390,11 @@ export async function runColdMailAutomation(opts?: {
     return { capacity, maxNewPerDay, campaigns: results, elapsedMs: Date.now() - t0 };
   }
 
-  // Scale all quotas down proportionally if the user over-planned.
-  const plannedTotal = active.reduce(
-    (s, c) => s + c.automation.daily_new_leads,
-    0,
-  );
-  const scale = plannedTotal > maxNewPerDay ? maxNewPerDay / plannedTotal : 1;
-
   const { runAutoGeneration } = await import("@/lib/akquise/auto-generation");
   const { enrichAllPending } = await import("@/lib/lead-engine/enrichment");
   const { scoreAllPending } = await import("@/lib/lead-engine/scoring");
   const { routePendingLeads } = await import("@/lib/lead-engine/channel-router");
+  const db = leadEngine();
 
   for (const c of active) {
     if (Date.now() - t0 > timeBudget) {
@@ -413,7 +410,7 @@ export async function runColdMailAutomation(opts?: {
       continue;
     }
 
-    const quota = Math.max(0, Math.floor(c.automation.daily_new_leads * scale));
+    const quota = c.automation.daily_new_leads;
     const before = pushedToday[String(c.campaignId)] ?? 0;
     const remaining = Math.max(0, quota - before);
     if (remaining === 0) {
@@ -429,17 +426,18 @@ export async function runColdMailAutomation(opts?: {
       continue;
     }
 
-    // 1. Is the pool deep enough?
+    // 1. Is the email pool for this niche already deep enough?
     let pool = await getEmailPoolForNiche(c.niche, remaining);
     let generated = 0;
 
-    // 2. Top up: only ~40-50% of scraped leads end up routed to email,
-    //    so over-generate by 2.5× the shortfall.
+    // 2. Top up: generate fresh niche leads in the configured area.
+    //    Slightly over-generate (×1.5) since not every business yields
+    //    an email even after deep enrichment.
     if (pool.length < remaining) {
       const shortfall = remaining - pool.length;
       try {
         const gen = await runAutoGeneration({
-          target: Math.ceil(shortfall * 2.5),
+          target: Math.ceil(shortfall * 1.5),
           niches: [c.niche],
           cities: c.automation.cities,
           bundeslaender: c.automation.bundeslaender,
@@ -453,6 +451,30 @@ export async function runColdMailAutomation(opts?: {
           try {
             await scoreAllPending({ limit: gen.newLeads + 20, concurrency: 8 });
           } catch { /* */ }
+
+          // Auto-pilot contract: EVERY generated lead of this niche
+          // that has an email goes to the mail channel — the campaign
+          // owns them. Only the email-less rest goes through the
+          // normal channel router (call queue etc.).
+          try {
+            const { data: fresh } = await db
+              .from("leads")
+              .select("id, campaigns!inner(industry)")
+              .eq("campaigns.industry", c.niche)
+              .is("primary_channel", null)
+              .not("owner_email", "is", null)
+              .not("outreach_status", "in", TERMINAL);
+            const ids = ((fresh ?? []) as { id: string }[]).map((r) => r.id);
+            if (ids.length > 0) {
+              await db
+                .from("leads")
+                .update({
+                  primary_channel: "email",
+                  channel_assigned_at: new Date().toISOString(),
+                })
+                .in("id", ids);
+            }
+          } catch { /* */ }
           try {
             await routePendingLeads({ limit: 500 });
           } catch { /* */ }
@@ -461,7 +483,7 @@ export async function runColdMailAutomation(opts?: {
       } catch { /* generation is best-effort, push what we have */ }
     }
 
-    // 3. Push the freshest top-scored leads.
+    // 3. Push the freshest top-scored leads straight into Smartlead.
     let pushed = 0;
     if (pool.length > 0) {
       const ids = pool.slice(0, remaining).map((l) => l.id);

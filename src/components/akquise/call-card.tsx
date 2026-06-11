@@ -378,37 +378,6 @@ export function CallCard({
         </div>
       )}
 
-      {/* Price + fit offer (mit Satz-Erklärung) */}
-      {(priceRange || lead.fit_offer || lead.business_size) && (
-        <div className="space-y-1">
-          <div className="flex flex-wrap items-center gap-2 text-xs">
-            {priceRange && (
-              <span className="font-semibold tabular-nums text-emerald-300">
-                {priceRange}
-              </span>
-            )}
-            {lead.fit_offer && (
-              <Badge
-                variant="outline"
-                className="border-border/60 bg-card text-[10px]"
-              >
-                {lead.fit_offer}
-              </Badge>
-            )}
-            {lead.business_size && (
-              <span className="text-muted-foreground">
-                · {lead.business_size}
-              </span>
-            )}
-          </div>
-          {lead.fit_offer_pitch && (
-            <p className="text-[11px] italic leading-snug text-muted-foreground">
-              {lead.fit_offer_pitch}
-            </p>
-          )}
-        </div>
-      )}
-
       {/* Pain points */}
       {lead.pain_points && lead.pain_points.length > 0 && (
         <ul className="space-y-1 text-xs text-muted-foreground">
@@ -419,6 +388,50 @@ export function CallCard({
             </li>
           ))}
         </ul>
+      )}
+
+      {/* Offer block — what we'd build + what it buys the customer */}
+      {(priceRange || lead.fit_offer || lead.fit_offer_pitch) && (
+        <div className="space-y-1.5 rounded-lg border border-emerald-500/25 bg-emerald-500/[0.05] p-2.5">
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-300">
+              Offer
+            </span>
+            {lead.fit_offer && (
+              <Badge
+                variant="outline"
+                className="border-border/60 bg-card text-[10px]"
+              >
+                {lead.fit_offer}
+              </Badge>
+            )}
+            {priceRange && (
+              <span className="font-semibold tabular-nums text-emerald-300">
+                {priceRange}
+              </span>
+            )}
+            {lead.business_size && (
+              <span className="text-muted-foreground">
+                · {lead.business_size}
+              </span>
+            )}
+          </div>
+          {lead.fit_offer_pitch && (
+            <p className="text-[11px] leading-snug text-foreground">
+              {lead.fit_offer_pitch}
+            </p>
+          )}
+          {lead.offer_benefits && lead.offer_benefits.length > 0 && (
+            <ul className="space-y-0.5 text-[11px] text-muted-foreground">
+              {lead.offer_benefits.slice(0, 3).map((b, i) => (
+                <li key={i} className="flex gap-1.5">
+                  <span className="text-emerald-400">✓</span>
+                  <span>{b}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       )}
 
       {/* Gatekeeper pickup-line — only when reception is expected */}

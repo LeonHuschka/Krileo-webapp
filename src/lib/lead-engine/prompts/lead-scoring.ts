@@ -138,6 +138,13 @@ Bezieh dich auf die echte Lücke. Beispiele:
 - "Automatische Termin-Erinnerungen + Quittungen, damit der manuelle Telefon-Aufwand wegfällt."
 Wenn kein echter Bedarf: ehrlicher, kleiner Optimierungs-Satz — nichts Aufgeblasenes.
 
+ZUSÄTZLICH: offer_benefits — GENAU 3 kurze Keyfacts, was die Offer DIESEM Kunden
+konkret bringt (Kundennutzen, keine Feature-Liste; kleine Sätze erlaubt, je max ~12 Wörter).
+Datengedeckt und spezifisch — beziehe Branche/Lücke ein. Beispiele für eine Praxis ohne Booking:
+- "Patienten buchen abends & am Wochenende — ohne dass jemand ans Telefon muss"
+- "Weniger Terminausfälle durch automatische Erinnerungen"
+- "Die Rezeption spart täglich 1-2 Stunden Telefonzeit"
+
 ═══════════════════════════════════════════════════════════════════════
 WEITERE FELDER
 ═══════════════════════════════════════════════════════════════════════

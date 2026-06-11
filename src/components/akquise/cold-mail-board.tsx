@@ -327,68 +327,43 @@ export function ColdMailBoard({
       <TabsContent value="push" className="space-y-6">
         {!configured ? null : (
           <>
-            {/* Capacity / budget panel */}
+            {/* Auto-pilot strip */}
             <Card className="border-emerald-500/20 bg-gradient-to-br from-emerald-500/[0.04] via-card to-card">
-              <CardContent className="space-y-2 p-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Gauge className="h-4 w-4 text-emerald-300" />
-                  <span className="text-sm font-semibold">
-                    Sende-Budget
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {mailboxes} Postfächer · {capacity} Mails/Tag → max ~
-                    {maxNewPerDay} neue Leads/Tag (Rest = Follow-ups)
-                  </span>
-                  <div className="ml-auto flex items-center gap-2">
-                    <Badge
-                      variant="outline"
-                      className={
-                        plannedTotal > maxNewPerDay
-                          ? "border-rose-500/40 bg-rose-500/15 text-rose-300"
-                          : "border-emerald-500/40 bg-emerald-500/15 text-emerald-300"
-                      }
-                    >
-                      {plannedTotal}/{maxNewPerDay} geplant · {autoCount} Auto
-                    </Badge>
-                    <Button
-                      size="sm"
-                      className="h-7 gap-1 bg-emerald-600 px-2 text-[11px] text-white hover:bg-emerald-700"
-                      disabled={pending || autoCount === 0}
-                      onClick={handleRunAutomation}
-                    >
-                      {pending ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <Play className="h-3 w-3" />
-                      )}
-                      Jetzt ausführen
-                    </Button>
-                  </div>
-                </div>
-                <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-                  <div
-                    className={`h-full rounded-full ${
-                      plannedTotal > maxNewPerDay
-                        ? "bg-rose-500/80"
-                        : "bg-emerald-500/70"
-                    }`}
-                    style={{
-                      width: `${Math.min(100, maxNewPerDay > 0 ? (plannedTotal / maxNewPerDay) * 100 : 0)}%`,
-                    }}
-                  />
-                </div>
-                {plannedTotal > maxNewPerDay && (
-                  <p className="text-xs text-rose-300">
-                    Überplant — die Tages-Kontingente werden automatisch
-                    anteilig auf {maxNewPerDay} runterskaliert, damit
-                    Follow-ups nicht verhungern.
+              <CardContent className="flex flex-wrap items-center gap-x-3 gap-y-2 p-4">
+                <Zap className="h-4 w-4 shrink-0 text-emerald-300" />
+                <div className="min-w-0 flex-1">
+                  <span className="text-sm font-semibold">Auto-Pilot</span>
+                  <p className="text-xs text-muted-foreground">
+                    Täglich 05:00 pro Auto-Kampagne: frische Leads aus dem
+                    eingestellten Gebiet holen → qualifizieren → alle mit
+                    E-Mail direkt in die Smartlead-Kampagne pushen.
                   </p>
-                )}
-                <p className="text-[11px] text-muted-foreground">
-                  Täglich 05:00 läuft die Automation: pro Auto-Kampagne frische
-                  Leads generieren (Sättigungs-bewusst) → qualifizieren →
-                  verifizieren → Kontingent in Smartlead pushen.
-                </p>
+                </div>
+                <Badge
+                  variant="outline"
+                  className={
+                    plannedTotal > maxNewPerDay
+                      ? "border-amber-500/40 bg-amber-500/15 text-amber-300"
+                      : "border-emerald-500/40 bg-emerald-500/15 text-emerald-300"
+                  }
+                  title={`${mailboxes} Postfächer × Tageslimit = ${capacity} Mails/Tag. Mit 3-Mail-Sequenz sind ~${maxNewPerDay} neue Leads/Tag gesund — der Rest der Kapazität gehört den Follow-ups.`}
+                >
+                  <Gauge className="mr-1 h-3 w-3" />
+                  {plannedTotal} neue/Tag geplant · gesund ≈ {maxNewPerDay}
+                </Badge>
+                <Button
+                  size="sm"
+                  className="h-7 gap-1 bg-emerald-600 px-2 text-[11px] text-white hover:bg-emerald-700"
+                  disabled={pending || autoCount === 0}
+                  onClick={handleRunAutomation}
+                >
+                  {pending ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Play className="h-3 w-3" />
+                  )}
+                  Jetzt ausführen
+                </Button>
               </CardContent>
             </Card>
 

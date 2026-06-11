@@ -77,6 +77,20 @@ export interface AdditionalPhone {
   number: string;
 }
 
+/**
+ * One contact path found by deep enrichment (added in 00029_).
+ * owner_likelihood = how likely this funnels straight to the owner:
+ *   high   → name-based email, personal LinkedIn, mobile number
+ *   medium → personal-looking but unverified
+ *   low    → generic mailbox (info@), landline reception
+ */
+export interface ContactChannel {
+  type: "email" | "phone" | "instagram" | "facebook" | "linkedin";
+  value: string;
+  label?: string | null;
+  owner_likelihood: "high" | "medium" | "low";
+}
+
 export interface ScoreBreakdown {
   pain_severity: number;     // 0-25 — how badly do they need this
   fit_confidence: number;    // 0-25 — how well Krileo fits the gap
@@ -192,6 +206,10 @@ export interface Lead {
 
   // Scorer's factual website read (added in 00027_)
   website_assessment: WebsiteAssessment | null;
+
+  // Deep-enrichment contact paths + offer key facts (added in 00029_)
+  contact_channels: ContactChannel[] | null;
+  offer_benefits: string[] | null;
 
   // Gatekeeper classification (added in 00020_)
   pickup_profile: PickupProfile | null;

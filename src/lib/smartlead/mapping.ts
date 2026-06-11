@@ -42,6 +42,10 @@ export const SMARTLEAD_MERGE_TAGS: { tag: string; desc: string }[] = [
   { tag: "pain", desc: "Alle Pain-Points, zusammengefügt" },
   { tag: "pain_1", desc: "Wichtigster Pain-Point" },
   { tag: "pain_2", desc: "Zweiter Pain-Point" },
+  { tag: "benefit_1", desc: "Kundennutzen-Keyfact 1" },
+  { tag: "benefit_2", desc: "Kundennutzen-Keyfact 2" },
+  { tag: "benefit_3", desc: "Kundennutzen-Keyfact 3" },
+  { tag: "benefits", desc: "Alle 3 Benefits, zusammengefügt" },
   { tag: "price_range", desc: "z.B. „1.500–3.000 €“" },
   { tag: "price_min", desc: "Preis-Untergrenze (€)" },
   { tag: "price_max", desc: "Preis-Obergrenze (€)" },
@@ -91,6 +95,7 @@ export function leadToSmartleadPayload(lead: Lead): SmartleadLeadPayload | null 
   const { first, last } = splitName(lead.owner_name);
   const pains = (lead.pain_points ?? []).filter(Boolean);
 
+  const benefits = (lead.offer_benefits ?? []).filter(Boolean);
   const custom = clean({
     owner_name: lead.owner_name,
     hook: lead.personalized_hook,
@@ -99,6 +104,10 @@ export function leadToSmartleadPayload(lead: Lead): SmartleadLeadPayload | null 
     pain: pains.join(" · "),
     pain_1: pains[0],
     pain_2: pains[1],
+    benefit_1: benefits[0],
+    benefit_2: benefits[1],
+    benefit_3: benefits[2],
+    benefits: benefits.join(" · "),
     price_range: priceRange(
       lead.suggested_price_min_eur,
       lead.suggested_price_max_eur,

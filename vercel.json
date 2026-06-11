@@ -1,7 +1,7 @@
 {
   "crons": [
     {
-      "path": "/api/cron/auto-generate",
+      "path": "/api/cron/cold-mail",
       "schedule": "0 5 * * *"
     }
   ]

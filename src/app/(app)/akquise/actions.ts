@@ -32,7 +32,14 @@ import {
 import {
   clearCampaignNiche,
   setCampaignNiche,
+  setCampaignAutomation,
+  setCampaignSequence,
+  loadSmartleadConfig,
+  type CampaignAutomation,
 } from "@/lib/smartlead/storage";
+import { bodyToHtml, type SequenceMail } from "@/lib/smartlead/sequences";
+import { SEQUENCE_EDIT_SYSTEM } from "@/lib/smartlead/prompts/sequence-edit";
+import { claude, firstTextBlock } from "@/lib/lead-engine/claude";
 import { nextActionAfterNoAnswer } from "@/lib/lead-engine/cascade";
 import {
   createAppointment,
@@ -1395,4 +1402,144 @@ export async function registerSmartleadWebhook(campaignId: number) {
     "LEAD_UNSUBSCRIBED",
   ]);
   revalidatePath("/akquise/mail");
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Cold-mail control panel (per-campaign automation + sequences)
+// ─────────────────────────────────────────────────────────────────────
+
+export async function setCampaignAutomationAction(
+  campaignId: number,
+  automation: CampaignAutomation,
+) {
+  await setCampaignAutomation(campaignId, automation);
+  // Auto-pilot needs the reply webhook — register it on enable so
+  // replies/bounces flow back without a manual click.
+  if (automation.enabled) {
+    try {
+      await registerSmartleadWebhook(campaignId);
+    } catch {
+      /* best-effort — button on the card still works */
+    }
+  }
+  revalidatePath("/akquise/mail");
+}
+
+export async function saveCampaignSequenceAction(
+  campaignId: number,
+  mails: SequenceMail[],
+) {
+  if (mails.length === 0) throw new Error("Sequenz ist leer");
+  if (!mails[0].subject.trim()) {
+    throw new Error("Mail 1 braucht eine Betreffzeile");
+  }
+  await setCampaignSequence(campaignId, mails);
+  revalidatePath("/akquise/mail");
+}
+
+/**
+ * Write the stored sequence into the Smartlead campaign via API.
+ * Campaign must be DRAFTED/PAUSED (Smartlead rejects edits on ACTIVE).
+ */
+export async function pushSequenceToSmartleadAction(campaignId: number) {
+  const cfg = await loadSmartleadConfig();
+  const mails = cfg.campaign_sequences[String(campaignId)];
+  if (!mails || mails.length === 0) {
+    throw new Error("Erst Sequenz speichern, dann übernehmen");
+  }
+  const { saveCampaignSequences } = await import("@/lib/smartlead/client");
+  await saveCampaignSequences(
+    campaignId,
+    mails.map((m) => ({
+      subject: m.subject,
+      bodyHtml: bodyToHtml(m.body),
+      delayDays: m.delay_days,
+    })),
+  );
+  revalidatePath("/akquise/mail");
+}
+
+const SEQUENCE_EDIT_SCHEMA = {
+  type: "object",
+  properties: {
+    mails: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          subject: { type: "string" },
+          body: { type: "string" },
+          delay_days: { type: "integer" },
+        },
+        required: ["subject", "body", "delay_days"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["mails"],
+  additionalProperties: false,
+} as const;
+
+/**
+ * In-app AI editor: takes the current sequence + a user instruction,
+ * returns the revised 3 mails. Pure suggestion — nothing is saved
+ * until the user hits Speichern.
+ */
+export async function aiEditSequenceAction(input: {
+  instruction: string;
+  mails: SequenceMail[];
+  niche: string;
+  sampleVars: Record<string, string>;
+}): Promise<SequenceMail[]> {
+  const instruction = input.instruction.trim();
+  if (!instruction) throw new Error("Anweisung fehlt");
+
+  const userPrompt = [
+    `NICHE der Kampagne: ${input.niche}`,
+    "",
+    "AKTUELLE SEQUENZ:",
+    ...input.mails.map(
+      (m, i) =>
+        `--- Mail ${i + 1} (Tag +${m.delay_days}) ---\nBetreff: ${m.subject || "(leer = gleiche Konversation)"}\n${m.body}`,
+    ),
+    "",
+    "BEISPIEL-VARIABLEN eines echten Leads (so füllen sich die Merge-Tags):",
+    JSON.stringify(input.sampleVars, null, 2),
+    "",
+    `ANWEISUNG DES USERS: ${instruction}`,
+  ].join("\n");
+
+  const response = await claude().messages.create({
+    model: "claude-sonnet-4-6",
+    max_tokens: 2000,
+    output_config: {
+      format: {
+        type: "json_schema",
+        schema: SEQUENCE_EDIT_SCHEMA as unknown as Record<string, unknown>,
+      },
+    } as unknown as Record<string, unknown>,
+    system: [
+      {
+        type: "text",
+        text: SEQUENCE_EDIT_SYSTEM,
+        cache_control: { type: "ephemeral" },
+      },
+    ],
+    messages: [{ role: "user", content: userPrompt }],
+  });
+
+  const text = firstTextBlock(response.content);
+  if (!text) throw new Error("Claude hat keine Antwort geliefert");
+  const parsed = JSON.parse(text) as { mails: SequenceMail[] };
+  if (!parsed.mails?.length) throw new Error("Leere Sequenz zurückgekommen");
+  return parsed.mails.slice(0, 5);
+}
+
+/** Manual trigger for the daily cold-mail automation run. */
+export async function runColdMailAutomationNow() {
+  const { runColdMailAutomation } = await import("@/lib/smartlead/service");
+  const r = await runColdMailAutomation();
+  revalidateAll();
+  revalidatePath("/akquise/mail");
+  return r;
 }

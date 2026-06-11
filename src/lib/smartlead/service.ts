@@ -279,6 +279,219 @@ export async function pushLeadsToCampaign(args: {
 }
 
 // ─────────────────────────────────────────────────────────────────────
+// Cold-mail automation (per-campaign auto-pilot)
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * A 3-step sequence means every new lead consumes ~3 sends over its
+ * lifetime. Steady-state: new leads/day ≈ mailbox capacity / 3 — the
+ * rest of the capacity is follow-ups + warmup headroom.
+ */
+export const FOLLOWUP_FACTOR = 3;
+
+/** Email-channel pool restricted to one niche (campaigns.industry). */
+export async function getEmailPoolForNiche(
+  niche: string,
+  limit = 200,
+): Promise<Lead[]> {
+  const db = leadEngine();
+  const { data, error } = await db
+    .from("leads")
+    .select("*, campaigns!inner(industry)")
+    .eq("campaigns.industry", niche)
+    .eq("primary_channel", "email")
+    .is("smartlead_campaign_id", null)
+    .not("owner_email", "is", null)
+    .not("outreach_status", "in", TERMINAL)
+    .order("lead_score", { ascending: false, nullsFirst: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []) as Lead[];
+}
+
+function berlinMidnightIso(): string {
+  const now = new Date();
+  const berlin = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+  const date = berlin.toISOString().slice(0, 10);
+  return new Date(`${date}T00:00:00+02:00`).toISOString();
+}
+
+/** How many leads each campaign already received today (Berlin time). */
+export async function getPushedTodayByCampaign(): Promise<
+  Record<string, number>
+> {
+  const db = leadEngine();
+  const { data } = await db
+    .from("leads")
+    .select("smartlead_campaign_id")
+    .gte("smartlead_synced_at", berlinMidnightIso())
+    .not("smartlead_campaign_id", "is", null);
+  const counts: Record<string, number> = {};
+  for (const row of (data ?? []) as { smartlead_campaign_id: string }[]) {
+    counts[row.smartlead_campaign_id] =
+      (counts[row.smartlead_campaign_id] ?? 0) + 1;
+  }
+  return counts;
+}
+
+export type AutomationCampaignResult = {
+  campaignId: number;
+  niche: string;
+  quota: number;
+  pushedBefore: number;
+  generated: number;
+  pushed: number;
+  reason: string;
+};
+
+export type AutomationRunResult = {
+  capacity: number;
+  maxNewPerDay: number;
+  campaigns: AutomationCampaignResult[];
+  elapsedMs: number;
+};
+
+/**
+ * The daily cold-mail engine. For every campaign with auto-pilot on:
+ *   1. work out today's quota (scaled down if the sum of all campaign
+ *      targets exceeds capacity/3 — follow-ups need the rest)
+ *   2. top up the niche's email pool via saturation-aware generation
+ *      (which runs enrich → score+verify → route) when it's short
+ *   3. push the top-scored fresh leads into the Smartlead campaign
+ * Runs from the daily cron and the manual "Jetzt ausführen" button.
+ */
+export async function runColdMailAutomation(opts?: {
+  timeBudgetMs?: number;
+}): Promise<AutomationRunResult> {
+  const t0 = Date.now();
+  const timeBudget = opts?.timeBudgetMs ?? 250_000;
+
+  const [cfg, status, pushedToday] = await Promise.all([
+    loadSmartleadConfig(),
+    getConnectionStatus(),
+    getPushedTodayByCampaign(),
+  ]);
+  const capacity = status.dailyCapacity || 0;
+  const maxNewPerDay = Math.max(1, Math.floor(capacity / FOLLOWUP_FACTOR));
+
+  const active = Object.entries(cfg.campaign_automation)
+    .filter(([id, a]) => a.enabled && cfg.campaign_niche[id])
+    .map(([id, a]) => ({
+      campaignId: Number(id),
+      niche: cfg.campaign_niche[id],
+      automation: a,
+    }));
+
+  const results: AutomationCampaignResult[] = [];
+  if (active.length === 0) {
+    return { capacity, maxNewPerDay, campaigns: results, elapsedMs: Date.now() - t0 };
+  }
+
+  // Scale all quotas down proportionally if the user over-planned.
+  const plannedTotal = active.reduce(
+    (s, c) => s + c.automation.daily_new_leads,
+    0,
+  );
+  const scale = plannedTotal > maxNewPerDay ? maxNewPerDay / plannedTotal : 1;
+
+  const { runAutoGeneration } = await import("@/lib/akquise/auto-generation");
+  const { enrichAllPending } = await import("@/lib/lead-engine/enrichment");
+  const { scoreAllPending } = await import("@/lib/lead-engine/scoring");
+  const { routePendingLeads } = await import("@/lib/lead-engine/channel-router");
+
+  for (const c of active) {
+    if (Date.now() - t0 > timeBudget) {
+      results.push({
+        campaignId: c.campaignId,
+        niche: c.niche,
+        quota: 0,
+        pushedBefore: pushedToday[String(c.campaignId)] ?? 0,
+        generated: 0,
+        pushed: 0,
+        reason: "time_budget",
+      });
+      continue;
+    }
+
+    const quota = Math.max(0, Math.floor(c.automation.daily_new_leads * scale));
+    const before = pushedToday[String(c.campaignId)] ?? 0;
+    const remaining = Math.max(0, quota - before);
+    if (remaining === 0) {
+      results.push({
+        campaignId: c.campaignId,
+        niche: c.niche,
+        quota,
+        pushedBefore: before,
+        generated: 0,
+        pushed: 0,
+        reason: before >= quota && quota > 0 ? "quota_done" : "quota_zero",
+      });
+      continue;
+    }
+
+    // 1. Is the pool deep enough?
+    let pool = await getEmailPoolForNiche(c.niche, remaining);
+    let generated = 0;
+
+    // 2. Top up: only ~40-50% of scraped leads end up routed to email,
+    //    so over-generate by 2.5× the shortfall.
+    if (pool.length < remaining) {
+      const shortfall = remaining - pool.length;
+      try {
+        const gen = await runAutoGeneration({
+          target: Math.ceil(shortfall * 2.5),
+          niches: [c.niche],
+          cities: c.automation.cities,
+          bundeslaender: c.automation.bundeslaender,
+          batchSize: 20,
+        });
+        generated = gen.newLeads;
+        if (gen.newLeads > 0) {
+          try {
+            await enrichAllPending({ limit: gen.newLeads + 20, concurrency: 8 });
+          } catch { /* */ }
+          try {
+            await scoreAllPending({ limit: gen.newLeads + 20, concurrency: 8 });
+          } catch { /* */ }
+          try {
+            await routePendingLeads({ limit: 500 });
+          } catch { /* */ }
+        }
+        pool = await getEmailPoolForNiche(c.niche, remaining);
+      } catch { /* generation is best-effort, push what we have */ }
+    }
+
+    // 3. Push the freshest top-scored leads.
+    let pushed = 0;
+    if (pool.length > 0) {
+      const ids = pool.slice(0, remaining).map((l) => l.id);
+      const res = await pushLeadsToCampaign({
+        campaignId: c.campaignId,
+        leadIds: ids,
+      });
+      pushed = res.uploaded;
+    }
+
+    results.push({
+      campaignId: c.campaignId,
+      niche: c.niche,
+      quota,
+      pushedBefore: before,
+      generated,
+      pushed,
+      reason:
+        pushed >= remaining
+          ? "done"
+          : pool.length === 0
+            ? "pool_empty"
+            : "partial",
+    });
+  }
+
+  return { capacity, maxNewPerDay, campaigns: results, elapsedMs: Date.now() - t0 };
+}
+
+// ─────────────────────────────────────────────────────────────────────
 // Replies inbox
 // ─────────────────────────────────────────────────────────────────────
 

@@ -16,11 +16,6 @@ import {
   type CampaignOption,
 } from "@/components/akquise/generate-leads-dialog";
 import { D2DLeadDialog } from "@/components/akquise/d2d-lead-dialog";
-import { AutoGenCard } from "@/components/akquise/auto-gen-card";
-import {
-  getAutoGenSettings,
-  getAutoGenCoverage,
-} from "@/app/(app)/akquise/actions";
 import { formatLeadEngineError } from "@/lib/lead-engine/format-error";
 
 export const dynamic = "force-dynamic";
@@ -221,13 +216,10 @@ async function callPoolCount(
 
 export default async function AkquisePage() {
   // Load independently so a Stats failure doesn't hide the action button.
-  const [{ campaigns, error: campaignError }, stats, autoGen, autoGenCoverage] =
-    await Promise.all([
-      loadCampaigns(),
-      loadStats(),
-      getAutoGenSettings(),
-      getAutoGenCoverage().catch(() => undefined),
-    ]);
+  const [{ campaigns, error: campaignError }, stats] = await Promise.all([
+    loadCampaigns(),
+    loadStats(),
+  ]);
 
   return (
     <div className="space-y-6 p-4 md:p-6">
@@ -299,8 +291,6 @@ export default async function AkquisePage() {
           iconBg="bg-amber-500/15 text-amber-300"
         />
       </div>
-
-      <AutoGenCard initial={autoGen} coverage={autoGenCoverage} />
 
       <div className="space-y-4">
         {/* Row 1 — Lead-Browser full width */}

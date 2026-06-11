@@ -79,6 +79,10 @@ function clean(obj: Record<string, string | undefined | null>): Record<string, s
 /**
  * Build the Smartlead push payload for one lead. Returns null when the
  * lead has no email — those can't be pushed and are filtered upstream.
+ *
+ * Template-critical fields (hook, offer_pitch, pain_1, price_range) get
+ * neutral fallbacks when the scorer left them empty, so a sequence
+ * template never renders a literal "{{hook}}" into a real mail.
  */
 export function leadToSmartleadPayload(lead: Lead): SmartleadLeadPayload | null {
   const email = lead.owner_email?.trim();
@@ -106,6 +110,13 @@ export function leadToSmartleadPayload(lead: Lead): SmartleadLeadPayload | null 
     rating: lead.google_rating?.toString(),
   });
 
+  // Never let a sequence-critical merge tag come up empty.
+  custom.hook ??= `ich bin auf ${lead.business_name} gestoßen und habe mir Ihren Online-Auftritt angeschaut — da ist aus Kundensicht noch einiges möglich.`;
+  custom.offer_pitch ??=
+    "eine moderne, mobil-optimierte Online-Präsenz, die Anfragen automatisch reinholt.";
+  custom.pain_1 ??= "vieles läuft noch über Telefon statt online";
+  custom.price_range ??= "einem fairen Festpreis";
+
   return {
     email,
     first_name: first || lead.business_name,
@@ -114,6 +125,28 @@ export function leadToSmartleadPayload(lead: Lead): SmartleadLeadPayload | null 
     phone_number: lead.phone ?? undefined,
     website: lead.website_url ?? undefined,
     location: lead.city ?? undefined,
-    custom_fields: Object.keys(custom).length ? custom : undefined,
+    custom_fields: custom,
   };
+}
+
+/**
+ * Flat variable map for sequence previews — exactly what the templates
+ * can reference: Smartlead standard fields + our custom fields.
+ */
+export function buildVarsForLead(lead: Lead): Record<string, string> | null {
+  const payload = leadToSmartleadPayload(lead);
+  if (!payload) return null;
+  const vars: Record<string, string> = {
+    first_name: payload.first_name ?? "",
+    last_name: payload.last_name ?? "",
+    company_name: payload.company_name ?? "",
+    website: payload.website ?? "",
+    location: payload.location ?? "",
+    phone_number: payload.phone_number ?? "",
+    email: payload.email,
+  };
+  for (const [k, v] of Object.entries(payload.custom_fields ?? {})) {
+    vars[k.toLowerCase()] = v;
+  }
+  return vars;
 }

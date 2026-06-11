@@ -177,6 +177,29 @@ export async function getCampaignAnalytics(
   };
 }
 
+/**
+ * Write the campaign's email sequence. Body shape per Smartlead docs:
+ * { sequences: [{ seq_number, seq_delay_details, subject, email_body }] }
+ * — an empty subject makes that step a same-thread follow-up.
+ * Campaign must NOT be ACTIVE while editing (pause first).
+ */
+export async function saveCampaignSequences(
+  campaignId: number,
+  mails: Array<{ subject: string; bodyHtml: string; delayDays: number }>,
+): Promise<void> {
+  await request("POST", `/campaigns/${campaignId}/sequences`, {
+    body: {
+      sequences: mails.map((m, i) => ({
+        id: null,
+        seq_number: i + 1,
+        seq_delay_details: { delay_in_days: m.delayDays },
+        subject: m.subject,
+        email_body: m.bodyHtml,
+      })),
+    },
+  });
+}
+
 // ─────────────────────────────────────────────────────────────────────
 // Email / sender accounts
 // ─────────────────────────────────────────────────────────────────────

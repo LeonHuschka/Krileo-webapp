@@ -20,11 +20,21 @@ import {
   ExternalLink,
   Tag,
   Link2,
+  X,
+  Zap,
+  Gauge,
+  Sparkles,
+  Save,
+  MapPin,
+  FileText,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -35,10 +45,24 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SMARTLEAD_MERGE_TAGS } from "@/lib/smartlead/mapping";
 import {
+  DEFAULT_SEQUENCE,
+  SAMPLE_VARS,
+  renderSubject,
+  renderTemplate,
+  type SequenceMail,
+} from "@/lib/smartlead/sequences";
+import { BUNDESLAENDER } from "@/lib/akquise/geography";
+import type { CampaignAutomation } from "@/lib/smartlead/storage";
+import {
+  aiEditSequenceAction,
   assignSmartleadCampaignNiche,
   createSmartleadCampaignForNiche,
   pushLeadsToSmartlead,
+  pushSequenceToSmartleadAction,
   registerSmartleadWebhook,
+  runColdMailAutomationNow,
+  saveCampaignSequenceAction,
+  setCampaignAutomationAction,
   setSmartleadCampaignStatus,
 } from "@/app/(app)/akquise/actions";
 import type { PoolLead, ReplyLead } from "@/app/(app)/akquise/mail/page";
@@ -63,11 +87,18 @@ type CampaignView = {
 };
 
 const SMARTLEAD_APP_URL = "https://app.smartlead.ai";
+const FOLLOWUP_FACTOR = 3;
 
-/** copy_shops → "Copy Shops" (display only; raw slug stays the key). */
 function prettyNiche(n: string): string {
   return n.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
+
+const EMPTY_AUTOMATION: CampaignAutomation = {
+  enabled: false,
+  daily_new_leads: 10,
+  bundeslaender: [],
+  cities: [],
+};
 
 export function ColdMailBoard({
   configured,
@@ -75,17 +106,26 @@ export function ColdMailBoard({
   poolLeads,
   replies,
   allNiches,
+  automation,
+  sequences,
+  pushedToday,
+  capacity,
+  mailboxes,
 }: {
   configured: boolean;
   campaigns: CampaignView[];
   poolLeads: PoolLead[];
   replies: ReplyLead[];
   allNiches: string[];
+  automation: Record<string, CampaignAutomation>;
+  sequences: Record<string, SequenceMail[]>;
+  pushedToday: Record<string, number>;
+  capacity: number;
+  mailboxes: number;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
-  // Pool leads grouped by niche, preserving the server's score order.
   const poolByNiche = useMemo(() => {
     const m: Record<string, PoolLead[]> = {};
     for (const l of poolLeads) {
@@ -109,9 +149,6 @@ export function ColdMailBoard({
     return m;
   }, [poolByNiche]);
 
-  // Niches a still-unbound campaign can be assigned to: the full scrape
-  // universe (so already-emptied niches stay assignable), plus any pool
-  // niche not in that list (e.g. category fallbacks).
   const assignableNiches = useMemo(() => {
     const set = new Set<string>(allNiches);
     for (const n of poolNiches) set.add(n.niche);
@@ -123,9 +160,17 @@ export function ColdMailBoard({
   const nichesWithCampaign = new Set(
     boundCampaigns.map((c) => c.niche as string),
   );
-  const openNiches = poolNiches.filter(
-    (n) => !nichesWithCampaign.has(n.niche),
-  );
+  const openNiches = poolNiches.filter((n) => !nichesWithCampaign.has(n.niche));
+
+  // Capacity math
+  const maxNewPerDay = Math.max(0, Math.floor(capacity / FOLLOWUP_FACTOR));
+  const plannedTotal = boundCampaigns.reduce((s, c) => {
+    const a = automation[String(c.id)];
+    return s + (a?.enabled ? a.daily_new_leads : 0);
+  }, 0);
+  const autoCount = boundCampaigns.filter(
+    (c) => automation[String(c.id)]?.enabled,
+  ).length;
 
   // ── handlers ────────────────────────────────────────────────────────
   function handlePush(
@@ -142,9 +187,8 @@ export function ColdMailBoard({
       !window.confirm(
         `${leadIds.length} ${prettyNiche(niche)}-Leads in „${campName}" pushen?`,
       )
-    ) {
+    )
       return;
-    }
     startTransition(async () => {
       try {
         const res = await pushLeadsToSmartlead({ campaignId, leadIds });
@@ -217,12 +261,57 @@ export function ColdMailBoard({
     });
   }
 
+  function handleSaveAutomation(campaignId: number, a: CampaignAutomation) {
+    startTransition(async () => {
+      try {
+        await setCampaignAutomationAction(campaignId, a);
+        toast.success(
+          a.enabled
+            ? `Auto-Pilot an — ${a.daily_new_leads} neue Leads/Tag`
+            : "Auto-Pilot aus",
+        );
+        router.refresh();
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Speichern fehlgeschlagen");
+      }
+    });
+  }
+
+  function handleRunAutomation() {
+    if (
+      !window.confirm(
+        `Cold-Mail-Automation jetzt ausführen? Generiert + pusht für alle ${autoCount} Auto-Kampagnen das heutige Kontingent. Kann einige Minuten dauern.`,
+      )
+    )
+      return;
+    startTransition(async () => {
+      try {
+        const r = await runColdMailAutomationNow();
+        const lines = r.campaigns
+          .map(
+            (c) =>
+              `${prettyNiche(c.niche)}: ${c.pushed} gepusht (${c.generated} generiert, ${c.reason})`,
+          )
+          .join(" · ");
+        toast.success(lines || "Keine Auto-Kampagnen aktiv", {
+          duration: 15_000,
+        });
+        router.refresh();
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Automation fehlgeschlagen");
+      }
+    });
+  }
+
   const poolCount = poolLeads.length;
 
   return (
     <Tabs defaultValue="push" className="space-y-4">
       <TabsList>
-        <TabsTrigger value="push">Kampagnen &amp; Push</TabsTrigger>
+        <TabsTrigger value="push">Kampagnen</TabsTrigger>
+        <TabsTrigger value="sequence" className="gap-1.5">
+          <FileText className="h-3.5 w-3.5" /> Sequenz
+        </TabsTrigger>
         <TabsTrigger value="replies" className="gap-1.5">
           <Reply className="h-3.5 w-3.5" /> Replies
           {replies.length > 0 && (
@@ -231,36 +320,109 @@ export function ColdMailBoard({
             </span>
           )}
         </TabsTrigger>
-        <TabsTrigger value="vars">Merge-Variablen</TabsTrigger>
+        <TabsTrigger value="vars">Variablen</TabsTrigger>
       </TabsList>
 
-      {/* ── KAMPAGNEN & PUSH ─────────────────────────────────────────── */}
+      {/* ── KAMPAGNEN ────────────────────────────────────────────────── */}
       <TabsContent value="push" className="space-y-6">
         {!configured ? null : (
           <>
-            {/* Bound campaigns — push lives inside each card, niche-scoped */}
+            {/* Capacity / budget panel */}
+            <Card className="border-emerald-500/20 bg-gradient-to-br from-emerald-500/[0.04] via-card to-card">
+              <CardContent className="space-y-2 p-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Gauge className="h-4 w-4 text-emerald-300" />
+                  <span className="text-sm font-semibold">
+                    Sende-Budget
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {mailboxes} Postfächer · {capacity} Mails/Tag → max ~
+                    {maxNewPerDay} neue Leads/Tag (Rest = Follow-ups)
+                  </span>
+                  <div className="ml-auto flex items-center gap-2">
+                    <Badge
+                      variant="outline"
+                      className={
+                        plannedTotal > maxNewPerDay
+                          ? "border-rose-500/40 bg-rose-500/15 text-rose-300"
+                          : "border-emerald-500/40 bg-emerald-500/15 text-emerald-300"
+                      }
+                    >
+                      {plannedTotal}/{maxNewPerDay} geplant · {autoCount} Auto
+                    </Badge>
+                    <Button
+                      size="sm"
+                      className="h-7 gap-1 bg-emerald-600 px-2 text-[11px] text-white hover:bg-emerald-700"
+                      disabled={pending || autoCount === 0}
+                      onClick={handleRunAutomation}
+                    >
+                      {pending ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Play className="h-3 w-3" />
+                      )}
+                      Jetzt ausführen
+                    </Button>
+                  </div>
+                </div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className={`h-full rounded-full ${
+                      plannedTotal > maxNewPerDay
+                        ? "bg-rose-500/80"
+                        : "bg-emerald-500/70"
+                    }`}
+                    style={{
+                      width: `${Math.min(100, maxNewPerDay > 0 ? (plannedTotal / maxNewPerDay) * 100 : 0)}%`,
+                    }}
+                  />
+                </div>
+                {plannedTotal > maxNewPerDay && (
+                  <p className="text-xs text-rose-300">
+                    Überplant — die Tages-Kontingente werden automatisch
+                    anteilig auf {maxNewPerDay} runterskaliert, damit
+                    Follow-ups nicht verhungern.
+                  </p>
+                )}
+                <p className="text-[11px] text-muted-foreground">
+                  Täglich 05:00 läuft die Automation: pro Auto-Kampagne frische
+                  Leads generieren (Sättigungs-bewusst) → qualifizieren →
+                  verifizieren → Kontingent in Smartlead pushen.
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Bound campaigns with control panel */}
             {boundCampaigns.length > 0 && (
               <section className="space-y-3">
                 <h2 className="text-sm font-medium text-muted-foreground">
                   Kampagnen
                 </h2>
-                <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
                   {boundCampaigns.map((c) => (
                     <CampaignCard
                       key={c.id}
                       c={c}
                       nicheLeads={poolByNiche[c.niche as string] ?? []}
+                      automation={
+                        automation[String(c.id)] ?? EMPTY_AUTOMATION
+                      }
+                      pushedToday={pushedToday[String(c.id)] ?? 0}
+                      hasSequence={
+                        (sequences[String(c.id)]?.length ?? 0) > 0
+                      }
                       pending={pending}
                       onPush={handlePush}
                       onStatus={handleStatus}
                       onWebhook={handleWebhook}
+                      onSaveAutomation={handleSaveAutomation}
                     />
                   ))}
                 </div>
               </section>
             )}
 
-            {/* Niches present in the pool that have no campaign yet */}
+            {/* Niches without campaign */}
             {openNiches.length > 0 && (
               <section className="space-y-3">
                 <h2 className="text-sm font-medium text-muted-foreground">
@@ -280,7 +442,7 @@ export function ColdMailBoard({
               </section>
             )}
 
-            {/* Existing Smartlead campaigns not yet bound to a niche */}
+            {/* Unbound campaigns */}
             {unboundCampaigns.length > 0 && (
               <section className="space-y-3">
                 <h2 className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
@@ -304,14 +466,23 @@ export function ColdMailBoard({
             {poolCount === 0 && boundCampaigns.length === 0 && (
               <Card>
                 <CardContent className="p-6 text-sm text-muted-foreground">
-                  Kein E-Mail-Lead bereit. Im Lead-Browser Leads auf Channel{" "}
-                  <strong>E-Mail</strong> setzen (oder Auto-Assign) — dann
-                  erscheinen hier pro Niche Cards.
+                  Kein E-Mail-Lead bereit. Leads generieren (Akquise) oder im
+                  Lead-Browser Channels zuweisen — dann erscheinen hier pro
+                  Niche Cards.
                 </CardContent>
               </Card>
             )}
           </>
         )}
+      </TabsContent>
+
+      {/* ── SEQUENZ ──────────────────────────────────────────────────── */}
+      <TabsContent value="sequence">
+        <SequenceEditor
+          campaigns={boundCampaigns}
+          sequences={sequences}
+          poolByNiche={poolByNiche}
+        />
       </TabsContent>
 
       {/* ── REPLIES ──────────────────────────────────────────────────── */}
@@ -368,28 +539,316 @@ export function ColdMailBoard({
         )}
       </TabsContent>
 
-      {/* ── MERGE VARIABLES ──────────────────────────────────────────── */}
+      {/* ── VARIABLEN ────────────────────────────────────────────────── */}
       <TabsContent value="vars" className="space-y-3">
         <Card>
           <CardContent className="space-y-3 p-5 text-sm">
             <p className="text-muted-foreground">
-              Diese Variablen reist jeder Lead automatisch mit, wenn du ihn
-              pushst. Bau sie in dein Smartlead-Template ein — der Text bleibt
-              pro Kampagne gleich, füllt sich aber pro Lead selbst aus.
+              Diese Variablen reist jeder Lead automatisch mit. Bau sie in die
+              Sequenz ein — der Text bleibt pro Kampagne gleich, füllt sich
+              aber pro Lead selbst aus. Fallback-Syntax:{" "}
+              <code>{"{{price_range | einem fairen Festpreis}}"}</code>
             </p>
             <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
               {SMARTLEAD_MERGE_TAGS.map((t) => (
                 <MergeTagRow key={t.tag} tag={t.tag} desc={t.desc} />
               ))}
             </div>
-            <p className="text-xs text-muted-foreground/70">
-              Beispiel: „Hallo {"{{first_name}}"}, {"{{hook}}"} … Wir würden
-              dir {"{{offer_pitch}}"} ({"{{price_range}}"}) bauen.“
-            </p>
           </CardContent>
         </Card>
       </TabsContent>
     </Tabs>
+  );
+}
+
+// ── Sequence editor + live preview + AI ────────────────────────────────
+function SequenceEditor({
+  campaigns,
+  sequences,
+  poolByNiche,
+}: {
+  campaigns: CampaignView[];
+  sequences: Record<string, SequenceMail[]>;
+  poolByNiche: Record<string, PoolLead[]>;
+}) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [campaignId, setCampaignId] = useState<string>(
+    campaigns[0] ? String(campaigns[0].id) : "",
+  );
+  const campaign = campaigns.find((c) => String(c.id) === campaignId);
+  const niche = campaign?.niche ?? "";
+
+  const [mails, setMails] = useState<SequenceMail[]>(
+    () => sequences[campaignId]?.map((m) => ({ ...m })) ?? DEFAULT_SEQUENCE.map((m) => ({ ...m })),
+  );
+  const [instruction, setInstruction] = useState("");
+  const [previewLeadId, setPreviewLeadId] = useState<string>("__sample__");
+
+  const nichePool = (niche ? poolByNiche[niche] : undefined) ?? [];
+  const previewCandidates = nichePool.filter((l) => l.vars);
+  const previewVars =
+    previewLeadId !== "__sample__"
+      ? previewCandidates.find((l) => l.id === previewLeadId)?.vars ?? SAMPLE_VARS
+      : SAMPLE_VARS;
+
+  function switchCampaign(id: string) {
+    setCampaignId(id);
+    setPreviewLeadId("__sample__");
+    setMails(
+      sequences[id]?.map((m) => ({ ...m })) ??
+        DEFAULT_SEQUENCE.map((m) => ({ ...m })),
+    );
+  }
+
+  function patchMail(i: number, patch: Partial<SequenceMail>) {
+    setMails((prev) => prev.map((m, j) => (j === i ? { ...m, ...patch } : m)));
+  }
+
+  function save(thenPush: boolean) {
+    if (!campaignId) return;
+    startTransition(async () => {
+      try {
+        await saveCampaignSequenceAction(Number(campaignId), mails);
+        if (thenPush) {
+          await pushSequenceToSmartleadAction(Number(campaignId));
+          toast.success("Sequenz gespeichert & in Smartlead übernommen ✓");
+        } else {
+          toast.success("Sequenz gespeichert");
+        }
+        router.refresh();
+      } catch (err) {
+        toast.error(
+          err instanceof Error
+            ? `${err.message}${thenPush ? " — Texte ggf. manuell in Smartlead einfügen (Kopieren-Buttons)" : ""}`
+            : "Fehler",
+        );
+      }
+    });
+  }
+
+  function aiEdit() {
+    if (!instruction.trim()) {
+      toast.error("Sag Claude, was er ändern soll");
+      return;
+    }
+    startTransition(async () => {
+      try {
+        const next = await aiEditSequenceAction({
+          instruction,
+          mails,
+          niche: prettyNiche(niche || "allgemein"),
+          sampleVars: previewVars,
+        });
+        setMails(next);
+        setInstruction("");
+        toast.success("Sequenz überarbeitet — Preview checken, dann speichern");
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "AI-Edit fehlgeschlagen");
+      }
+    });
+  }
+
+  if (campaigns.length === 0) {
+    return (
+      <Card>
+        <CardContent className="p-6 text-sm text-muted-foreground">
+          Erst eine Kampagne anlegen und an eine Niche binden — dann kannst du
+          hier die Sequenz schreiben.
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+      {/* Editor column */}
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="space-y-1.5">
+            <Label className="text-xs">Kampagne</Label>
+            <Select value={campaignId} onValueChange={switchCampaign}>
+              <SelectTrigger className="w-[260px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {campaigns.map((c) => (
+                  <SelectItem key={c.id} value={String(c.id)}>
+                    {c.name} · {c.niche ? prettyNiche(c.niche) : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={pending}
+            onClick={() => save(false)}
+          >
+            <Save className="h-3.5 w-3.5" /> Speichern
+          </Button>
+          <Button size="sm" disabled={pending} onClick={() => save(true)}>
+            {pending ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Send className="h-3.5 w-3.5" />
+            )}
+            In Smartlead übernehmen
+          </Button>
+        </div>
+
+        {campaign?.status === "ACTIVE" && (
+          <p className="text-xs text-amber-300/90">
+            Kampagne ist ACTIVE — Smartlead lehnt Sequenz-Änderungen ab.
+            Erst pausieren, übernehmen, wieder starten.
+          </p>
+        )}
+
+        {/* AI assist */}
+        <Card className="border-violet-500/30 bg-violet-500/[0.04]">
+          <CardContent className="space-y-2 p-3">
+            <Label className="flex items-center gap-1.5 text-xs">
+              <Sparkles className="h-3.5 w-3.5 text-violet-300" />
+              Mit Claude anpassen
+            </Label>
+            <div className="flex gap-1.5">
+              <Input
+                value={instruction}
+                onChange={(e) => setInstruction(e.target.value)}
+                placeholder='z.B. "Mail 2 kürzer und frecher" oder "alles auf du-Form"'
+                className="h-8 text-xs"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    aiEdit();
+                  }
+                }}
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 shrink-0 border-violet-500/40 text-violet-200"
+                disabled={pending}
+                onClick={aiEdit}
+              >
+                {pending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3.5 w-3.5" />
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {mails.map((m, i) => (
+          <Card key={i}>
+            <CardContent className="space-y-2 p-3">
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="border-border/60 text-[10px]">
+                  Mail {i + 1}
+                </Badge>
+                <Label className="text-xs text-muted-foreground">Tag +</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={60}
+                  value={m.delay_days}
+                  onChange={(e) =>
+                    patchMail(i, { delay_days: Number(e.target.value) || 0 })
+                  }
+                  className="h-7 w-16 text-xs"
+                  disabled={i === 0}
+                />
+                <button
+                  type="button"
+                  className="ml-auto text-muted-foreground hover:text-foreground"
+                  title="Text kopieren (mit Variablen, für Smartlead)"
+                  onClick={() => {
+                    navigator.clipboard?.writeText(
+                      `Betreff: ${m.subject || "(leer = gleiche Konversation)"}\n\n${m.body}`,
+                    );
+                    toast.success(`Mail ${i + 1} kopiert`);
+                  }}
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              <Input
+                value={m.subject}
+                onChange={(e) => patchMail(i, { subject: e.target.value })}
+                placeholder={
+                  i === 0
+                    ? "Betreff…"
+                    : "leer = gleiche Konversation (Re: Mail 1)"
+                }
+                className="h-8 text-xs"
+              />
+              <Textarea
+                value={m.body}
+                onChange={(e) => patchMail(i, { body: e.target.value })}
+                rows={9}
+                className="text-xs leading-relaxed"
+              />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Preview column */}
+      <div className="space-y-3">
+        <div className="space-y-1.5">
+          <Label className="text-xs">
+            Live-Preview mit echten Lead-Daten
+          </Label>
+          <Select value={previewLeadId} onValueChange={setPreviewLeadId}>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__sample__">
+                Beispiel-Lead (Demo-Daten)
+              </SelectItem>
+              {previewCandidates.map((l) => (
+                <SelectItem key={l.id} value={l.id}>
+                  {l.business_name} · {l.owner_email}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {previewCandidates.length === 0 && (
+            <p className="text-[11px] text-muted-foreground">
+              Noch keine {niche ? prettyNiche(niche) : ""}-Leads im Pool —
+              Preview nutzt Demo-Daten. Sobald Leads da sind, siehst du hier
+              die echten Mails.
+            </p>
+          )}
+        </div>
+
+        {mails.map((m, i) => (
+          <Card key={i} className="border-emerald-500/20">
+            <CardContent className="space-y-2 p-4">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Mail className="h-3.5 w-3.5" />
+                Tag +{m.delay_days} · an{" "}
+                {previewVars.email ?? "lead@beispiel.de"}
+              </div>
+              <div className="text-sm font-medium">
+                {renderSubject(mails, i, previewVars)}
+              </div>
+              <div className="whitespace-pre-wrap rounded-md bg-muted/30 p-3 text-sm leading-relaxed">
+                {renderTemplate(m.body, previewVars)}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+        <p className="text-[11px] text-muted-foreground">
+          ⟦variable⟧ = Wert fehlt bei diesem Lead und hat keinen Fallback —
+          vor dem Start fixen (Fallback-Syntax im Variablen-Tab).
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -426,17 +885,24 @@ function NicheCreateCard({
   );
 }
 
-// ── Bound campaign card (push inside) ──────────────────────────────────
+// ── Bound campaign card with auto-pilot control panel ──────────────────
 function CampaignCard({
   c,
   nicheLeads,
+  automation,
+  pushedToday,
+  hasSequence,
   pending,
   onPush,
   onStatus,
   onWebhook,
+  onSaveAutomation,
 }: {
   c: CampaignView;
   nicheLeads: PoolLead[];
+  automation: CampaignAutomation;
+  pushedToday: number;
+  hasSequence: boolean;
   pending: boolean;
   onPush: (
     campaignId: number,
@@ -446,6 +912,7 @@ function CampaignCard({
   ) => void;
   onStatus: (id: number, status: "START" | "PAUSED") => void;
   onWebhook: (id: number) => void;
+  onSaveAutomation: (id: number, a: CampaignAutomation) => void;
 }) {
   const available = nicheLeads.length;
   const [count, setCount] = useState<number>(Math.min(available, 25) || 0);
@@ -453,8 +920,20 @@ function CampaignCard({
   const a = c.analytics;
   const niche = c.niche as string;
 
+  // Local automation draft
+  const [auto, setAuto] = useState<CampaignAutomation>({ ...automation });
+  const [showRegion, setShowRegion] = useState(false);
+  const [draftCity, setDraftCity] = useState("");
+  const dirty =
+    auto.enabled !== automation.enabled ||
+    auto.daily_new_leads !== automation.daily_new_leads ||
+    JSON.stringify(auto.bundeslaender) !==
+      JSON.stringify(automation.bundeslaender) ||
+    JSON.stringify(auto.cities) !== JSON.stringify(automation.cities);
+  const hasScope = auto.bundeslaender.length > 0 || auto.cities.length > 0;
+
   return (
-    <Card>
+    <Card className={auto.enabled ? "border-emerald-500/30" : undefined}>
       <CardContent className="space-y-3 p-4">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
@@ -468,7 +947,8 @@ function CampaignCard({
               </Badge>
             </div>
             <div className="text-xs text-muted-foreground">
-              #{c.id} · {c.localPushed} gepusht
+              #{c.id} · {c.localPushed} gepusht gesamt
+              {!hasSequence && " · ⚠ keine Sequenz gespeichert"}
             </div>
           </div>
           <Badge
@@ -492,7 +972,145 @@ function CampaignCard({
           <Stat icon={Ban} label="Bounces" value={a.bounced} accent="text-rose-300" />
         </div>
 
-        {/* In-card push — scoped to THIS campaign's niche only */}
+        {/* Auto-pilot control panel */}
+        <div
+          className={`space-y-2 rounded-md border p-2.5 ${
+            auto.enabled
+              ? "border-emerald-500/30 bg-emerald-500/[0.05]"
+              : "border-border/50 bg-muted/20"
+          }`}
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            <Checkbox
+              id={`auto-${c.id}`}
+              checked={auto.enabled}
+              onCheckedChange={(v) =>
+                setAuto({ ...auto, enabled: v === true })
+              }
+            />
+            <Label
+              htmlFor={`auto-${c.id}`}
+              className="flex cursor-pointer items-center gap-1 text-xs font-medium"
+            >
+              <Zap
+                className={`h-3.5 w-3.5 ${auto.enabled ? "text-emerald-300" : "text-muted-foreground"}`}
+              />
+              Auto-Pilot
+            </Label>
+            <Input
+              type="number"
+              min={1}
+              max={200}
+              value={auto.daily_new_leads}
+              onChange={(e) =>
+                setAuto({
+                  ...auto,
+                  daily_new_leads: Number(e.target.value) || 0,
+                })
+              }
+              className="h-7 w-16 text-xs"
+            />
+            <span className="text-[11px] text-muted-foreground">
+              neue/Tag · heute {pushedToday}/{auto.daily_new_leads}
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowRegion(!showRegion)}
+              className="ml-auto inline-flex items-center gap-1 text-[11px] text-muted-foreground underline-offset-2 hover:underline"
+            >
+              <MapPin className="h-3 w-3" />
+              Gebiet ({auto.bundeslaender.length + auto.cities.length})
+            </button>
+            {dirty && (
+              <Button
+                size="sm"
+                className="h-6 px-2 text-[11px]"
+                disabled={pending || (auto.enabled && !hasScope)}
+                onClick={() => onSaveAutomation(c.id, auto)}
+              >
+                <Save className="h-3 w-3" /> Speichern
+              </Button>
+            )}
+          </div>
+
+          {auto.enabled && !hasScope && (
+            <p className="text-[11px] text-amber-300/90">
+              Gebiet wählen (Bundesland oder Stadt), sonst kann nichts
+              generiert werden.
+            </p>
+          )}
+
+          {showRegion && (
+            <div className="space-y-2 border-t border-border/40 pt-2">
+              <div className="flex flex-wrap gap-1">
+                {BUNDESLAENDER.map((bl) => {
+                  const on = auto.bundeslaender.includes(bl);
+                  return (
+                    <button
+                      key={bl}
+                      type="button"
+                      onClick={() =>
+                        setAuto({
+                          ...auto,
+                          bundeslaender: on
+                            ? auto.bundeslaender.filter((x) => x !== bl)
+                            : [...auto.bundeslaender, bl],
+                        })
+                      }
+                      className={`rounded border px-1.5 py-0.5 text-[10px] transition-colors ${
+                        on
+                          ? "border-violet-500/50 bg-violet-500/20 text-violet-200"
+                          : "border-border/50 text-muted-foreground hover:border-violet-500/40"
+                      }`}
+                    >
+                      {bl}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="flex gap-1">
+                <Input
+                  value={draftCity}
+                  onChange={(e) => setDraftCity(e.target.value)}
+                  placeholder="Einzelne Stadt/Ort…"
+                  className="h-7 text-xs"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      const v = draftCity.trim();
+                      if (v && !auto.cities.includes(v)) {
+                        setAuto({ ...auto, cities: [...auto.cities, v] });
+                      }
+                      setDraftCity("");
+                    }
+                  }}
+                />
+              </div>
+              {auto.cities.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {auto.cities.map((city) => (
+                    <button
+                      key={city}
+                      type="button"
+                      onClick={() =>
+                        setAuto({
+                          ...auto,
+                          cities: auto.cities.filter((x) => x !== city),
+                        })
+                      }
+                      className="inline-flex items-center gap-1 rounded border border-sky-500/40 bg-sky-500/15 px-1.5 py-0.5 text-[10px] text-sky-300 hover:bg-rose-500/15 hover:text-rose-300"
+                    >
+                      {city}
+                      <X className="h-2.5 w-2.5" />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Manual push (scoped to this campaign's niche) */}
         <div className="rounded-md border border-border/50 bg-muted/20 p-2.5">
           {available === 0 ? (
             <p className="text-xs text-muted-foreground">
@@ -582,7 +1200,7 @@ function CampaignCard({
   );
 }
 
-// ── Unbound campaign card (assign a niche) ─────────────────────────────
+// ── Unbound campaign card ──────────────────────────────────────────────
 function UnboundCampaignCard({
   c,
   niches,

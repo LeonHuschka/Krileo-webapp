@@ -9,8 +9,11 @@ import {
   getCampaignsWithStats,
   getConnectionStatus,
   getEmailPool,
+  getPushedTodayByCampaign,
   getReplies,
 } from "@/lib/smartlead/service";
+import { loadSmartleadConfig } from "@/lib/smartlead/storage";
+import { buildVarsForLead } from "@/lib/smartlead/mapping";
 import { formatLeadEngineError } from "@/lib/lead-engine/format-error";
 
 export const dynamic = "force-dynamic";
@@ -27,6 +30,8 @@ export type PoolLead = {
   /** Niche derived from the lead's source campaign — the grouping we
    *  push by, so only matching leads enter a niche campaign. */
   niche: string | null;
+  /** Flat merge-tag values for live sequence previews. */
+  vars: Record<string, string> | null;
 };
 
 export type ReplyLead = {
@@ -40,7 +45,11 @@ export type ReplyLead = {
 };
 
 export default async function ColdMailPage() {
-  const connection = await getConnectionStatus();
+  const [connection, smartleadConfig, pushedToday] = await Promise.all([
+    getConnectionStatus(),
+    loadSmartleadConfig(),
+    getPushedTodayByCampaign().catch(() => ({}) as Record<string, number>),
+  ]);
 
   let campaigns = [] as Awaited<ReturnType<typeof getCampaignsWithStats>>["campaigns"];
   let campaignError: string | null = null;
@@ -85,6 +94,7 @@ export default async function ColdMailPage() {
         fit_offer: l.fit_offer,
         category: l.category,
         niche,
+        vars: buildVarsForLead(l),
       };
     });
     replies = reps.map((l) => ({
@@ -205,6 +215,11 @@ export default async function ColdMailPage() {
         poolLeads={poolLeads}
         replies={replies}
         allNiches={allNiches}
+        automation={smartleadConfig.campaign_automation}
+        sequences={smartleadConfig.campaign_sequences}
+        pushedToday={pushedToday}
+        capacity={connection.dailyCapacity}
+        mailboxes={connection.mailboxes}
       />
     </div>
   );

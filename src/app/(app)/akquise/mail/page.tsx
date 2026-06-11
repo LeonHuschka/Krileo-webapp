@@ -218,8 +218,6 @@ export default async function ColdMailPage() {
         automation={smartleadConfig.campaign_automation}
         sequences={smartleadConfig.campaign_sequences}
         pushedToday={pushedToday}
-        capacity={connection.dailyCapacity}
-        mailboxes={connection.mailboxes}
       />
     </div>
   );

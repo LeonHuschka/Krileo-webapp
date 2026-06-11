@@ -1535,10 +1535,13 @@ export async function aiEditSequenceAction(input: {
   return parsed.mails.slice(0, 5);
 }
 
-/** Manual trigger for the daily cold-mail automation run. */
-export async function runColdMailAutomationNow() {
+/**
+ * Manual trigger for the cold-mail automation — for one campaign
+ * (per-card "Jetzt" button) or all auto-enabled ones when no id given.
+ */
+export async function runColdMailAutomationNow(campaignId?: number) {
   const { runColdMailAutomation } = await import("@/lib/smartlead/service");
-  const r = await runColdMailAutomation();
+  const r = await runColdMailAutomation({ campaignId });
   revalidateAll();
   revalidatePath("/akquise/mail");
   return r;

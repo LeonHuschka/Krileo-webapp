@@ -22,7 +22,6 @@ import {
   Link2,
   X,
   Zap,
-  Gauge,
   Sparkles,
   Save,
   MapPin,
@@ -87,7 +86,6 @@ type CampaignView = {
 };
 
 const SMARTLEAD_APP_URL = "https://app.smartlead.ai";
-const FOLLOWUP_FACTOR = 3;
 
 function prettyNiche(n: string): string {
   return n.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
@@ -109,8 +107,6 @@ export function ColdMailBoard({
   automation,
   sequences,
   pushedToday,
-  capacity,
-  mailboxes,
 }: {
   configured: boolean;
   campaigns: CampaignView[];
@@ -120,8 +116,6 @@ export function ColdMailBoard({
   automation: Record<string, CampaignAutomation>;
   sequences: Record<string, SequenceMail[]>;
   pushedToday: Record<string, number>;
-  capacity: number;
-  mailboxes: number;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -161,16 +155,6 @@ export function ColdMailBoard({
     boundCampaigns.map((c) => c.niche as string),
   );
   const openNiches = poolNiches.filter((n) => !nichesWithCampaign.has(n.niche));
-
-  // Capacity math
-  const maxNewPerDay = Math.max(0, Math.floor(capacity / FOLLOWUP_FACTOR));
-  const plannedTotal = boundCampaigns.reduce((s, c) => {
-    const a = automation[String(c.id)];
-    return s + (a?.enabled ? a.daily_new_leads : 0);
-  }, 0);
-  const autoCount = boundCampaigns.filter(
-    (c) => automation[String(c.id)]?.enabled,
-  ).length;
 
   // ── handlers ────────────────────────────────────────────────────────
   function handlePush(
@@ -277,25 +261,23 @@ export function ColdMailBoard({
     });
   }
 
-  function handleRunAutomation() {
+  function handleRunCampaignNow(campaignId: number, name: string) {
     if (
       !window.confirm(
-        `Cold-Mail-Automation jetzt ausführen? Generiert + pusht für alle ${autoCount} Auto-Kampagnen das heutige Kontingent. Kann einige Minuten dauern.`,
+        `Auto-Pilot für „${name}" jetzt ausführen? Holt + qualifiziert frische Leads und pusht das heutige Kontingent. Kann ein paar Minuten dauern.`,
       )
     )
       return;
     startTransition(async () => {
       try {
-        const r = await runColdMailAutomationNow();
-        const lines = r.campaigns
-          .map(
-            (c) =>
-              `${prettyNiche(c.niche)}: ${c.pushed} gepusht (${c.generated} generiert, ${c.reason})`,
-          )
-          .join(" · ");
-        toast.success(lines || "Keine Auto-Kampagnen aktiv", {
-          duration: 15_000,
-        });
+        const r = await runColdMailAutomationNow(campaignId);
+        const c = r.campaigns[0];
+        toast.success(
+          c
+            ? `${c.pushed} gepusht (${c.generated} generiert, heute ${c.pushedBefore + c.pushed}/${c.quota}, ${c.reason})`
+            : "Auto-Pilot ist für diese Kampagne nicht aktiv",
+          { duration: 12_000 },
+        );
         router.refresh();
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Automation fehlgeschlagen");
@@ -327,46 +309,6 @@ export function ColdMailBoard({
       <TabsContent value="push" className="space-y-6">
         {!configured ? null : (
           <>
-            {/* Auto-pilot strip */}
-            <Card className="border-emerald-500/20 bg-gradient-to-br from-emerald-500/[0.04] via-card to-card">
-              <CardContent className="flex flex-wrap items-center gap-x-3 gap-y-2 p-4">
-                <Zap className="h-4 w-4 shrink-0 text-emerald-300" />
-                <div className="min-w-0 flex-1">
-                  <span className="text-sm font-semibold">Auto-Pilot</span>
-                  <p className="text-xs text-muted-foreground">
-                    Täglich 05:00 pro Auto-Kampagne: frische Leads aus dem
-                    eingestellten Gebiet holen → qualifizieren → alle mit
-                    E-Mail direkt in die Smartlead-Kampagne pushen.
-                  </p>
-                </div>
-                <Badge
-                  variant="outline"
-                  className={
-                    plannedTotal > maxNewPerDay
-                      ? "border-amber-500/40 bg-amber-500/15 text-amber-300"
-                      : "border-emerald-500/40 bg-emerald-500/15 text-emerald-300"
-                  }
-                  title={`${mailboxes} Postfächer × Tageslimit = ${capacity} Mails/Tag. Mit 3-Mail-Sequenz sind ~${maxNewPerDay} neue Leads/Tag gesund — der Rest der Kapazität gehört den Follow-ups.`}
-                >
-                  <Gauge className="mr-1 h-3 w-3" />
-                  {plannedTotal} neue/Tag geplant · gesund ≈ {maxNewPerDay}
-                </Badge>
-                <Button
-                  size="sm"
-                  className="h-7 gap-1 bg-emerald-600 px-2 text-[11px] text-white hover:bg-emerald-700"
-                  disabled={pending || autoCount === 0}
-                  onClick={handleRunAutomation}
-                >
-                  {pending ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    <Play className="h-3 w-3" />
-                  )}
-                  Jetzt ausführen
-                </Button>
-              </CardContent>
-            </Card>
-
             {/* Bound campaigns with control panel */}
             {boundCampaigns.length > 0 && (
               <section className="space-y-3">
@@ -391,6 +333,7 @@ export function ColdMailBoard({
                       onStatus={handleStatus}
                       onWebhook={handleWebhook}
                       onSaveAutomation={handleSaveAutomation}
+                      onRunNow={handleRunCampaignNow}
                     />
                   ))}
                 </div>
@@ -872,6 +815,7 @@ function CampaignCard({
   onStatus,
   onWebhook,
   onSaveAutomation,
+  onRunNow,
 }: {
   c: CampaignView;
   nicheLeads: PoolLead[];
@@ -888,6 +832,7 @@ function CampaignCard({
   onStatus: (id: number, status: "START" | "PAUSED") => void;
   onWebhook: (id: number) => void;
   onSaveAutomation: (id: number, a: CampaignAutomation) => void;
+  onRunNow: (id: number, name: string) => void;
 }) {
   const available = nicheLeads.length;
   const [count, setCount] = useState<number>(Math.min(available, 25) || 0);
@@ -996,6 +941,18 @@ function CampaignCard({
               <MapPin className="h-3 w-3" />
               Gebiet ({auto.bundeslaender.length + auto.cities.length})
             </button>
+            {automation.enabled && !dirty && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-6 gap-1 border-emerald-500/40 px-2 text-[11px] text-emerald-300"
+                disabled={pending}
+                onClick={() => onRunNow(c.id, c.name)}
+                title="Heutiges Kontingent jetzt holen + pushen"
+              >
+                <Play className="h-3 w-3" /> Jetzt
+              </Button>
+            )}
             {dirty && (
               <Button
                 size="sm"

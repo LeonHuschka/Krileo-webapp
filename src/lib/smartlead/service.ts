@@ -365,6 +365,8 @@ export type AutomationRunResult = {
  */
 export async function runColdMailAutomation(opts?: {
   timeBudgetMs?: number;
+  /** Run for a single campaign only (per-card "Jetzt" button). */
+  campaignId?: number;
 }): Promise<AutomationRunResult> {
   const t0 = Date.now();
   const timeBudget = opts?.timeBudgetMs ?? 250_000;
@@ -379,6 +381,9 @@ export async function runColdMailAutomation(opts?: {
 
   const active = Object.entries(cfg.campaign_automation)
     .filter(([id, a]) => a.enabled && cfg.campaign_niche[id])
+    .filter(([id]) =>
+      opts?.campaignId != null ? Number(id) === opts.campaignId : true,
+    )
     .map(([id, a]) => ({
       campaignId: Number(id),
       niche: cfg.campaign_niche[id],

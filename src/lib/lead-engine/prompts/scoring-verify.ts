@@ -23,16 +23,30 @@ PRÜFE HART, in dieser Reihenfolge:
 
 4. IST DAS PRICING plausibel zur Offer?
 
+5. DER HOOK (Cold-Mail-Öffner, Kunden-Verlust-Story) — am wichtigsten:
+   - Behauptet er eine Lücke, die die Website WIDERLEGT? (z.B. „geht nur telefonisch",
+     obwohl es eine Online-Buchung gibt; „keine Bestellung", obwohl ein Shop/Formular da ist).
+     Das ist der gefährlichste Fehler — der Inhaber merkt sofort, dass nicht hingeschaut wurde.
+   - Enthält er ein URTEIL über das Geschäft („so verlieren Sie Buchungen", „da geht Umsatz
+     verloren")? Eine SELBSTVORSTELLUNG oder einen CTA („Ich bin Leon…", „kurz Zeit?")?
+     All das gehört NICHT in den Hook.
+
 ENTSCHEIDUNG:
-- Alles passt → contradiction=false, severity_penalty=0, gib die Felder UNVERÄNDERT zurück.
+- Alles passt (Offer UND Hook) → contradiction=false, severity_penalty=0,
+  gib die Felder UNVERÄNDERT zurück (fixed_hook = der Original-Hook).
 - Etwas passt nicht → contradiction=true:
    · reason: kurz, was falsch war
    · fixed_fit_offer: der korrekte Archetyp (NIE einer der etwas Vorhandenes anbietet)
    · fixed_fit_offer_pitch: korrigierter 1-Satz-Pitch, der zur Realität passt
    · fixed_pain_points: korrigierte, datengedeckte Pain-Points (2-3)
+   · fixed_hook: faktisch korrekte Kunden-Verlust-Story aus Ich-Perspektive
+     („Wollte gerade bei Ihnen X…, finde aber keinen Weg…, hab's dann gelassen."),
+     endet auf dem eigenen Kundenverhalten, KEIN Urteil, KEINE Vorstellung/CTA, 25-45 Wörter.
+     Behauptet NUR Lücken, die die Website belegt. Passt der Hook schon → unverändert.
    · severity_penalty (0-25): wie stark pain_severity gesenkt werden muss —
-     HOCH (15-25) wenn eine erfundene oder bereits vorhandene Lücke behauptet wurde,
-     mittel (5-15) bei kleineren Fehlgriffen.
+     HOCH (15-25) wenn eine erfundene oder bereits vorhandene Lücke behauptet wurde
+     (in Offer ODER Hook), mittel (5-15) bei kleineren Fehlgriffen, 0 wenn nur Stil
+     am Hook korrigiert wurde (Urteil/CTA raus) ohne Faktenfehler.
 
 - Wenn die Website schon GUT & VOLLSTÄNDIG ist (modern, mobil, alle nötigen Bausteine da)
   und es real keine sinnvolle Offer gibt: contradiction=true, fixed_fit_offer = die

@@ -183,6 +183,7 @@ type VerifyResult = {
   fixed_fit_offer: FitOffer;
   fixed_fit_offer_pitch: string;
   fixed_pain_points: string[];
+  fixed_hook: string;
   severity_penalty: number;
 };
 
@@ -197,6 +198,7 @@ const VERIFY_SCHEMA = {
     },
     fixed_fit_offer_pitch: { type: "string" },
     fixed_pain_points: { type: "array", items: { type: "string" } },
+    fixed_hook: { type: "string" },
     severity_penalty: { type: "integer" },
   },
   required: [
@@ -205,6 +207,7 @@ const VERIFY_SCHEMA = {
     "fixed_fit_offer",
     "fixed_fit_offer_pitch",
     "fixed_pain_points",
+    "fixed_hook",
     "severity_penalty",
   ],
   additionalProperties: false,
@@ -224,10 +227,11 @@ async function verifyOffer(
     const userPrompt = [
       renderWebsiteContext(websiteCtx),
       "",
-      "VORGESCHLAGENE OFFER (vom Scorer):",
+      "VORGESCHLAGENE OFFER + HOOK (vom Scorer):",
       `fit_offer: ${proposed.fit_offer}`,
       `fit_offer_pitch: ${proposed.fit_offer_pitch}`,
       `pain_points: ${proposed.pain_points.join(" | ")}`,
+      `hook: ${proposed.personalized_hook}`,
       `website_assessment.already_has_online_ordering: ${proposed.website_assessment.already_has_online_ordering}`,
       `website_assessment.already_has_online_booking: ${proposed.website_assessment.already_has_online_booking}`,
       `website_assessment.design_quality: ${proposed.website_assessment.design_quality}`,
@@ -339,6 +343,9 @@ export async function scoreLead(leadId: string): Promise<ScoringResult> {
     }
     if (verdict.fixed_pain_points?.length) {
       parsed.pain_points = verdict.fixed_pain_points;
+    }
+    if (verdict.fixed_hook?.trim()) {
+      parsed.personalized_hook = verdict.fixed_hook.trim();
     }
     const penalty = Math.max(0, Math.min(25, Math.round(verdict.severity_penalty)));
     parsed.score_breakdown.pain_severity = Math.max(

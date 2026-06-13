@@ -96,27 +96,52 @@ Differenziere bewusst — zwei Leads dürfen NIE den exakt gleichen Total-Score 
    9 = einige Signale · 3 = ruhig/eingeschlafen
 
 ═══════════════════════════════════════════════════════════════════════
-HOOK — KUNDEN-PERSPEKTIVE, basiert auf der ECHTEN Lücke
+HOOK — DIE KUNDEN-VERLUST-STORY (wichtigstes Text-Feld)
 ═══════════════════════════════════════════════════════════════════════
 
-DER HOOK IST DAS WICHTIGSTE TEXT-FELD. Schreib so, als hätte Leon GERADE EBEN selbst als
-Kunde die konkrete Lücke ERLEBT, die du in den Daten gefunden hast. Nie generisch, nie
-als Verkäufer, und NIE über eine Lücke, die gar nicht existiert.
+Der Hook ist die Öffnungszeile der Cold-Mail. Ziel: der Inhaber liest „oh, eine Anfrage"
+und FÜHLT beim Lesen, dass ihm gerade ein Kunde durch die Lappen geht — OHNE dass wir es
+behaupten. Du schreibst aus Ich-Perspektive, als wärst du eben selbst Kunde gewesen.
 
-PATTERN:
-1. Customer-Setup ("Wollte gerade was buchen/bestellen/anfragen…")
-2. Pain-Entdeckung — die ECHTE Lücke ("…und gesehen, dass [konkrete Lücke aus den Daten]…")
-3. Mobile-Frame ("…heutzutage macht man das übers Handy, das ginge moderner…")
-4. Bridge ("Ich hab ne kleine Automatisierungs-Agentur, mach genau das…")
+3 KURZE BEATS:
+1. „Wollte gerade bei Ihnen [X buchen/bestellen/anfragen]…" → klingt wie ein echter Kunde
+2. die KONKRETE, BELEGTE Lücke, die mich gestoppt hat („…finde auf dem Handy aber keinen
+   Weg, das direkt zu tun, nur eine Telefonnummer…")
+3. ENDE auf MEINEM Verhalten als Kunde: „…hab's dann erstmal gelassen." /
+   „…hätte ich abends in 30 Sekunden vom Sofa erledigt."
 
-Beispiele (NUR nutzen wenn die Lücke wirklich existiert):
-- Druckerei OHNE Online-Bestellung: "Mir wurde Ihre Druckerei empfohlen — wollte grad was online in Auftrag geben und gesehen, dass das gar nicht geht. Heute macht man das übers Handy. Ich bin Leon, kleine Automatisierungs-Agentur — passt das kurz?"
-- Praxis OHNE Online-Booking: "Wollte einen Termin buchen, geht aber nur telefonisch — abends hat keiner Bock zu telefonieren. Über Mobile-Booking kommen deutlich mehr Erst-Termine rein. Leon von Krileo — kurz Zeit?"
+⛔ HÖR DA AUF. Schreib NICHT das Urteil über sein Geschäft („so verlieren Sie Buchungen",
+   „da geht Ihnen Umsatz verloren"). Das ist eine Behauptung, die er bestreiten kann → Abwehr.
+   Der Verlust bleibt IMPLIZIT — sein Kopf vervollständigt den Gedanken selbst, das sitzt tiefer.
+⛔ KEINE Selbstvorstellung, KEIN CTA, KEIN „Ich bin Leon…", KEINE Frage. Das macht der
+   Mailtext NACH dem Hook. Der Hook ist NUR die Kunden-Story.
 
-WENN die Website schon gut ist und keine echte Lücke da ist: schreib einen ehrlichen,
-zurückhaltenden Hook, der eine kleine konkrete Optimierung anspricht — KEINE erfundene Lücke.
+ACCURACY — 1000% PFLICHT (eine falsch behauptete Lücke killt sofort die Glaubwürdigkeit):
+- Behaupte als Lücke NUR, was website_assessment bestätigt: already_has_online_booking=false
+  bzw. already_has_online_ordering=false, bzw. Design klar veraltet.
+- Hat die Seite ein Buchungs-/Bestell-/Shop-Element → NIEMALS „geht nur telefonisch /
+  keine Bestellung / keine Buchung". Im Zweifel KEINE harte Behauptung.
 
-Max 50 Wörter. Verboten: "Ich habe gesehen Sie haben X Bewertungen", "Wir helfen Praxen wie Ihrer", erfundene Lücken.
+WENN KEINE LÜCKE SICHER BELEGT IST (gute, vollständige Seite):
+Keine erfundene Lücke. Stattdessen ehrlich + neugierig, z.B.:
+„Hab Ihre Seite angeschaut, um online einen Termin zu machen — lief rund. Eine Kleinigkeit
+ist mir trotzdem aufgefallen, die wahrscheinlich der Grund ist, warum manche abspringen."
+
+STIL: 25-45 Wörter, einfache Sprache, süddeutsch-direkt, Sie-Form, warm. Echte Person,
+kein Marketing.
+
+GUTE BEISPIELE (nur bei belegter Lücke):
+- Verleih ohne Online-Buchung: „Wollte vorhin für nächstes Wochenende eine Hüpfburg bei Ihnen
+  buchen — finde auf dem Handy aber nirgends Preise oder Verfügbarkeit, nur eine Telefonnummer.
+  Hab's dann erstmal gelassen."
+- Praxis ohne Online-Termin: „Wollte gerade online einen Termin bei Ihnen machen — geht nur
+  telefonisch, und um die Zeit haben Sie zu. Hätte ich abends in 30 Sekunden vom Sofa erledigt."
+- Copyshop ohne Online-Bestellung: „Wollte eben 50 Flyer bei Ihnen drucken lassen — finde auf
+  der Seite aber keinen Weg, die Datei hochzuladen und direkt zu bestellen. Hätte ich gern
+  sofort gemacht."
+
+VERBOTEN: Urteils-Sätze über sein Geschäft, erfundene Lücken, Selbstvorstellung/CTA im Hook,
+„Ich habe gesehen Sie haben X Bewertungen", „Wir helfen Praxen wie Ihrer".
 
 ═══════════════════════════════════════════════════════════════════════
 PICKUP-LINES — MENSCHLICH (für den Call-Kanal, trotzdem ausfüllen)

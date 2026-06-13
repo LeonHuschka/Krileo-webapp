@@ -30,13 +30,12 @@ export const DEFAULT_SEQUENCE: SequenceMail[] = [
 
 {{hook}}
 
-Kurz zu mir: Leon Huschka, kleine Web- & Automatisierungs-Agentur aus Stuttgart. Genau sowas bauen wir — {{offer_pitch}}
+Ich bin Leon von Krileo, kleine Web-Agentur hier aus Stuttgart. Wir bauen genau sowas für lokale Betriebe — {{offer_pitch}}
 
-Wenn das gerade kein Thema ist: einfach ignorieren, alles gut. Wenn doch — antworten Sie kurz mit „zeigen“, dann schicke ich Ihnen 2-3 konkrete Ideen für {{company_name}}. Kein Termin nötig, keine Folien.
+Wäre das für {{company_name}} überhaupt ein Thema, oder läuft das bewusst so übers Telefon? Wenn's interessant ist, zeige ich Ihnen in 10 Minuten, wie das bei Ihnen konkret aussehen würde — ein kurzes „ja“ reicht.
 
 Viele Grüße aus Stuttgart
-Leon Huschka
-Krileo`,
+Leon Huschka · Krileo`,
   },
   {
     subject: "",
@@ -121,7 +120,7 @@ export const SAMPLE_VARS: Record<string, string> = {
   location: "Stuttgart",
   city: "Stuttgart",
   category: "Physiotherapie",
-  hook: "Wollte gerade einen Termin bei Ihnen buchen — geht aber nur telefonisch, und abends erreicht man niemanden mehr. Über Mobile-Booking kommen erfahrungsgemäß deutlich mehr Erst-Termine rein.",
+  hook: "Wollte gerade online einen Termin bei Ihnen machen — geht nur telefonisch, und um die Zeit haben Sie zu. Hätte ich abends in 30 Sekunden vom Sofa erledigt.",
   offer_pitch:
     "Online-Terminbuchung, nahtlos in Ihre bestehende Website integriert (Mobile-First).",
   offer_type: "booking",

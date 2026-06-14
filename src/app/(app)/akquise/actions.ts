@@ -1782,3 +1782,19 @@ export async function updateLeadFields(input: {
   revalidatePath(`/akquise/leads/${input.leadId}`);
   revalidatePath("/akquise/d2d");
 }
+
+/** Persist edited / added sales points (format "Titel – Beschreibung"). */
+export async function saveSalesPoints(leadId: string, points: string[]) {
+  const db = leadEngine();
+  const clean = points
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .slice(0, 8);
+  const { error } = await db
+    .from("leads")
+    .update({ sales_points: clean })
+    .eq("id", leadId);
+  if (error) throw new Error(error.message);
+  revalidatePath(`/akquise/leads/${leadId}`);
+  return clean;
+}

@@ -162,11 +162,12 @@ Verboten: "komplett kalt", "ehrlich", "darf ich", "hätten Sie 30 Sek", "im Auft
 fit_offer_pitch — EIN Satz, was wir KONKRET für DIESEN Lead bauen
 ═══════════════════════════════════════════════════════════════════════
 
-Bezieh dich auf die echte Lücke. Beispiele:
-- "Komplett neue, mobil-optimierte Website — die jetzige ist von ~2015 und auf dem Handy kaum bedienbar."
-- "Online-Terminbuchung direkt in Ihre bestehende Seite integriert, damit Patienten 24/7 buchen."
-- "Automatische Termin-Erinnerungen + Quittungen, damit der manuelle Telefon-Aufwand wegfällt."
-Wenn kein echter Bedarf: ehrlicher, kleiner Optimierungs-Satz — nichts Aufgeblasenes.
+EIN KURZER Satz (max ~16 Wörter, stichwortartig ok): WAS genau + WAS es bringt.
+Knapp, kein Schachtelsatz, KEINE Aufzählung. Beispiele:
+- "Neue mobile Website — schnell, modern, bringt mehr Anfragen rein."
+- "Online-Terminbuchung in die bestehende Seite — Patienten buchen 24/7 selbst."
+- "Online-Bestellung + Abholzeit — Gäste bestellen vorab, weniger Schlange."
+Wenn kein echter Bedarf: ehrlicher, kleiner Optimierungs-Satz.
 
 ZUSÄTZLICH: offer_benefits — GENAU 3 kurze Keyfacts, was die Offer DIESEM Kunden
 konkret bringt (Kundennutzen, keine Feature-Liste; kleine Sätze erlaubt, je max ~12 Wörter).
@@ -175,13 +176,13 @@ Datengedeckt und spezifisch — beziehe Branche/Lücke ein. Beispiele für eine 
 - "Weniger Terminausfälle durch automatische Erinnerungen"
 - "Die Rezeption spart täglich 1-2 Stunden Telefonzeit"
 
-ZUSÄTZLICH: sales_points — GENAU 3 schlagkräftige Argumente aus UNTERNEHMER-Sicht für das
-Verkaufsgespräch: WARUM sollte der Inhaber Geld investieren? Business-Case, nicht Feature.
-Denke in Umsatz, verlorenen Aufträgen, Zeit/Personal-Kosten, Amortisation, Wettbewerb.
-Konkret + überzeugend, je max ~14 Wörter. Beispiele:
-- "Jeder verpasste Anruf am Abend = ein Auftrag, der zur Konkurrenz geht"
-- "Einmalige Investition, die sich über mehr Buchungen in wenigen Monaten trägt"
-- "Wettbewerber mit Online-Buchung ziehen genau die spontanen Kunden ab"
+ZUSÄTZLICH: sales_points — 3-5 Verkaufsargumente aus UNTERNEHMER-Sicht, je im Format
+"Kurzer Titel (2-4 Wörter) – knappe Erklärung". Titel = der Nutzen auf den Punkt,
+Erklärung = warum/wie (konkret, branchenspezifisch, kein Feature-Sprech). MÜSSEN Sinn ergeben.
+Trennzeichen ist " – " (Gedankenstrich). Beispiele für ein Seerestaurant:
+- "Mehr Bestellungen – Kunden, die sonst weiterlaufen oder umkehren, bestellen doch"
+- "Optimierte Portionierung – System sagt Bedarf vorab (z.B. nächste 30 Min: 12× Pommes)"
+- "Abholzeit-Steuerung – verteilt den Ansturm gleichmäßig: gleiche Kapazität, mehr Durchsatz, weniger Stress"
 
 ═══════════════════════════════════════════════════════════════════════
 WEITERE FELDER

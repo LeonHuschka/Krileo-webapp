@@ -49,8 +49,8 @@ export function LeadNextStep({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border/60 bg-card/50 px-3 py-2">
-      <span className="flex shrink-0 items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+    <div className="space-y-2 rounded-xl border border-border/60 bg-card/40 p-3">
+      <span className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
         <Flag className="h-3.5 w-3.5" /> Next Step
         {overdue && (
           <span className="rounded bg-rose-500/20 px-1.5 text-[10px] text-rose-300">
@@ -61,22 +61,24 @@ export function LeadNextStep({
       <Input
         value={step}
         onChange={(e) => setStep(e.target.value)}
-        placeholder="z.B. Angebot schicken, nachfassen, Termin bestätigen…"
-        className="h-9 min-w-[180px] flex-1 text-sm"
+        placeholder="z.B. Angebot schicken, nachfassen…"
+        className="h-9 text-sm"
       />
-      <Input
-        type="datetime-local"
-        value={at}
-        onChange={(e) => setAt(e.target.value)}
-        className="h-9 w-[190px] text-sm"
-      />
-      <Button size="sm" onClick={save} disabled={pending} className="shrink-0">
-        {pending ? (
-          <Check className="h-3.5 w-3.5 animate-pulse" />
-        ) : (
-          <Save className="h-3.5 w-3.5" />
-        )}
-      </Button>
+      <div className="flex items-center gap-2">
+        <Input
+          type="datetime-local"
+          value={at}
+          onChange={(e) => setAt(e.target.value)}
+          className="h-9 flex-1 text-sm"
+        />
+        <Button size="sm" onClick={save} disabled={pending} className="shrink-0">
+          {pending ? (
+            <Check className="h-3.5 w-3.5 animate-pulse" />
+          ) : (
+            <Save className="h-3.5 w-3.5" />
+          )}
+        </Button>
+      </div>
     </div>
   );
 }

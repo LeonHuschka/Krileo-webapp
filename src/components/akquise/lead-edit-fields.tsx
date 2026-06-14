@@ -62,7 +62,7 @@ export function LeadEditFields({
           <div>
             <div className="mb-2 flex items-center justify-between">
               <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Begegnung &amp; Gesprächsnotizen
+                Pitch-Notes
               </span>
             </div>
             {initial.met_location && (
@@ -128,7 +128,7 @@ export function LeadEditFields({
       </div>
       <div className="space-y-1.5">
         <Label className="flex items-center gap-1 text-xs">
-          Gesprächsnotizen
+          Pitch-Notes
           <span className="text-[10px] text-muted-foreground">
             (steuern Offer, Pain &amp; Preis)
           </span>

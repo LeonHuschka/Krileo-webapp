@@ -8,7 +8,6 @@ import {
   Star,
   ExternalLink,
   Target,
-  TrendingUp,
 } from "lucide-react";
 import { leadEngine } from "@/lib/lead-engine/supabase";
 import { listUpcomingAppointments } from "@/lib/lead-engine/appointments";
@@ -23,6 +22,7 @@ import { AppointmentRow } from "@/components/akquise/appointment-row";
 import { DayCalendar, type ExternalEvent } from "@/components/akquise/day-calendar";
 import { LeadNextStep } from "@/components/akquise/lead-next-step";
 import { LeadEditFields } from "@/components/akquise/lead-edit-fields";
+import { SalesPointsEditor } from "@/components/akquise/sales-points-editor";
 import { PrepQuestions } from "@/components/akquise/prep-questions";
 import { cn } from "@/lib/utils";
 import type { Appointment, Lead } from "@/lib/lead-engine/types";
@@ -138,9 +138,9 @@ export default async function LeadDetailPage({
         <ArrowLeft className="h-3 w-3" /> Lead-Browser
       </Link>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        {/* ── Main column ─────────────────────────────────────────── */}
-        <div className="space-y-4 lg:col-span-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+        {/* ── Center column: the lead card ─────────────────────────── */}
+        <div className="space-y-4 lg:order-2 lg:col-span-6">
           <Card>
             <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
               <div className="flex-1 space-y-2">
@@ -273,35 +273,6 @@ export default async function LeadDetailPage({
                       {lead.fit_offer_pitch}
                     </p>
                   )}
-                  {lead.offer_benefits && lead.offer_benefits.length > 0 && (
-                    <ul className="space-y-0.5 text-xs text-muted-foreground">
-                      {lead.offer_benefits.slice(0, 3).map((b, i) => (
-                        <li key={i} className="flex gap-1.5">
-                          <span className="text-emerald-400">✓</span>
-                          <span>{b}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )}
-
-              {/* Sales points — why the owner should invest */}
-              {lead.sales_points && lead.sales_points.length > 0 && (
-                <div className="space-y-1.5 rounded-lg border border-amber-500/25 bg-amber-500/[0.05] p-3">
-                  <div className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-amber-300">
-                    <TrendingUp className="h-3.5 w-3.5" /> Sales-Argumente
-                  </div>
-                  <ul className="space-y-1 text-sm">
-                    {lead.sales_points.slice(0, 3).map((p, i) => (
-                      <li key={i} className="flex gap-1.5 leading-snug">
-                        <span className="font-semibold text-amber-300">
-                          {i + 1}.
-                        </span>
-                        <span>{p}</span>
-                      </li>
-                    ))}
-                  </ul>
                 </div>
               )}
 
@@ -364,27 +335,8 @@ export default async function LeadDetailPage({
                 />
               </div>
 
-              {/* Editable encounter notes (drive the offer) + notes */}
-              <LeadEditFields
-                leadId={lead.id}
-                isD2D={lead.lead_source === "d2d"}
-                initial={{
-                  owner_name: lead.owner_name,
-                  met_location: lead.met_location,
-                  meeting_notes: lead.meeting_notes,
-                  notes: lead.notes,
-                }}
-              />
             </CardContent>
           </Card>
-
-          {/* Next step + meeting prep — directly under the card */}
-          <LeadNextStep
-            leadId={lead.id}
-            initialNextStep={lead.next_step}
-            initialNextStepAt={lead.next_step_at}
-          />
-          <PrepQuestions leadId={lead.id} initialQa={lead.prep_qa ?? null} />
 
           {leadAppointments.length > 0 && (
             <div className="space-y-2">
@@ -400,12 +352,33 @@ export default async function LeadDetailPage({
           )}
         </div>
 
-        {/* ── Sidebar: calendar only ──────────────────────────────── */}
-        <div className="space-y-4">
-          <div className="lg:sticky lg:top-4">
+        {/* ── Left column: prep + pitch-notes + sales args ────────── */}
+        <div className="space-y-4 lg:order-1 lg:col-span-3">
+          <PrepQuestions leadId={lead.id} initialQa={lead.prep_qa ?? null} />
+          <LeadEditFields
+            leadId={lead.id}
+            isD2D={lead.lead_source === "d2d"}
+            initial={{
+              owner_name: lead.owner_name,
+              met_location: lead.met_location,
+              meeting_notes: lead.meeting_notes,
+              notes: lead.notes,
+            }}
+          />
+          <SalesPointsEditor leadId={lead.id} initial={lead.sales_points} />
+        </div>
+
+        {/* ── Right column: calendar + next step ──────────────────── */}
+        <div className="space-y-4 lg:order-3 lg:col-span-3">
+          <div className="lg:sticky lg:top-4 space-y-4">
             <DayCalendar
               appointments={calAppointments as never}
               externalEvents={externalEvents}
+            />
+            <LeadNextStep
+              leadId={lead.id}
+              initialNextStep={lead.next_step}
+              initialNextStepAt={lead.next_step_at}
             />
           </div>
         </div>

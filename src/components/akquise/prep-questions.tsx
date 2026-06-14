@@ -32,11 +32,22 @@ export function PrepQuestions({
   const [pending, startTransition] = useTransition();
   const [qa, setQa] = useState<QA[]>(initialQa ?? []);
   const [focus, setFocus] = useState("");
+  const [answeringIdx, setAnsweringIdx] = useState<number | null>(null);
 
-  // own-question draft
+  // always-present add row
   const [newQ, setNewQ] = useState("");
   const [newA, setNewA] = useState("");
-  const [answering, setAnswering] = useState(false);
+  const [answeringNew, setAnsweringNew] = useState(false);
+
+  function persist(next: QA[]) {
+    startTransition(async () => {
+      try {
+        await savePrepQa(leadId, next);
+      } catch {
+        /* */
+      }
+    });
+  }
 
   function generate() {
     startTransition(async () => {
@@ -54,35 +65,52 @@ export function PrepQuestions({
     });
   }
 
-  function removeItem(idx: number) {
-    const next = qa.filter((_, i) => i !== idx);
-    setQa(next);
-    startTransition(async () => {
-      try {
-        await savePrepQa(leadId, next);
-      } catch {
-        /* */
-      }
-    });
+  function updateItem(i: number, patch: Partial<QA>) {
+    setQa((prev) => prev.map((x, j) => (j === i ? { ...x, ...patch } : x)));
   }
 
-  async function claudeAnswer() {
+  function removeItem(i: number) {
+    const next = qa.filter((_, j) => j !== i);
+    setQa(next);
+    persist(next);
+  }
+
+  async function answerItem(i: number) {
+    const q = qa[i]?.q?.trim();
+    if (!q) {
+      toast.error("Erst die Frage ausfüllen");
+      return;
+    }
+    setAnsweringIdx(i);
+    try {
+      const a = await answerPrepQuestion({ leadId, question: q });
+      const next = qa.map((x, j) => (j === i ? { ...x, a } : x));
+      setQa(next);
+      persist(next);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Fehler");
+    } finally {
+      setAnsweringIdx(null);
+    }
+  }
+
+  async function answerNew() {
     if (!newQ.trim()) {
       toast.error("Erst deine Frage eintippen");
       return;
     }
-    setAnswering(true);
+    setAnsweringNew(true);
     try {
       const a = await answerPrepQuestion({ leadId, question: newQ.trim() });
       setNewA(a);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Fehler");
     } finally {
-      setAnswering(false);
+      setAnsweringNew(false);
     }
   }
 
-  function addOwn() {
+  function addNew() {
     if (!newQ.trim()) {
       toast.error("Frage fehlt");
       return;
@@ -91,14 +119,8 @@ export function PrepQuestions({
     setQa(next);
     setNewQ("");
     setNewA("");
-    startTransition(async () => {
-      try {
-        await savePrepQa(leadId, next);
-        toast.success("Frage hinzugefügt");
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Fehler");
-      }
-    });
+    persist(next);
+    toast.success("Frage hinzugefügt");
   }
 
   return (
@@ -108,8 +130,8 @@ export function PrepQuestions({
       </div>
       <p className="text-[11px] text-muted-foreground">
         Claude generiert die Fragen + Einwände, die der Inhaber fast sicher
-        bringt — mit fertigen Antworten. Oder füll eigene Fragen rein, Claude
-        hilft bei der Antwort.
+        bringt — mit fertigen Antworten. Alles frei editierbar, eigene Fragen
+        jederzeit unten ergänzen (Claude hilft bei der Antwort).
       </p>
 
       {/* AI generate */}
@@ -117,7 +139,7 @@ export function PrepQuestions({
         <Input
           value={focus}
           onChange={(e) => setFocus(e.target.value)}
-          placeholder='Optional: Fokus — z.B. "skeptisch beim Preis", "hat schon Agentur"'
+          placeholder='Optional: Fokus — z.B. "skeptisch beim Preis"'
           className="h-8 text-xs"
           onKeyDown={(e) => {
             if (e.key === "Enter") {
@@ -132,7 +154,7 @@ export function PrepQuestions({
           disabled={pending}
           onClick={generate}
         >
-          {pending ? (
+          {pending && answeringIdx === null ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
           ) : qa.length > 0 ? (
             <RefreshCw className="h-3.5 w-3.5" />
@@ -143,38 +165,63 @@ export function PrepQuestions({
         </Button>
       </div>
 
-      {/* Q&A list */}
-      {qa.length > 0 && (
-        <ol className="space-y-2.5">
-          {qa.map((item, i) => (
-            <li
-              key={i}
-              className="group relative rounded-md border border-border/50 bg-card/60 p-2.5"
-            >
+      {/* Editable Q&A list */}
+      <div className="space-y-2.5">
+        {qa.map((item, i) => (
+          <div
+            key={i}
+            className="space-y-1.5 rounded-md border border-border/50 bg-card/60 p-2"
+          >
+            <div className="flex items-start gap-1.5">
+              <span className="mt-2 shrink-0 text-xs font-semibold text-violet-300">
+                {i + 1}.
+              </span>
+              <Input
+                value={item.q}
+                onChange={(e) => updateItem(i, { q: e.target.value })}
+                onBlur={() => persist(qa)}
+                placeholder="Frage / Einwand…"
+                className="h-8 flex-1 text-xs font-medium"
+              />
               <button
                 type="button"
                 onClick={() => removeItem(i)}
-                className="absolute right-1.5 top-1.5 text-muted-foreground/40 hover:text-rose-300"
+                className="mt-2 shrink-0 text-muted-foreground/40 hover:text-rose-300"
                 title="Entfernen"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
-              <div className="flex gap-2 pr-5 text-sm font-medium">
-                <span className="text-violet-300">{i + 1}.</span>
-                <span>{item.q}</span>
-              </div>
-              {item.a && (
-                <div className="mt-1 pl-5 text-xs leading-relaxed text-muted-foreground">
-                  → {item.a}
-                </div>
-              )}
-            </li>
-          ))}
-        </ol>
-      )}
+            </div>
+            <div className="flex items-end gap-1.5 pl-5">
+              <Textarea
+                value={item.a}
+                onChange={(e) => updateItem(i, { a: e.target.value })}
+                onBlur={() => persist(qa)}
+                placeholder="Antwort…"
+                rows={2}
+                className="flex-1 text-xs"
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 shrink-0 border-violet-500/40 px-2 text-violet-200"
+                disabled={answeringIdx === i}
+                onClick={() => answerItem(i)}
+                title="Claude formuliert die Antwort"
+              >
+                {answeringIdx === i ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Wand2 className="h-3.5 w-3.5" />
+                )}
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
 
-      {/* Own question */}
-      <div className="space-y-1.5 rounded-md border border-dashed border-border/50 bg-background/30 p-2.5">
+      {/* Always-present add row */}
+      <div className="space-y-1.5 rounded-md border border-dashed border-border/50 bg-background/30 p-2">
         <div className="text-[11px] font-medium text-muted-foreground">
           Eigene Frage hinzufügen
         </div>
@@ -184,39 +231,37 @@ export function PrepQuestions({
           placeholder="Frage, die dir in den Kopf kommt…"
           className="h-8 text-xs"
         />
-        <div className="relative">
+        <div className="flex items-end gap-1.5">
           <Textarea
             value={newA}
             onChange={(e) => setNewA(e.target.value)}
             placeholder="Antwort (selbst schreiben oder Claude fragen)…"
             rows={2}
-            className="text-xs"
+            className="flex-1 text-xs"
           />
-        </div>
-        <div className="flex gap-1.5">
           <Button
             size="sm"
             variant="outline"
-            className="h-7 gap-1 border-violet-500/40 px-2 text-[11px] text-violet-200"
-            disabled={answering || pending}
-            onClick={claudeAnswer}
+            className="h-7 shrink-0 border-violet-500/40 px-2 text-violet-200"
+            disabled={answeringNew}
+            onClick={answerNew}
+            title="Claude formuliert die Antwort"
           >
-            {answering ? (
+            {answeringNew ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
               <Wand2 className="h-3.5 w-3.5" />
             )}
-            Claude-Antwort
-          </Button>
-          <Button
-            size="sm"
-            className="h-7 gap-1 px-2 text-[11px]"
-            disabled={pending || !newQ.trim()}
-            onClick={addOwn}
-          >
-            <Plus className="h-3.5 w-3.5" /> Hinzufügen
           </Button>
         </div>
+        <Button
+          size="sm"
+          className="h-7 w-full gap-1 text-[11px]"
+          disabled={pending || !newQ.trim()}
+          onClick={addNew}
+        >
+          <Plus className="h-3.5 w-3.5" /> Hinzufügen
+        </Button>
       </div>
     </div>
   );

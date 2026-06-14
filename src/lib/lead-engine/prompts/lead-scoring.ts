@@ -176,13 +176,13 @@ Datengedeckt und spezifisch — beziehe Branche/Lücke ein. Beispiele für eine 
 - "Weniger Terminausfälle durch automatische Erinnerungen"
 - "Die Rezeption spart täglich 1-2 Stunden Telefonzeit"
 
-ZUSÄTZLICH: sales_points — 3-5 Verkaufsargumente aus UNTERNEHMER-Sicht, je im Format
-"Kurzer Titel (2-4 Wörter) – knappe Erklärung". Titel = der Nutzen auf den Punkt,
-Erklärung = warum/wie (konkret, branchenspezifisch, kein Feature-Sprech). MÜSSEN Sinn ergeben.
+ZUSÄTZLICH: sales_points — GENAU 3 Verkaufsargumente aus UNTERNEHMER-Sicht, je im Format
+"Kurzer Titel (2-3 Wörter) – knappe Erklärung". Titel = der Nutzen auf den Punkt,
+Erklärung KURZ (max ~10 Wörter), konkret, branchenspezifisch, kein Feature-Sprech.
 Trennzeichen ist " – " (Gedankenstrich). Beispiele für ein Seerestaurant:
-- "Mehr Bestellungen – Kunden, die sonst weiterlaufen oder umkehren, bestellen doch"
-- "Optimierte Portionierung – System sagt Bedarf vorab (z.B. nächste 30 Min: 12× Pommes)"
-- "Abholzeit-Steuerung – verteilt den Ansturm gleichmäßig: gleiche Kapazität, mehr Durchsatz, weniger Stress"
+- "Mehr Bestellungen – Gäste, die sonst umkehren, bestellen doch"
+- "Bessere Planung – System sagt Bedarf vorab, weniger Verschwendung"
+- "Weniger Stress – Ansturm verteilt sich, mehr Durchsatz bei gleicher Crew"
 
 ═══════════════════════════════════════════════════════════════════════
 WEITERE FELDER

@@ -338,9 +338,6 @@ export default async function LeadDetailPage({
             </CardContent>
           </Card>
 
-          {/* Meeting prep — under the main card */}
-          <PrepQuestions leadId={lead.id} initialQa={lead.prep_qa ?? null} />
-
           {leadAppointments.length > 0 && (
             <div className="space-y-2">
               <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -368,6 +365,7 @@ export default async function LeadDetailPage({
             }}
           />
           <SalesPointsEditor leadId={lead.id} initial={lead.sales_points} />
+          <PrepQuestions leadId={lead.id} initialQa={lead.prep_qa ?? null} />
         </div>
 
         {/* ── Right column: calendar + next step ──────────────────── */}

@@ -71,19 +71,22 @@ export function SalesPointsEditor({
       )}
 
       {!editing ? (
-        <ul className="space-y-1.5">
+        <ol className="space-y-1.5">
           {points.map((p, i) => {
             const { title, desc } = splitPoint(p);
             return (
-              <li key={i} className="text-sm leading-snug">
-                <span className="font-semibold text-amber-200">{title}</span>
-                {desc && (
-                  <span className="text-muted-foreground"> – {desc}</span>
-                )}
+              <li key={i} className="flex gap-1.5 text-sm leading-snug">
+                <span className="font-semibold text-amber-300">{i + 1}.</span>
+                <span>
+                  <span className="font-semibold text-amber-200">{title}</span>
+                  {desc && (
+                    <span className="text-muted-foreground"> – {desc}</span>
+                  )}
+                </span>
               </li>
             );
           })}
-        </ul>
+        </ol>
       ) : (
         <div className="space-y-1.5">
           {points.map((p, i) => (

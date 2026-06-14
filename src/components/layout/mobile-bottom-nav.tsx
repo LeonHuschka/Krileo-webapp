@@ -5,19 +5,19 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   ClipboardList,
+  Target,
   Sparkles,
   Wrench,
-  Receipt,
   Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const ITEMS = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/", label: "Start", icon: LayoutDashboard },
+  { href: "/akquise", label: "Akquise", icon: Target },
   { href: "/orders", label: "Aufträge", icon: ClipboardList },
   { href: "/growth", label: "Growth", icon: Sparkles },
   { href: "/tools", label: "Tools", icon: Wrench },
-  { href: "/buchhaltung", label: "Kosten", icon: Receipt },
   { href: "/settings", label: "Mehr", icon: Settings },
 ];
 
@@ -34,7 +34,7 @@ export function MobileBottomNav() {
             key={item.href}
             href={item.href}
             className={cn(
-              "flex flex-1 flex-col items-center gap-0.5 py-2.5 text-xs",
+              "flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px]",
               active
                 ? "text-primary"
                 : "text-muted-foreground hover:text-foreground",

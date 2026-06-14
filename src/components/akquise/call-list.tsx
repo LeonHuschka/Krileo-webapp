@@ -85,8 +85,8 @@ export function CallList({
   lastEventByLead: Record<string, LeadEvent | undefined>;
 }) {
   return (
-    <div className="rounded-lg border border-border/50">
-      <Table>
+    <div className="overflow-x-auto rounded-lg border border-border/50">
+      <Table className="min-w-[760px]">
         <TableHeader>
           <TableRow>
             <TableHead className="w-[200px]">Inhaber / Business</TableHead>

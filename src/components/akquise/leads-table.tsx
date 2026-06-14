@@ -393,8 +393,8 @@ export function LeadsTable({
         </Button>
       </div>
 
-      <div className="rounded-lg border border-border/50">
-        <Table>
+      <div className="overflow-x-auto rounded-lg border border-border/50">
+        <Table className="min-w-[820px]">
           <TableHeader>
             <TableRow>
               <TableHead>Business</TableHead>

@@ -39,6 +39,7 @@ import {
 } from "@/lib/smartlead/storage";
 import { bodyToHtml, type SequenceMail } from "@/lib/smartlead/sequences";
 import { SEQUENCE_EDIT_SYSTEM } from "@/lib/smartlead/prompts/sequence-edit";
+import { MEETING_PREP_SYSTEM } from "@/lib/lead-engine/prompts/meeting-prep";
 import { claude, firstTextBlock } from "@/lib/lead-engine/claude";
 import { nextActionAfterNoAnswer } from "@/lib/lead-engine/cascade";
 import {
@@ -1545,4 +1546,109 @@ export async function runColdMailAutomationNow(campaignId?: number) {
   revalidateAll();
   revalidatePath("/akquise/mail");
   return r;
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Lead-detail: next step + AI meeting prep
+// ─────────────────────────────────────────────────────────────────────
+
+export async function setLeadNextStep(input: {
+  leadId: string;
+  nextStep: string | null;
+  nextStepAt: string | null;
+}) {
+  const db = leadEngine();
+  const { error } = await db
+    .from("leads")
+    .update({
+      next_step: input.nextStep?.trim() || null,
+      next_step_at: input.nextStepAt || null,
+    })
+    .eq("id", input.leadId);
+  if (error) throw new Error(error.message);
+  revalidatePath(`/akquise/leads/${input.leadId}`);
+  revalidatePath("/akquise/d2d");
+}
+
+const PREP_SCHEMA = {
+  type: "object",
+  properties: {
+    qa: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          q: { type: "string" },
+          a: { type: "string" },
+        },
+        required: ["q", "a"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["qa"],
+  additionalProperties: false,
+} as const;
+
+/**
+ * Generate likely owner questions + crisp answers for the meeting.
+ * Persists to leads.prep_qa so the prep survives a reload. Optional
+ * `focus` lets Leon steer ("Fokus auf Preis-Einwand", "er ist skeptisch").
+ */
+export async function generatePrepQuestions(input: {
+  leadId: string;
+  focus?: string;
+}) {
+  const db = leadEngine();
+  const { data, error } = await db
+    .from("leads")
+    .select(
+      "business_name, category, city, website_assessment, pain_points, fit_offer, fit_offer_pitch, offer_benefits, sales_points, suggested_price_min_eur, suggested_price_max_eur, owner_name, campaigns(industry)",
+    )
+    .eq("id", input.leadId)
+    .single();
+  if (error || !data) throw new Error("Lead nicht gefunden");
+  const l = data as Record<string, unknown>;
+
+  const ctx = [
+    `Branche: ${(l.campaigns as { industry?: string })?.industry ?? l.category ?? "—"}`,
+    `Betrieb: ${l.business_name} (${l.city ?? "—"})`,
+    l.owner_name ? `Inhaber: ${l.owner_name}` : "",
+    `Website-Befund: ${JSON.stringify(l.website_assessment ?? {})}`,
+    `Pain-Points: ${((l.pain_points as string[]) ?? []).join(" | ")}`,
+    `Offer: ${l.fit_offer} — ${l.fit_offer_pitch ?? ""}`,
+    `Benefits: ${((l.offer_benefits as string[]) ?? []).join(" | ")}`,
+    `Sales-Argumente: ${((l.sales_points as string[]) ?? []).join(" | ")}`,
+    `Preis-Range: ${l.suggested_price_min_eur ?? "?"}–${l.suggested_price_max_eur ?? "?"} €`,
+    input.focus?.trim() ? `\nFOKUS VON LEON: ${input.focus.trim()}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const response = await claude().messages.create({
+    model: "claude-sonnet-4-6",
+    max_tokens: 1800,
+    output_config: {
+      format: {
+        type: "json_schema",
+        schema: PREP_SCHEMA as unknown as Record<string, unknown>,
+      },
+    } as unknown as Record<string, unknown>,
+    system: [
+      {
+        type: "text",
+        text: MEETING_PREP_SYSTEM,
+        cache_control: { type: "ephemeral" },
+      },
+    ],
+    messages: [{ role: "user", content: ctx }],
+  });
+  const text = firstTextBlock(response.content);
+  if (!text) throw new Error("Claude hat keine Antwort geliefert");
+  const parsed = JSON.parse(text) as { qa: { q: string; a: string }[] };
+  const qa = (parsed.qa ?? []).slice(0, 8);
+
+  await db.from("leads").update({ prep_qa: qa }).eq("id", input.leadId);
+  revalidatePath(`/akquise/leads/${input.leadId}`);
+  return qa;
 }

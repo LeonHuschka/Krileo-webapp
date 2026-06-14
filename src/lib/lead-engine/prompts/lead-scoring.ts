@@ -170,6 +170,14 @@ Datengedeckt und spezifisch — beziehe Branche/Lücke ein. Beispiele für eine 
 - "Weniger Terminausfälle durch automatische Erinnerungen"
 - "Die Rezeption spart täglich 1-2 Stunden Telefonzeit"
 
+ZUSÄTZLICH: sales_points — GENAU 3 schlagkräftige Argumente aus UNTERNEHMER-Sicht für das
+Verkaufsgespräch: WARUM sollte der Inhaber Geld investieren? Business-Case, nicht Feature.
+Denke in Umsatz, verlorenen Aufträgen, Zeit/Personal-Kosten, Amortisation, Wettbewerb.
+Konkret + überzeugend, je max ~14 Wörter. Beispiele:
+- "Jeder verpasste Anruf am Abend = ein Auftrag, der zur Konkurrenz geht"
+- "Einmalige Investition, die sich über mehr Buchungen in wenigen Monaten trägt"
+- "Wettbewerber mit Online-Buchung ziehen genau die spontanen Kunden ab"
+
 ═══════════════════════════════════════════════════════════════════════
 WEITERE FELDER
 ═══════════════════════════════════════════════════════════════════════

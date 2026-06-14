@@ -50,6 +50,7 @@ export type ScoringResult = {
   suggested_price_max_eur: number;
   pain_points: string[];
   offer_benefits: string[];
+  sales_points: string[];
   personalized_hook: string;
   pickup_line: string;
   gatekeeper_line: string;
@@ -124,6 +125,10 @@ const SCORING_SCHEMA = {
       type: "array",
       items: { type: "string" },
     },
+    sales_points: {
+      type: "array",
+      items: { type: "string" },
+    },
     personalized_hook: { type: "string" },
     pickup_line: { type: "string" },
     gatekeeper_line: { type: "string" },
@@ -139,6 +144,7 @@ const SCORING_SCHEMA = {
     "suggested_price_max_eur",
     "pain_points",
     "offer_benefits",
+    "sales_points",
     "personalized_hook",
     "pickup_line",
     "gatekeeper_line",
@@ -391,6 +397,7 @@ export async function scoreLead(leadId: string): Promise<ScoringResult> {
       suggested_price_max_eur: parsed.suggested_price_max_eur,
       pain_points: parsed.pain_points,
       offer_benefits: (parsed.offer_benefits ?? []).slice(0, 3),
+      sales_points: (parsed.sales_points ?? []).slice(0, 3),
       personalized_hook: parsed.personalized_hook,
       pickup_line: parsed.pickup_line,
       gatekeeper_line: parsed.gatekeeper_line,

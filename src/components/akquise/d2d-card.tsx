@@ -284,22 +284,33 @@ export function D2DCard({
           </Button>
         </div>
         {priceRange ? (
-          <div className="flex flex-wrap items-baseline gap-2">
-            <span className="text-lg font-bold tabular-nums text-emerald-300">
-              {priceRange}
-            </span>
-            {lead.fit_offer && (
-              <Badge
-                variant="outline"
-                className="border-border/60 bg-card text-[10px]"
-              >
-                {lead.fit_offer}
-              </Badge>
-            )}
-            {lead.business_size && (
-              <span className="text-[10px] text-muted-foreground">
-                {lead.business_size}
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-baseline gap-2">
+              <span className="text-lg font-bold tabular-nums text-emerald-300">
+                {priceRange}
               </span>
+              {lead.fit_offer && (
+                <Badge
+                  variant="outline"
+                  className="border-border/60 bg-card text-[10px] uppercase"
+                >
+                  {lead.fit_offer}
+                </Badge>
+              )}
+              {lead.business_size && (
+                <span className="text-[10px] text-muted-foreground">
+                  {lead.business_size}
+                </span>
+              )}
+            </div>
+            {(lead.sales_points?.[0] ||
+              lead.offer_benefits?.[0] ||
+              lead.fit_offer_pitch) && (
+              <p className="text-[11px] leading-snug text-foreground">
+                {lead.sales_points?.[0] ??
+                  lead.offer_benefits?.[0] ??
+                  lead.fit_offer_pitch}
+              </p>
             )}
           </div>
         ) : (

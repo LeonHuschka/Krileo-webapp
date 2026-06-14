@@ -211,6 +211,10 @@ export interface Lead {
   contact_channels: ContactChannel[] | null;
   offer_benefits: string[] | null;
 
+  // Sales conversation aids (added in 00030_)
+  sales_points: string[] | null;
+  prep_qa: { q: string; a: string }[] | null;
+
   // Gatekeeper classification (added in 00020_)
   pickup_profile: PickupProfile | null;
 

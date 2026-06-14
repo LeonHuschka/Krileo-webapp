@@ -174,10 +174,19 @@ function buildUserPrompt(
   else fields.push("Google: keine Bewertungsdaten");
   if (lead.instagram_url) fields.push(`Instagram: ${lead.instagram_url}`);
   if (lead.facebook_url) fields.push(`Facebook: ${lead.facebook_url}`);
-  if (lead.owner_name) fields.push(`Inhaber (Impressum): ${lead.owner_name}`);
+  if (lead.owner_name) fields.push(`Inhaber: ${lead.owner_name}`);
   if (lead.owner_email) fields.push(`E-Mail: ${lead.owner_email}`);
   if (lead.phone) fields.push(`Telefon: ${lead.phone}`);
   if (lead.address) fields.push(`Adresse: ${lead.address}`);
+  // Persönliche Begegnung (D2D) — wenn vorhanden, hat das VORRANG vor dem
+  // Website-Befund, weil hier steht was der Inhaber wirklich gesagt/gebraucht hat.
+  if (lead.met_location) fields.push(`Getroffen bei: ${lead.met_location}`);
+  if (lead.meeting_notes) {
+    fields.push("");
+    fields.push(
+      `GESPRÄCHSNOTIZEN (persönliche Begegnung — VORRANG für Offer/Pain/Preis):\n"""\n${lead.meeting_notes}\n"""`,
+    );
+  }
   return fields.join("\n");
 }
 

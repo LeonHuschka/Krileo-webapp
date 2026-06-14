@@ -1742,3 +1742,43 @@ export async function answerPrepQuestion(input: {
   if (!text) throw new Error("Keine Antwort von Claude");
   return (JSON.parse(text) as { answer: string }).answer;
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// Lead-detail: edit core fields (esp. meeting notes that drive the offer)
+// ─────────────────────────────────────────────────────────────────────
+
+export async function updateLeadFields(input: {
+  leadId: string;
+  owner_name?: string | null;
+  met_location?: string | null;
+  meeting_notes?: string | null;
+  notes?: string | null;
+  rescore?: boolean;
+}) {
+  const db = leadEngine();
+  const patch: Record<string, unknown> = {};
+  if (input.owner_name !== undefined)
+    patch.owner_name = input.owner_name?.trim() || null;
+  if (input.met_location !== undefined)
+    patch.met_location = input.met_location?.trim() || null;
+  if (input.meeting_notes !== undefined)
+    patch.meeting_notes = input.meeting_notes?.trim() || null;
+  if (input.notes !== undefined) patch.notes = input.notes?.trim() || null;
+
+  if (Object.keys(patch).length > 0) {
+    const { error } = await db
+      .from("leads")
+      .update(patch)
+      .eq("id", input.leadId);
+    if (error) throw new Error(error.message);
+  }
+
+  // Re-run the full scorer so the offer/pain/price reflect the edited
+  // meeting notes (the scorer now treats them as the priority source).
+  if (input.rescore) {
+    await scoreLead(input.leadId);
+  }
+
+  revalidatePath(`/akquise/leads/${input.leadId}`);
+  revalidatePath("/akquise/d2d");
+}

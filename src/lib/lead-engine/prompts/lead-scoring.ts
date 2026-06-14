@@ -66,6 +66,11 @@ ARBEITE IMMER IN DIESER REIHENFOLGE:
 Wenn Features-Heuristik und Website-Text sich widersprechen, GLAUBE DEM TEXT (Heuristik kann
 Keywords übersehen oder false-positiv sein).
 
+⛔ GESPRÄCHSNOTIZEN HABEN VORRANG: Liegen Notizen aus einer persönlichen Begegnung (D2D) vor,
+sind SIE die wichtigste Quelle — sie sagen dir direkt, was der Inhaber will, braucht und wo
+sein Schmerz liegt. Offer, Pain-Points, Sales-Argumente und Preis MÜSSEN dann zu dem passen,
+was im Gespräch besprochen wurde, nicht nur zum Website-Befund.
+
 ═══════════════════════════════════════════════════════════════════════
 SCORE-BREAKDOWN (5 Sub-Scores, summiert zu 0-100)
 ═══════════════════════════════════════════════════════════════════════

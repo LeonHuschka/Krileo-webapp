@@ -22,6 +22,7 @@ import { AppointmentDialog } from "@/components/akquise/appointment-dialog";
 import { AppointmentRow } from "@/components/akquise/appointment-row";
 import { DayCalendar, type ExternalEvent } from "@/components/akquise/day-calendar";
 import { LeadNextStep } from "@/components/akquise/lead-next-step";
+import { LeadEditFields } from "@/components/akquise/lead-edit-fields";
 import { PrepQuestions } from "@/components/akquise/prep-questions";
 import { cn } from "@/lib/utils";
 import type { Appointment, Lead } from "@/lib/lead-engine/types";
@@ -363,16 +364,17 @@ export default async function LeadDetailPage({
                 />
               </div>
 
-              {lead.notes && (
-                <div>
-                  <div className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Notizen
-                  </div>
-                  <div className="whitespace-pre-wrap rounded-md border border-border/50 bg-card/60 p-3 text-sm">
-                    {lead.notes}
-                  </div>
-                </div>
-              )}
+              {/* Editable encounter notes (drive the offer) + notes */}
+              <LeadEditFields
+                leadId={lead.id}
+                isD2D={lead.lead_source === "d2d"}
+                initial={{
+                  owner_name: lead.owner_name,
+                  met_location: lead.met_location,
+                  meeting_notes: lead.meeting_notes,
+                  notes: lead.notes,
+                }}
+              />
             </CardContent>
           </Card>
 

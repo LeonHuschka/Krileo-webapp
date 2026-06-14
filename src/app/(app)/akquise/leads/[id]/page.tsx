@@ -130,7 +130,7 @@ export default async function LeadDetailPage({
       : null;
 
   return (
-    <div className="mx-auto max-w-6xl space-y-4 p-4 md:p-6">
+    <div className="space-y-4 p-4 md:p-6">
       <Link
         href="/akquise/leads"
         className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
@@ -138,9 +138,9 @@ export default async function LeadDetailPage({
         <ArrowLeft className="h-3 w-3" /> Lead-Browser
       </Link>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-        {/* ── Center column: the lead card ─────────────────────────── */}
-        <div className="space-y-4 lg:order-2 lg:col-span-6">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
+        {/* ── Center column: card + meeting prep ───────────────────── */}
+        <div className="space-y-4 lg:order-2 lg:col-span-2">
           <Card>
             <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
               <div className="flex-1 space-y-2">
@@ -338,6 +338,9 @@ export default async function LeadDetailPage({
             </CardContent>
           </Card>
 
+          {/* Meeting prep — under the main card */}
+          <PrepQuestions leadId={lead.id} initialQa={lead.prep_qa ?? null} />
+
           {leadAppointments.length > 0 && (
             <div className="space-y-2">
               <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -352,9 +355,8 @@ export default async function LeadDetailPage({
           )}
         </div>
 
-        {/* ── Left column: prep + pitch-notes + sales args ────────── */}
-        <div className="space-y-4 lg:order-1 lg:col-span-3">
-          <PrepQuestions leadId={lead.id} initialQa={lead.prep_qa ?? null} />
+        {/* ── Left column: pitch-notes + sales args ────────────────── */}
+        <div className="space-y-4 lg:order-1 lg:col-span-2">
           <LeadEditFields
             leadId={lead.id}
             isD2D={lead.lead_source === "d2d"}
@@ -369,7 +371,7 @@ export default async function LeadDetailPage({
         </div>
 
         {/* ── Right column: calendar + next step ──────────────────── */}
-        <div className="space-y-4 lg:order-3 lg:col-span-3">
+        <div className="space-y-4 lg:order-3 lg:col-span-1">
           <div className="lg:sticky lg:top-4 space-y-4">
             <DayCalendar
               appointments={calAppointments as never}

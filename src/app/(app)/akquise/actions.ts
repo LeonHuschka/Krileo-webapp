@@ -1603,7 +1603,7 @@ export async function generatePrepQuestions(input: {
   const { data, error } = await db
     .from("leads")
     .select(
-      "business_name, category, city, website_assessment, pain_points, fit_offer, fit_offer_pitch, offer_benefits, sales_points, suggested_price_min_eur, suggested_price_max_eur, owner_name, campaigns(industry)",
+      "business_name, category, city, website_assessment, pain_points, fit_offer, fit_offer_pitch, offer_benefits, sales_points, suggested_price_min_eur, suggested_price_max_eur, owner_name, prep_qa, campaigns(industry)",
     )
     .eq("id", input.leadId)
     .single();
@@ -1646,9 +1646,99 @@ export async function generatePrepQuestions(input: {
   const text = firstTextBlock(response.content);
   if (!text) throw new Error("Claude hat keine Antwort geliefert");
   const parsed = JSON.parse(text) as { qa: { q: string; a: string }[] };
-  const qa = (parsed.qa ?? []).slice(0, 8);
+  const generated = (parsed.qa ?? []).filter((x) => x.q?.trim());
+
+  // Merge with existing (keep manual entries, dedupe by question).
+  const existing = (l.prep_qa as { q: string; a: string }[]) ?? [];
+  const seen = new Set(existing.map((x) => x.q.trim().toLowerCase()));
+  const merged = [...existing];
+  for (const g of generated) {
+    const key = g.q.trim().toLowerCase();
+    if (!seen.has(key)) {
+      seen.add(key);
+      merged.push(g);
+    }
+  }
+  const qa = merged.slice(0, 14);
 
   await db.from("leads").update({ prep_qa: qa }).eq("id", input.leadId);
   revalidatePath(`/akquise/leads/${input.leadId}`);
   return qa;
+}
+
+/** Persist an edited prep_qa list (manual add / delete / edit). */
+export async function savePrepQa(
+  leadId: string,
+  qa: { q: string; a: string }[],
+) {
+  const db = leadEngine();
+  const clean = qa
+    .map((x) => ({ q: (x.q ?? "").trim(), a: (x.a ?? "").trim() }))
+    .filter((x) => x.q)
+    .slice(0, 20);
+  const { error } = await db
+    .from("leads")
+    .update({ prep_qa: clean })
+    .eq("id", leadId);
+  if (error) throw new Error(error.message);
+  revalidatePath(`/akquise/leads/${leadId}`);
+  return clean;
+}
+
+/** Claude drafts an answer for one owner question Leon typed himself. */
+export async function answerPrepQuestion(input: {
+  leadId: string;
+  question: string;
+}): Promise<string> {
+  const question = input.question.trim();
+  if (!question) throw new Error("Frage fehlt");
+  const db = leadEngine();
+  const { data } = await db
+    .from("leads")
+    .select(
+      "business_name, category, city, website_assessment, pain_points, fit_offer, fit_offer_pitch, offer_benefits, sales_points, suggested_price_min_eur, suggested_price_max_eur, campaigns(industry)",
+    )
+    .eq("id", input.leadId)
+    .single();
+  const l = (data ?? {}) as Record<string, unknown>;
+
+  const ctx = [
+    `Branche: ${(l.campaigns as { industry?: string })?.industry ?? l.category ?? "—"}`,
+    `Betrieb: ${l.business_name} (${l.city ?? "—"})`,
+    `Pain-Points: ${((l.pain_points as string[]) ?? []).join(" | ")}`,
+    `Offer: ${l.fit_offer} — ${l.fit_offer_pitch ?? ""}`,
+    `Sales-Argumente: ${((l.sales_points as string[]) ?? []).join(" | ")}`,
+    `Preis-Range: ${l.suggested_price_min_eur ?? "?"}–${l.suggested_price_max_eur ?? "?"} €`,
+    "",
+    `FRAGE / EINWAND DES INHABERS: ${question}`,
+    "",
+    "Gib NUR die Antwort (1-3 Sätze), die Leon im Gespräch sagen kann. Sie-Form, konkret, souverän, kein Vorgeplänkel.",
+  ].join("\n");
+
+  const response = await claude().messages.create({
+    model: "claude-sonnet-4-6",
+    max_tokens: 400,
+    output_config: {
+      format: {
+        type: "json_schema",
+        schema: {
+          type: "object",
+          properties: { answer: { type: "string" } },
+          required: ["answer"],
+          additionalProperties: false,
+        } as unknown as Record<string, unknown>,
+      },
+    } as unknown as Record<string, unknown>,
+    system: [
+      {
+        type: "text",
+        text: MEETING_PREP_SYSTEM,
+        cache_control: { type: "ephemeral" },
+      },
+    ],
+    messages: [{ role: "user", content: ctx }],
+  });
+  const text = firstTextBlock(response.content);
+  if (!text) throw new Error("Keine Antwort von Claude");
+  return (JSON.parse(text) as { answer: string }).answer;
 }

@@ -140,6 +140,12 @@ export default async function LeadDetailPage({
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {/* ── Main column ─────────────────────────────────────────── */}
         <div className="space-y-4 lg:col-span-2">
+          <LeadNextStep
+            leadId={lead.id}
+            initialNextStep={lead.next_step}
+            initialNextStepAt={lead.next_step_at}
+          />
+
           <Card>
             <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
               <div className="flex-1 space-y-2">
@@ -376,15 +382,7 @@ export default async function LeadDetailPage({
             </CardContent>
           </Card>
 
-          {/* Next step + meeting prep — directly under the card */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <LeadNextStep
-              leadId={lead.id}
-              initialNextStep={lead.next_step}
-              initialNextStepAt={lead.next_step_at}
-            />
-            <div className="hidden sm:block" />
-          </div>
+          {/* Meeting prep — directly under the card */}
           <PrepQuestions leadId={lead.id} initialQa={lead.prep_qa ?? null} />
 
           {leadAppointments.length > 0 && (

@@ -1752,6 +1752,8 @@ export async function updateLeadFields(input: {
   owner_name?: string | null;
   met_location?: string | null;
   meeting_notes?: string | null;
+  close_notes?: string | null;
+  sale_notes?: string | null;
   notes?: string | null;
   rescore?: boolean;
 }) {
@@ -1763,6 +1765,10 @@ export async function updateLeadFields(input: {
     patch.met_location = input.met_location?.trim() || null;
   if (input.meeting_notes !== undefined)
     patch.meeting_notes = input.meeting_notes?.trim() || null;
+  if (input.close_notes !== undefined)
+    patch.close_notes = input.close_notes?.trim() || null;
+  if (input.sale_notes !== undefined)
+    patch.sale_notes = input.sale_notes?.trim() || null;
   if (input.notes !== undefined) patch.notes = input.notes?.trim() || null;
 
   if (Object.keys(patch).length > 0) {
@@ -1797,4 +1803,20 @@ export async function saveSalesPoints(leadId: string, points: string[]) {
   if (error) throw new Error(error.message);
   revalidatePath(`/akquise/leads/${leadId}`);
   return clean;
+}
+
+/** Set / clear the prepared-demo URL (manually pasted Vercel link). */
+export async function setLeadDemoUrl(leadId: string, url: string | null) {
+  const db = leadEngine();
+  const clean = url?.trim() || null;
+  if (clean && !/^https?:\/\//i.test(clean)) {
+    throw new Error("Bitte vollständige URL inkl. https://");
+  }
+  const { error } = await db
+    .from("leads")
+    .update({ demo_url: clean })
+    .eq("id", leadId);
+  if (error) throw new Error(error.message);
+  revalidatePath(`/akquise/leads/${leadId}`);
+  revalidatePath("/akquise/leads");
 }

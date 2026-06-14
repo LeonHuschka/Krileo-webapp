@@ -215,6 +215,11 @@ export interface Lead {
   sales_points: string[] | null;
   prep_qa: { q: string; a: string }[] | null;
 
+  // Notes sections + demo link (added in 00031_)
+  close_notes: string | null;
+  sale_notes: string | null;
+  demo_url: string | null;
+
   // Gatekeeper classification (added in 00020_)
   pickup_profile: PickupProfile | null;
 

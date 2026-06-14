@@ -20,8 +20,9 @@ import { RescoreButton } from "@/components/akquise/lead-actions";
 import { AppointmentDialog } from "@/components/akquise/appointment-dialog";
 import { AppointmentRow } from "@/components/akquise/appointment-row";
 import { DayCalendar, type ExternalEvent } from "@/components/akquise/day-calendar";
-import { LeadNextStep } from "@/components/akquise/lead-next-step";
-import { LeadEditFields } from "@/components/akquise/lead-edit-fields";
+import { LeadNotes } from "@/components/akquise/lead-notes";
+import { NextStepButton } from "@/components/akquise/next-step-button";
+import { DemoLinkButton } from "@/components/akquise/demo-link-button";
 import { SalesPointsEditor } from "@/components/akquise/sales-points-editor";
 import { PrepQuestions } from "@/components/akquise/prep-questions";
 import { cn } from "@/lib/utils";
@@ -206,6 +207,11 @@ export default async function LeadDetailPage({
                     triggerVariant="default"
                     defaultLeadName={lead.business_name}
                   />
+                  <NextStepButton
+                    leadId={lead.id}
+                    nextStep={lead.next_step}
+                    nextStepAt={lead.next_step_at}
+                  />
                   <RescoreButton leadId={lead.id} />
                 </div>
               </div>
@@ -318,6 +324,7 @@ export default async function LeadDetailPage({
                     </a>
                   </Button>
                 )}
+                <DemoLinkButton leadId={lead.id} demoUrl={lead.demo_url} />
               </div>
 
               {/* Meta */}
@@ -352,33 +359,27 @@ export default async function LeadDetailPage({
           )}
         </div>
 
-        {/* ── Left column: pitch-notes + sales args ────────────────── */}
+        {/* ── Left column: notes + sales args + prep ───────────────── */}
         <div className="space-y-4 lg:order-1 lg:col-span-2">
-          <LeadEditFields
+          <LeadNotes
             leadId={lead.id}
-            isD2D={lead.lead_source === "d2d"}
             initial={{
-              owner_name: lead.owner_name,
               met_location: lead.met_location,
               meeting_notes: lead.meeting_notes,
-              notes: lead.notes,
+              close_notes: lead.close_notes,
+              sale_notes: lead.sale_notes,
             }}
           />
           <SalesPointsEditor leadId={lead.id} initial={lead.sales_points} />
           <PrepQuestions leadId={lead.id} initialQa={lead.prep_qa ?? null} />
         </div>
 
-        {/* ── Right column: calendar + next step ──────────────────── */}
+        {/* ── Right column: calendar ──────────────────────────────── */}
         <div className="space-y-4 lg:order-3 lg:col-span-1">
-          <div className="lg:sticky lg:top-4 space-y-4">
+          <div className="lg:sticky lg:top-4">
             <DayCalendar
               appointments={calAppointments as never}
               externalEvents={externalEvents}
-            />
-            <LeadNextStep
-              leadId={lead.id}
-              initialNextStep={lead.next_step}
-              initialNextStepAt={lead.next_step_at}
             />
           </div>
         </div>

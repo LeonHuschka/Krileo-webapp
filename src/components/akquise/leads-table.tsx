@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   ExternalLink,
+  MonitorPlay,
   Search,
   Phone,
   Mail,
@@ -407,6 +408,7 @@ export function LeadsTable({
               <TableHead className="w-[160px]">Letztes Event</TableHead>
               <TableHead>Phone</TableHead>
               <TableHead className="w-10 text-right">Web</TableHead>
+              <TableHead className="w-10 text-right">Demo</TableHead>
               <TableHead className="w-10"></TableHead>
             </TableRow>
           </TableHeader>
@@ -598,6 +600,22 @@ export function LeadsTable({
                       <span className="text-xs text-muted-foreground/40">
                         —
                       </span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {l.demo_url ? (
+                      <a
+                        href={l.demo_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-md text-violet-300 transition-colors hover:bg-violet-500/15"
+                        title="Demo öffnen"
+                      >
+                        <MonitorPlay className="h-3.5 w-3.5" />
+                      </a>
+                    ) : (
+                      <span className="text-xs text-muted-foreground/40">—</span>
                     )}
                   </TableCell>
                   <TableCell>

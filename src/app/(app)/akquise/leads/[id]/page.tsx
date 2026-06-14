@@ -376,6 +376,17 @@ export default async function LeadDetailPage({
             </CardContent>
           </Card>
 
+          {/* Next step + meeting prep — directly under the card */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <LeadNextStep
+              leadId={lead.id}
+              initialNextStep={lead.next_step}
+              initialNextStepAt={lead.next_step_at}
+            />
+            <div className="hidden sm:block" />
+          </div>
+          <PrepQuestions leadId={lead.id} initialQa={lead.prep_qa ?? null} />
+
           {leadAppointments.length > 0 && (
             <div className="space-y-2">
               <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -390,20 +401,14 @@ export default async function LeadDetailPage({
           )}
         </div>
 
-        {/* ── Sidebar: calendar + next step + prep ────────────────── */}
+        {/* ── Sidebar: calendar only ──────────────────────────────── */}
         <div className="space-y-4">
-          <div className="lg:sticky lg:top-4 space-y-4">
+          <div className="lg:sticky lg:top-4">
             <DayCalendar
               appointments={calAppointments as never}
               externalEvents={externalEvents}
             />
-            <LeadNextStep
-              leadId={lead.id}
-              initialNextStep={lead.next_step}
-              initialNextStepAt={lead.next_step_at}
-            />
           </div>
-          <PrepQuestions leadId={lead.id} initialQa={lead.prep_qa ?? null} />
         </div>
       </div>
     </div>

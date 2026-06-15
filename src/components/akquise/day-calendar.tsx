@@ -115,17 +115,25 @@ export function DayCalendar({
     );
   });
 
-  const upcoming = (appointments ?? [])
-    .filter((a) => new Date(a.scheduled_for).getTime() > today.getTime())
-    .slice(0, 5);
-  const nextAppt = upcoming.find((a) => {
-    const d = new Date(a.scheduled_for);
-    return !(
-      d.getFullYear() === today.getFullYear() &&
-      d.getMonth() === today.getMonth() &&
-      d.getDate() === today.getDate()
-    );
-  });
+  // Next upcoming item across BOTH app appointments and Google events,
+  // so a meeting on a future day (e.g. a Google "Seehaus Tanja"
+  // tomorrow) still surfaces here instead of being invisible until
+  // its day is the current one.
+  const nowMs = Date.now();
+  const nextItem = [
+    ...(appointments ?? []).map((a) => ({
+      ms: new Date(a.scheduled_for).getTime(),
+      iso: a.scheduled_for,
+      label: a.lead?.owner_name ?? a.lead?.business_name ?? "Termin",
+    })),
+    ...(externalEvents ?? []).map((e) => ({
+      ms: new Date(e.startIso).getTime(),
+      iso: e.startIso,
+      label: e.title,
+    })),
+  ]
+    .filter((x) => x.ms > nowMs)
+    .sort((a, b) => a.ms - b.ms)[0];
 
   const totalHeight = (END_HOUR - START_HOUR) * HOUR_HEIGHT;
 
@@ -251,20 +259,18 @@ export function DayCalendar({
         })}
       </div>
 
-      {nextAppt && (
+      {nextItem && (
         <div className="mt-2 flex items-center gap-1.5 rounded-md border border-border/50 bg-card/60 p-2 text-[10px]">
           <Clock className="h-3 w-3 text-muted-foreground" />
           <span className="text-muted-foreground">Nächster:</span>
           <span className="truncate text-foreground">
-            {new Date(nextAppt.scheduled_for).toLocaleDateString("de-DE", {
+            {new Date(nextItem.iso).toLocaleDateString("de-DE", {
               day: "2-digit",
               month: "2-digit",
             })}{" "}
-            {fmtTime(nextAppt.scheduled_for)}
+            {fmtTime(nextItem.iso)}
             {" · "}
-            {nextAppt.lead?.owner_name ??
-              nextAppt.lead?.business_name ??
-              "—"}
+            {nextItem.label}
           </span>
         </div>
       )}

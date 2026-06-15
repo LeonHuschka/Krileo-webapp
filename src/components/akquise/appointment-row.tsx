@@ -59,7 +59,13 @@ const TYPE_COLORS: Record<string, string> = {
   other: "border-zinc-500/40 bg-zinc-500/15 text-zinc-300",
 };
 
-export function AppointmentRow({ appt }: { appt: Row }) {
+export function AppointmentRow({
+  appt,
+  compact = false,
+}: {
+  appt: Row;
+  compact?: boolean;
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
@@ -98,7 +104,8 @@ export function AppointmentRow({ appt }: { appt: Row }) {
   return (
     <Card
       className={cn(
-        "flex flex-col gap-3 border-border/60 bg-card p-4 sm:flex-row sm:items-center",
+        "flex flex-col gap-3 border-border/60 bg-card p-4",
+        !compact && "sm:flex-row sm:items-center",
         isTerminal && "opacity-60",
       )}
     >
@@ -162,7 +169,7 @@ export function AppointmentRow({ appt }: { appt: Row }) {
           </div>
         )}
       </div>
-      <div className="flex items-center gap-1.5">
+      <div className="flex flex-wrap items-center gap-1.5">
         {appt.leads?.phone && !isTerminal && (
           <Button asChild size="sm" variant="outline" className="gap-1">
             <a href={`tel:${appt.leads.phone}`}>📞</a>

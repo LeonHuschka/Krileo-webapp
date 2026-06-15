@@ -204,12 +204,6 @@ export default async function LeadDetailPage({
                   </span>
                 )}
                 <div className="flex flex-col gap-1.5">
-                  <AppointmentDialog
-                    leadId={lead.id}
-                    triggerLabel="Termin legen"
-                    triggerVariant="default"
-                    defaultLeadName={lead.business_name}
-                  />
                   <NextStepButton
                     leadId={lead.id}
                     nextStep={lead.next_step}
@@ -348,19 +342,6 @@ export default async function LeadDetailPage({
 
             </CardContent>
           </Card>
-
-          {leadAppointments.length > 0 && (
-            <div className="space-y-2">
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Termine zu diesem Lead
-              </h2>
-              <div className="space-y-2">
-                {leadAppointments.map((a) => (
-                  <AppointmentRow key={a.id} appt={a as never} />
-                ))}
-              </div>
-            </div>
-          )}
         </div>
 
         {/* ── Left column: notes + sales args + prep ───────────────── */}
@@ -378,13 +359,38 @@ export default async function LeadDetailPage({
           <PrepQuestions leadId={lead.id} initialQa={lead.prep_qa ?? null} />
         </div>
 
-        {/* ── Right column: calendar ──────────────────────────────── */}
+        {/* ── Right column: calendar + this lead's appointments ─────── */}
         <div className="space-y-4 lg:order-3 lg:col-span-1">
-          <div className="lg:sticky lg:top-4">
+          <div className="space-y-4 lg:sticky lg:top-4">
             <DayCalendar
               appointments={calAppointments as never}
               externalEvents={externalEvents}
             />
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Termine zu diesem Lead
+                </h2>
+                <AppointmentDialog
+                  leadId={lead.id}
+                  triggerLabel="Termin"
+                  triggerVariant="outline"
+                  defaultLeadName={lead.business_name}
+                  buttonClassName="h-7 px-2 text-xs"
+                />
+              </div>
+              {leadAppointments.length > 0 ? (
+                <div className="space-y-2">
+                  {leadAppointments.map((a) => (
+                    <AppointmentRow key={a.id} appt={a as never} compact />
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Noch keine Termine. Über »Termin« anlegen.
+                </p>
+              )}
+            </div>
           </div>
         </div>
       </div>

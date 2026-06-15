@@ -77,6 +77,10 @@ function revalidateAll() {
   revalidatePath("/akquise/tasks");
   revalidatePath("/akquise/leads");
   revalidatePath("/akquise/termine");
+  revalidatePath("/akquise/d2d");
+  // Invalidate every lead detail page so freshly booked appointments /
+  // status changes show up without a manual reload.
+  revalidatePath("/akquise/leads/[id]", "page");
 }
 
 // ── Outcome logging (pool-based) ──────────────────────────────────────
@@ -1288,6 +1292,7 @@ export async function bookAppointment(input: {
     metadata: { appointmentId: appt.id, scheduledFor: input.scheduledFor },
   });
 
+  revalidateAll();
   return appt;
 }
 

@@ -8,7 +8,6 @@ import {
   ExternalLink,
   Target,
   ChevronRight,
-  Flag,
 } from "lucide-react";
 import { leadEngine } from "@/lib/lead-engine/supabase";
 import { listUpcomingAppointments } from "@/lib/lead-engine/appointments";
@@ -22,7 +21,7 @@ import { AppointmentDialog } from "@/components/akquise/appointment-dialog";
 import { AppointmentRow } from "@/components/akquise/appointment-row";
 import { DayCalendar, type ExternalEvent } from "@/components/akquise/day-calendar";
 import { LeadNotes } from "@/components/akquise/lead-notes";
-import { NextStepDoneButton } from "@/components/akquise/next-step-done-button";
+import { NextStepSection } from "@/components/akquise/next-step-section";
 import { DemoLinkButton } from "@/components/akquise/demo-link-button";
 import { OfferPdfButton } from "@/components/akquise/offer-pdf-button";
 import { OnHoldButton } from "@/components/akquise/on-hold-button";
@@ -144,8 +143,6 @@ export default async function LeadDetailPage({
       a.status === "no_show" ||
       a.status === "cancelled",
   );
-  const nextStepOverdue =
-    lead.next_step_at && new Date(lead.next_step_at).getTime() < Date.now();
 
   return (
     <div className="space-y-4 p-4 md:p-6">
@@ -369,6 +366,11 @@ export default async function LeadDetailPage({
           />
           <SalesPointsEditor leadId={lead.id} initial={lead.sales_points} />
           <PrepQuestions leadId={lead.id} initialQa={lead.prep_qa ?? null} />
+          <NextStepSection
+            leadId={lead.id}
+            nextStep={lead.next_step}
+            nextStepAt={lead.next_step_at}
+          />
         </div>
 
         {/* ── Right column: calendar + this lead's appointments ─────── */}
@@ -398,50 +400,14 @@ export default async function LeadDetailPage({
                 </details>
               )}
 
-              {/* Offene To-Dos: next-step + upcoming appointments */}
-              {lead.next_step && (
-                <div
-                  className={cn(
-                    "space-y-1.5 rounded-lg border p-3",
-                    nextStepOverdue
-                      ? "border-rose-500/40 bg-rose-500/[0.06]"
-                      : "border-border/60 bg-card/60",
-                  )}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      <Flag className="h-3 w-3" />
-                      Next Step
-                      {nextStepOverdue && (
-                        <span className="text-rose-300">· überfällig</span>
-                      )}
-                    </span>
-                    <NextStepDoneButton
-                      leadId={lead.id}
-                      className="h-6 gap-1 border-emerald-500/40 px-2 text-[10px] text-emerald-300 hover:bg-emerald-500/10"
-                    />
-                  </div>
-                  <div className="text-sm leading-snug">{lead.next_step}</div>
-                  {lead.next_step_at && (
-                    <div className="text-xs text-muted-foreground">
-                      {new Date(lead.next_step_at).toLocaleString("de-DE", {
-                        day: "2-digit",
-                        month: "short",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
-
+              {/* Anstehende Termine */}
               {openAppointments.map((a) => (
                 <AppointmentRow key={a.id} appt={a as never} compact />
               ))}
 
-              {!lead.next_step && openAppointments.length === 0 && (
+              {openAppointments.length === 0 && (
                 <p className="text-xs text-muted-foreground">
-                  Keine offenen To-Dos. Über »Termin legen« anlegen.
+                  Keine anstehenden Termine. Über »Termin legen« anlegen.
                 </p>
               )}
             </div>

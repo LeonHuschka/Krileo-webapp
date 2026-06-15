@@ -8,6 +8,7 @@ import {
   ExternalLink,
   Target,
   ChevronRight,
+  CalendarDays,
 } from "lucide-react";
 import { leadEngine } from "@/lib/lead-engine/supabase";
 import { listUpcomingAppointments } from "@/lib/lead-engine/appointments";
@@ -371,35 +372,24 @@ export default async function LeadDetailPage({
             nextStep={lead.next_step}
             nextStepAt={lead.next_step_at}
           />
-        </div>
 
-        {/* ── Right column: calendar + this lead's appointments ─────── */}
-        <div className="space-y-4 lg:order-3 lg:col-span-1">
-          <div className="space-y-4 lg:sticky lg:top-4">
-            <DayCalendar
-              appointments={calAppointments as never}
-              externalEvents={externalEvents}
-            />
-            <div className="space-y-2">
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          {/* Termine zu diesem Lead — collapsible, with a nested collapsible
+              for the completed ones */}
+          <details className="group rounded-lg border border-border/60 bg-card">
+            <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 [&::-webkit-details-marker]:hidden">
+              <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-90" />
+              <CalendarDays className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Termine zu diesem Lead
-              </h2>
+              </span>
+              <span className="ml-auto text-xs text-muted-foreground">
+                {openAppointments.length > 0
+                  ? `${openAppointments.length} offen`
+                  : "—"}
+              </span>
+            </summary>
 
-              {/* Erledigte Termine — collapsed, just the count */}
-              {doneAppointments.length > 0 && (
-                <details className="group rounded-lg border border-border/60 bg-card/40">
-                  <summary className="flex cursor-pointer list-none items-center gap-1.5 px-3 py-2 text-xs text-muted-foreground [&::-webkit-details-marker]:hidden">
-                    <ChevronRight className="h-3.5 w-3.5 transition-transform group-open:rotate-90" />
-                    Erledigte Termine ({doneAppointments.length})
-                  </summary>
-                  <div className="space-y-2 p-2 pt-0">
-                    {doneAppointments.map((a) => (
-                      <AppointmentRow key={a.id} appt={a as never} compact />
-                    ))}
-                  </div>
-                </details>
-              )}
-
+            <div className="space-y-2 px-4 pb-4">
               {/* Anstehende Termine */}
               {openAppointments.map((a) => (
                 <AppointmentRow key={a.id} appt={a as never} compact />
@@ -410,7 +400,32 @@ export default async function LeadDetailPage({
                   Keine anstehenden Termine. Über »Termin legen« anlegen.
                 </p>
               )}
+
+              {/* Erledigte Termine — nested collapsible, just the count */}
+              {doneAppointments.length > 0 && (
+                <details className="group/done rounded-lg border border-border/60 bg-card/40">
+                  <summary className="flex cursor-pointer list-none items-center gap-1.5 px-3 py-2 text-xs text-muted-foreground [&::-webkit-details-marker]:hidden">
+                    <ChevronRight className="h-3.5 w-3.5 transition-transform group-open/done:rotate-90" />
+                    Erledigte Termine ({doneAppointments.length})
+                  </summary>
+                  <div className="space-y-2 p-2 pt-0">
+                    {doneAppointments.map((a) => (
+                      <AppointmentRow key={a.id} appt={a as never} compact />
+                    ))}
+                  </div>
+                </details>
+              )}
             </div>
+          </details>
+        </div>
+
+        {/* ── Right column: calendar ──────────────────────────────── */}
+        <div className="space-y-4 lg:order-3 lg:col-span-1">
+          <div className="lg:sticky lg:top-4">
+            <DayCalendar
+              appointments={calAppointments as never}
+              externalEvents={externalEvents}
+            />
           </div>
         </div>
       </div>

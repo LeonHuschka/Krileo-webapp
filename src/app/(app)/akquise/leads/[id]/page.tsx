@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   ArrowLeft,
-  Phone,
   Mail,
   MapPin,
   Star,
@@ -23,6 +22,8 @@ import { DayCalendar, type ExternalEvent } from "@/components/akquise/day-calend
 import { LeadNotes } from "@/components/akquise/lead-notes";
 import { NextStepButton } from "@/components/akquise/next-step-button";
 import { DemoLinkButton } from "@/components/akquise/demo-link-button";
+import { OnHoldButton } from "@/components/akquise/on-hold-button";
+import { PhoneManager } from "@/components/akquise/phone-manager";
 import { SalesPointsEditor } from "@/components/akquise/sales-points-editor";
 import { PrepQuestions } from "@/components/akquise/prep-questions";
 import { cn } from "@/lib/utils";
@@ -212,6 +213,7 @@ export default async function LeadDetailPage({
                     nextStep={lead.next_step}
                     nextStepAt={lead.next_step_at}
                   />
+                  <OnHoldButton leadId={lead.id} />
                   <RescoreButton leadId={lead.id} />
                 </div>
               </div>
@@ -283,18 +285,13 @@ export default async function LeadDetailPage({
               )}
 
               {/* Contact CTAs */}
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {lead.phone && (
-                  <Button
-                    asChild
-                    className="gap-2 bg-emerald-600 text-white hover:bg-emerald-700"
-                  >
-                    <a href={`tel:${lead.phone}`}>
-                      <Phone className="h-4 w-4" />
-                      <span className="font-mono">{lead.phone}</span>
-                    </a>
-                  </Button>
-                )}
+              <div className="space-y-2">
+                <PhoneManager
+                  leadId={lead.id}
+                  primaryPhone={lead.phone}
+                  additional={lead.additional_phones ?? []}
+                />
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {lead.owner_email && (
                   <Button asChild variant="outline" className="gap-2">
                     <a href={`mailto:${lead.owner_email}`}>
@@ -325,6 +322,7 @@ export default async function LeadDetailPage({
                   </Button>
                 )}
                 <DemoLinkButton leadId={lead.id} demoUrl={lead.demo_url} />
+                </div>
               </div>
 
               {/* Meta */}

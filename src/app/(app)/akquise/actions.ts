@@ -1820,3 +1820,103 @@ export async function setLeadDemoUrl(leadId: string, url: string | null) {
   revalidatePath(`/akquise/leads/${leadId}`);
   revalidatePath("/akquise/leads");
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// On-Hold: park a lead + auto-build a follow-up routine
+// ─────────────────────────────────────────────────────────────────────
+
+const ON_HOLD_SYSTEM = `Du erstellst ein knappes Follow-up-Briefing für Leon (Krileo-Agency), nachdem ein Lead auf "ich melde mich" hinausgelaufen ist und auf Hold gesetzt wird.
+
+Aus den vorhandenen Notizen (Pitch/Close/Sale/Gespräch) + Offer/Pain destillierst du, was Leon beim Follow-up-Rückruf wissen + sagen muss.
+
+Format: 3-5 kurze Stichpunkte (je max ~12 Wörter), Deutsch, konkret:
+- Wo steht's gerade / was war der Stand
+- Der stärkste Aufhänger fürs Wieder-Anknüpfen
+- Konkreter nächster Schritt / was anbieten/fragen
+Kein Vorgeplänkel, nur die Stichpunkte. Antworte im JSON-Schema.`;
+
+export async function putLeadOnHold(leadId: string) {
+  const db = leadEngine();
+  const { data } = await db
+    .from("leads")
+    .select(
+      "business_name, owner_name, pain_points, fit_offer, fit_offer_pitch, suggested_price_min_eur, suggested_price_max_eur, meeting_notes, close_notes, sale_notes, notes, campaigns(industry)",
+    )
+    .eq("id", leadId)
+    .single();
+  const l = (data ?? {}) as Record<string, unknown>;
+
+  // Build the follow-up briefing from everything we already know.
+  let bullets: string[] = [];
+  try {
+    const ctx = [
+      `Betrieb: ${l.business_name}${l.owner_name ? ` (${l.owner_name})` : ""}`,
+      `Branche: ${(l.campaigns as { industry?: string })?.industry ?? "—"}`,
+      `Offer: ${l.fit_offer} — ${l.fit_offer_pitch ?? ""}`,
+      `Preis: ${l.suggested_price_min_eur ?? "?"}–${l.suggested_price_max_eur ?? "?"} €`,
+      `Pain: ${((l.pain_points as string[]) ?? []).join(" | ")}`,
+      `Pitch-Notes: ${l.meeting_notes ?? "—"}`,
+      `Close-Notes: ${l.close_notes ?? "—"}`,
+      `Sale-Notes: ${l.sale_notes ?? "—"}`,
+      `Bisherige Notizen: ${l.notes ?? "—"}`,
+    ].join("\n");
+    const resp = await claude().messages.create({
+      model: "claude-haiku-4-5",
+      max_tokens: 500,
+      output_config: {
+        format: {
+          type: "json_schema",
+          schema: {
+            type: "object",
+            properties: { bullets: { type: "array", items: { type: "string" } } },
+            required: ["bullets"],
+            additionalProperties: false,
+          } as unknown as Record<string, unknown>,
+        },
+      } as unknown as Record<string, unknown>,
+      system: [
+        { type: "text", text: ON_HOLD_SYSTEM, cache_control: { type: "ephemeral" } },
+      ],
+      messages: [{ role: "user", content: ctx }],
+    });
+    const text = firstTextBlock(resp.content);
+    if (text) bullets = (JSON.parse(text) as { bullets: string[] }).bullets ?? [];
+  } catch {
+    /* briefing is best-effort */
+  }
+
+  const followUpAt = new Date(
+    Date.now() + 7 * 24 * 60 * 60 * 1000,
+  ).toISOString();
+  const today = new Date().toLocaleDateString("de-DE");
+  const briefing = bullets.length
+    ? bullets.map((b) => `• ${b}`).join("\n")
+    : "• Follow-up-Rückruf — letzter Stand siehe Notes.";
+  const header = `⏸ ON HOLD — Follow-up angelegt (${today})\n${briefing}`;
+  const prevNotes =
+    typeof l.notes === "string" && l.notes.trim() ? l.notes.trim() : "";
+  const newNotes = prevNotes ? `${header}\n\n— bisher —\n${prevNotes}` : header;
+
+  const { error } = await db
+    .from("leads")
+    .update({
+      next_step: "Follow-up Rückruf",
+      next_step_at: followUpAt,
+      last_contact_outcome: "on_hold",
+      notes: newNotes,
+    })
+    .eq("id", leadId);
+  if (error) throw new Error(error.message);
+
+  await appendLeadEvent({
+    leadId,
+    type: "note",
+    outcome: "on_hold",
+    notes: "Auf Hold gesetzt — Follow-up-Rückruf in 7 Tagen angelegt",
+  });
+
+  revalidatePath(`/akquise/leads/${leadId}`);
+  revalidatePath("/akquise/d2d");
+  revalidateAll();
+  return { followUpAt, bullets };
+}

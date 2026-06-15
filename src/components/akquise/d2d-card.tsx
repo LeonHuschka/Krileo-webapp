@@ -18,6 +18,7 @@ import {
   User,
   XCircle,
   Ban,
+  ChevronRight,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +33,8 @@ import {
   updateLeadNotes,
 } from "@/app/(app)/akquise/actions";
 import { AppointmentDialog } from "@/components/akquise/appointment-dialog";
+import { DemoLinkButton } from "@/components/akquise/demo-link-button";
+import { OnHoldButton } from "@/components/akquise/on-hold-button";
 import { LeadHistoryStrip } from "@/components/akquise/lead-history-strip";
 import { cn } from "@/lib/utils";
 import type { Lead, LeadEvent } from "@/lib/lead-engine/types";
@@ -237,29 +240,33 @@ export function D2DCard({
       {/* History */}
       {events.length > 0 && <LeadHistoryStrip events={events} max={3} />}
 
-      {/* Meeting context */}
-      <div className="space-y-1.5 rounded-lg border border-primary/30 bg-primary/[0.04] p-2.5 text-xs">
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] uppercase tracking-wider text-primary">
+      {/* Meeting context (collapsible, default closed to declutter) */}
+      <details className="group rounded-lg border border-primary/30 bg-primary/[0.04] p-2.5 text-xs">
+        <summary className="flex cursor-pointer list-none items-center justify-between [&::-webkit-details-marker]:hidden">
+          <span className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-primary">
+            <ChevronRight className="h-3 w-3 transition-transform group-open:rotate-90" />
             Begegnung
+            {lead.meeting_notes && (
+              <span className="ml-1 h-1.5 w-1.5 rounded-full bg-emerald-400" />
+            )}
           </span>
           {lead.met_at && (
             <span className="text-muted-foreground">
               {formatDate(lead.met_at)}
             </span>
           )}
+        </summary>
+        <div className="mt-1.5 space-y-1.5">
+          {lead.met_location && (
+            <div className="text-muted-foreground">
+              <span className="text-foreground">{lead.met_location}</span>
+            </div>
+          )}
+          {lead.meeting_notes && (
+            <p className="leading-snug text-foreground">{lead.meeting_notes}</p>
+          )}
         </div>
-        {lead.met_location && (
-          <div className="text-muted-foreground">
-            <span className="text-foreground">{lead.met_location}</span>
-          </div>
-        )}
-        {lead.meeting_notes && (
-          <p className="leading-snug text-foreground">
-            {lead.meeting_notes}
-          </p>
-        )}
-      </div>
+      </details>
 
       {/* Price suggestion (LLM-driven) */}
       <div className="space-y-2 rounded-lg border border-emerald-500/30 bg-emerald-500/[0.05] p-2.5">
@@ -416,6 +423,9 @@ export function D2DCard({
         )}
       </div>
 
+      {/* Demo link */}
+      <DemoLinkButton leadId={lead.id} demoUrl={lead.demo_url} />
+
       {/* Free-text notes */}
       <Textarea
         rows={2}
@@ -452,6 +462,9 @@ export function D2DCard({
             buttonClassName="h-8 w-full bg-indigo-600 text-[11px] font-semibold text-white hover:bg-indigo-700"
           />
         </div>
+
+        {/* On hold — "ich melde mich" → auto follow-up routine */}
+        <OnHoldButton leadId={lead.id} className="h-8 w-full text-[11px]" />
 
         {/* Direct status row */}
         <div className="grid grid-cols-3 gap-1.5">

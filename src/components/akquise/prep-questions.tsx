@@ -10,6 +10,7 @@ import {
   Plus,
   X,
   Wand2,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,6 +34,7 @@ export function PrepQuestions({
   const [qa, setQa] = useState<QA[]>(initialQa ?? []);
   const [focus, setFocus] = useState("");
   const [answeringIdx, setAnsweringIdx] = useState<number | null>(null);
+  const [collapsed, setCollapsed] = useState((initialQa?.length ?? 0) > 0);
 
   // always-present add row
   const [newQ, setNewQ] = useState("");
@@ -125,9 +127,27 @@ export function PrepQuestions({
 
   return (
     <div className="space-y-3 rounded-lg border border-violet-500/25 bg-violet-500/[0.04] p-3">
-      <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-violet-300">
+      <button
+        type="button"
+        onClick={() => setCollapsed((c) => !c)}
+        className="flex w-full items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-violet-300"
+      >
+        <ChevronRight
+          className={`h-3.5 w-3.5 transition-transform ${collapsed ? "" : "rotate-90"}`}
+        />
         <MessageCircleQuestion className="h-3.5 w-3.5" /> Gesprächsvorbereitung
-      </div>
+        {qa.length > 0 && (
+          <span className="ml-1 rounded bg-violet-500/20 px-1.5 text-[10px]">
+            {qa.length}
+          </span>
+        )}
+        <span className="ml-auto text-[10px] normal-case text-muted-foreground/70">
+          {collapsed ? "aufklappen" : "zuklappen"}
+        </span>
+      </button>
+
+      {collapsed ? null : (
+      <>
       <p className="text-[11px] text-muted-foreground">
         Claude generiert die Fragen + Einwände, die der Inhaber fast sicher
         bringt — mit fertigen Antworten. Alles frei editierbar, eigene Fragen
@@ -263,6 +283,8 @@ export function PrepQuestions({
           <Plus className="h-3.5 w-3.5" /> Hinzufügen
         </Button>
       </div>
+      </>
+      )}
     </div>
   );
 }

@@ -1296,6 +1296,73 @@ export async function markAppointmentStatus(
   status: AppointmentStatus,
 ) {
   await updateAppointmentStatus(appointmentId, status);
+
+  // Completing an appointment resolves the lead's pending follow-up: clear
+  // an overdue next-step (so the card stops glowing red) and lift the
+  // on-hold flag. A future next-step is left intact.
+  if (status === "completed") {
+    const db = leadEngine();
+    const { data: appt } = await db
+      .from("appointments")
+      .select("lead_id")
+      .eq("id", appointmentId)
+      .maybeSingle();
+    const leadId = (appt as { lead_id?: string } | null)?.lead_id;
+    if (leadId) {
+      const { data: l } = await db
+        .from("leads")
+        .select("next_step_at, last_contact_outcome")
+        .eq("id", leadId)
+        .maybeSingle();
+      const row = l as {
+        next_step_at?: string | null;
+        last_contact_outcome?: string | null;
+      } | null;
+      const patch: Record<string, unknown> = {};
+      const overdue =
+        row?.next_step_at && new Date(row.next_step_at).getTime() < Date.now();
+      if (overdue) {
+        patch.next_step = null;
+        patch.next_step_at = null;
+      }
+      if (row?.last_contact_outcome === "on_hold") {
+        patch.last_contact_outcome = null;
+      }
+      if (Object.keys(patch).length) {
+        await db.from("leads").update(patch).eq("id", leadId);
+      }
+    }
+  }
+
+  revalidateAll();
+}
+
+/**
+ * Mark a lead's next-step as handled: clears next_step + next_step_at (so
+ * the overdue red state goes away) and lifts an on-hold flag. Used by the
+ * "Erledigt" control on the lead detail + D2D card.
+ */
+export async function completeNextStep(leadId: string) {
+  const db = leadEngine();
+  const { data: l } = await db
+    .from("leads")
+    .select("last_contact_outcome")
+    .eq("id", leadId)
+    .maybeSingle();
+  const outcome = (l as { last_contact_outcome?: string | null } | null)
+    ?.last_contact_outcome;
+  const patch: Record<string, unknown> = {
+    next_step: null,
+    next_step_at: null,
+  };
+  if (outcome === "on_hold") patch.last_contact_outcome = null;
+  const { error } = await db.from("leads").update(patch).eq("id", leadId);
+  if (error) throw new Error(error.message);
+  await appendLeadEvent({
+    leadId,
+    type: "note",
+    notes: "Next-Step als erledigt markiert",
+  });
   revalidateAll();
 }
 

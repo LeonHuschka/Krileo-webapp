@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import {
+  completeNextStep,
   forceLeadStatus,
   logCallOutcome,
   patchD2DLead,
@@ -349,11 +350,32 @@ export function D2DCard({
             : "border-border/60 bg-card/40",
         )}
       >
-        <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">
-          <CalendarClock className="h-3 w-3" />
-          Next Step
-          {isOverdue && (
-            <span className="text-rose-300">· überfällig</span>
+        <div className="flex items-center justify-between gap-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+          <span className="flex items-center gap-1.5">
+            <CalendarClock className="h-3 w-3" />
+            Next Step
+            {isOverdue && <span className="text-rose-300">· überfällig</span>}
+          </span>
+          {lead.next_step && (
+            <button
+              type="button"
+              onClick={() =>
+                startTransition(async () => {
+                  try {
+                    await completeNextStep(lead.id);
+                    toast.success("Next-Step erledigt");
+                    router.refresh();
+                  } catch (err) {
+                    toast.error(err instanceof Error ? err.message : "Fehler");
+                  }
+                })
+              }
+              disabled={pending}
+              className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] normal-case text-emerald-300 hover:bg-emerald-500/10 disabled:opacity-50"
+            >
+              <CheckCircle2 className="h-3 w-3" />
+              Erledigt
+            </button>
           )}
         </div>
         <Input

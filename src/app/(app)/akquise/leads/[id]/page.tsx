@@ -21,6 +21,7 @@ import { AppointmentRow } from "@/components/akquise/appointment-row";
 import { DayCalendar, type ExternalEvent } from "@/components/akquise/day-calendar";
 import { LeadNotes } from "@/components/akquise/lead-notes";
 import { NextStepButton } from "@/components/akquise/next-step-button";
+import { NextStepDoneButton } from "@/components/akquise/next-step-done-button";
 import { DemoLinkButton } from "@/components/akquise/demo-link-button";
 import { OfferPdfButton } from "@/components/akquise/offer-pdf-button";
 import { OnHoldButton } from "@/components/akquise/on-hold-button";
@@ -214,6 +215,9 @@ export default async function LeadDetailPage({
                     nextStep={lead.next_step}
                     nextStepAt={lead.next_step_at}
                   />
+                  {lead.next_step && (
+                    <NextStepDoneButton leadId={lead.id} />
+                  )}
                   <OnHoldButton leadId={lead.id} />
                   <RescoreButton leadId={lead.id} />
                 </div>

@@ -76,9 +76,32 @@ export function AppointmentRow({ appt }: { appt: Row }) {
   }
 
   const relative = fmtRelative(appt.scheduled_for);
+  const isTerminal =
+    appt.status === "completed" ||
+    appt.status === "no_show" ||
+    appt.status === "cancelled";
+  const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
+    completed: {
+      label: "✓ Erledigt",
+      cls: "border-emerald-500/40 bg-emerald-500/15 text-emerald-300",
+    },
+    no_show: {
+      label: "No-Show",
+      cls: "border-amber-500/40 bg-amber-500/15 text-amber-300",
+    },
+    cancelled: {
+      label: "Abgesagt",
+      cls: "border-rose-500/40 bg-rose-500/15 text-rose-300",
+    },
+  };
 
   return (
-    <Card className="flex flex-col gap-3 border-border/60 bg-card p-4 sm:flex-row sm:items-center">
+    <Card
+      className={cn(
+        "flex flex-col gap-3 border-border/60 bg-card p-4 sm:flex-row sm:items-center",
+        isTerminal && "opacity-60",
+      )}
+    >
       <div className="flex-1 space-y-1">
         <div className="flex flex-wrap items-center gap-2">
           <Badge
@@ -97,6 +120,17 @@ export function AppointmentRow({ appt }: { appt: Row }) {
           <span className="text-xs text-muted-foreground">
             · {appt.duration_minutes} Min
           </span>
+          {isTerminal && STATUS_BADGE[appt.status] && (
+            <Badge
+              variant="outline"
+              className={cn(
+                "border text-[10px] font-semibold uppercase tracking-wide",
+                STATUS_BADGE[appt.status].cls,
+              )}
+            >
+              {STATUS_BADGE[appt.status].label}
+            </Badge>
+          )}
         </div>
         <div className="text-sm">
           {appt.leads ? (
@@ -129,41 +163,55 @@ export function AppointmentRow({ appt }: { appt: Row }) {
         )}
       </div>
       <div className="flex items-center gap-1.5">
-        {appt.leads?.phone && (
+        {appt.leads?.phone && !isTerminal && (
           <Button asChild size="sm" variant="outline" className="gap-1">
             <a href={`tel:${appt.leads.phone}`}>📞</a>
           </Button>
         )}
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => setStatus("completed")}
-          disabled={pending}
-          className="gap-1 text-emerald-300 hover:bg-emerald-500/10"
-        >
-          <CheckCircle2 className="h-3.5 w-3.5" />
-          Done
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => setStatus("no_show")}
-          disabled={pending}
-          className="gap-1 text-amber-300 hover:bg-amber-500/10"
-        >
-          <AlertTriangle className="h-3.5 w-3.5" />
-          No-Show
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => setStatus("cancelled")}
-          disabled={pending}
-          className="gap-1 text-rose-300 hover:bg-rose-500/10"
-        >
-          <XCircle className="h-3.5 w-3.5" />
-          Cancel
-        </Button>
+        {isTerminal ? (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setStatus("scheduled")}
+            disabled={pending}
+            className="gap-1 text-xs text-muted-foreground"
+          >
+            Rückgängig
+          </Button>
+        ) : (
+          <>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setStatus("completed")}
+              disabled={pending}
+              className="gap-1 text-emerald-300 hover:bg-emerald-500/10"
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Done
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setStatus("no_show")}
+              disabled={pending}
+              className="gap-1 text-amber-300 hover:bg-amber-500/10"
+            >
+              <AlertTriangle className="h-3.5 w-3.5" />
+              No-Show
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setStatus("cancelled")}
+              disabled={pending}
+              className="gap-1 text-rose-300 hover:bg-rose-500/10"
+            >
+              <XCircle className="h-3.5 w-3.5" />
+              Cancel
+            </Button>
+          </>
+        )}
       </div>
     </Card>
   );

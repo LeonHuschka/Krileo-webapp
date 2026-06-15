@@ -34,6 +34,7 @@ import {
 } from "@/app/(app)/akquise/actions";
 import { AppointmentDialog } from "@/components/akquise/appointment-dialog";
 import { DemoLinkButton } from "@/components/akquise/demo-link-button";
+import { OfferPdfButton } from "@/components/akquise/offer-pdf-button";
 import { OnHoldButton } from "@/components/akquise/on-hold-button";
 import { LeadHistoryStrip } from "@/components/akquise/lead-history-strip";
 import { cn } from "@/lib/utils";
@@ -310,13 +311,15 @@ export function D2DCard({
                 </span>
               )}
             </div>
-            {(lead.sales_points?.[0] ||
-              lead.offer_benefits?.[0] ||
-              lead.fit_offer_pitch) && (
+            {(lead.offer_deliverable ||
+              lead.fit_offer_pitch ||
+              lead.sales_points?.[0] ||
+              lead.offer_benefits?.[0]) && (
               <p className="text-[11px] leading-snug text-foreground">
-                {lead.sales_points?.[0] ??
-                  lead.offer_benefits?.[0] ??
-                  lead.fit_offer_pitch}
+                {lead.offer_deliverable ??
+                  lead.fit_offer_pitch ??
+                  lead.sales_points?.[0] ??
+                  lead.offer_benefits?.[0]}
               </p>
             )}
           </div>
@@ -423,8 +426,13 @@ export function D2DCard({
         )}
       </div>
 
-      {/* Demo link */}
-      <DemoLinkButton leadId={lead.id} demoUrl={lead.demo_url} />
+      {/* Demo link + Angebot PDF */}
+      <div className="flex items-center gap-1.5">
+        <div className="flex-1">
+          <DemoLinkButton leadId={lead.id} demoUrl={lead.demo_url} />
+        </div>
+        <OfferPdfButton leadId={lead.id} className="h-8 gap-1.5 px-2 text-[11px]" />
+      </div>
 
       {/* Free-text notes */}
       <Textarea

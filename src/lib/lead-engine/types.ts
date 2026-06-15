@@ -246,6 +246,11 @@ export interface Lead {
   gatekeeper_line: string | null;
   fit_offer_pitch: string | null;
 
+  // Concrete "what the customer gets" sentence (added in 00032_) — vivid,
+  // explicit deliverable in the same voice as the Auftragsbestätigung's
+  // "DAS BEKOMMEN SIE". Shown in the Offer block + Angebot PDF.
+  offer_deliverable: string | null;
+
   // Email artifacts
   email_1_subject: string | null;
   email_1_body: string | null;

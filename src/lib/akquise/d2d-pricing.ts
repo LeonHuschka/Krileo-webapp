@@ -23,6 +23,16 @@ const PRICING_SCHEMA = {
       type: "array",
       items: { type: "string" },
     },
+    fit_offer_pitch: { type: "string" },
+    offer_benefits: {
+      type: "array",
+      items: { type: "string" },
+    },
+    sales_points: {
+      type: "array",
+      items: { type: "string" },
+    },
+    offer_deliverable: { type: "string" },
     rationale: { type: "string" },
   },
   required: [
@@ -31,6 +41,10 @@ const PRICING_SCHEMA = {
     "suggested_price_min_eur",
     "suggested_price_max_eur",
     "pain_points",
+    "fit_offer_pitch",
+    "offer_benefits",
+    "sales_points",
+    "offer_deliverable",
     "rationale",
   ],
   additionalProperties: false,
@@ -42,6 +56,10 @@ export type D2DPricingResult = {
   suggested_price_min_eur: number;
   suggested_price_max_eur: number;
   pain_points: string[];
+  fit_offer_pitch: string;
+  offer_benefits: string[];
+  sales_points: string[];
+  offer_deliverable: string;
   rationale: string;
 };
 
@@ -172,6 +190,12 @@ export async function suggestD2DPrice(
       suggested_price_min_eur: parsed.suggested_price_min_eur,
       suggested_price_max_eur: parsed.suggested_price_max_eur,
       pain_points: parsed.pain_points,
+      // Write the full coherent offer set so the card headline + benefit
+      // text + the lead-detail Offer block can never drift apart.
+      fit_offer_pitch: parsed.fit_offer_pitch,
+      offer_benefits: (parsed.offer_benefits ?? []).slice(0, 3),
+      sales_points: (parsed.sales_points ?? []).slice(0, 3),
+      offer_deliverable: parsed.offer_deliverable,
     })
     .eq("id", leadId);
   if (upErr) {

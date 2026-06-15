@@ -17,6 +17,7 @@ import {
   type D2DUpdateInput,
 } from "@/lib/lead-engine/d2d";
 import { suggestD2DPrice } from "@/lib/akquise/d2d-pricing";
+import { extractOfferDraft } from "@/lib/akquise/offer-extract";
 import {
   createCampaign as slCreateCampaign,
   updateCampaignStatus as slUpdateCampaignStatus,
@@ -50,6 +51,7 @@ import type {
   AppointmentStatus,
   AppointmentType,
   Channel,
+  Lead,
   OutreachStatus,
   PickupProfile,
   QualificationTier,
@@ -1822,6 +1824,50 @@ export async function setLeadDemoUrl(leadId: string, url: string | null) {
 }
 
 // ─────────────────────────────────────────────────────────────────────
+// Angebot / Auftrag PDF — prefill draft from the lead's notes
+// ─────────────────────────────────────────────────────────────────────
+
+export type OfferDraftResponse = {
+  deliverable: string | null;
+  setup_eur: number | null;
+  monthly_eur: number | null;
+  price_found: boolean;
+  customerName: string;
+  customerLines: string[];
+};
+
+/**
+ * Build the pre-fill for the Angebot dialog: pulls the negotiated price +
+ * scope out of the lead's notes (via Haiku) so the user only fills what's
+ * genuinely missing.
+ */
+export async function getOfferDraft(leadId: string): Promise<OfferDraftResponse> {
+  const db = leadEngine();
+  const { data, error } = await db
+    .from("leads")
+    .select("*")
+    .eq("id", leadId)
+    .single();
+  if (error || !data) throw new Error("Lead nicht gefunden");
+  const lead = data as unknown as Lead;
+
+  const draft = await extractOfferDraft(lead);
+
+  const lines: string[] = [];
+  if (lead.owner_name) lines.push(lead.owner_name);
+  if (lead.address) lines.push(lead.address);
+
+  return {
+    deliverable: draft.deliverable,
+    setup_eur: draft.setup_eur,
+    monthly_eur: draft.monthly_eur,
+    price_found: draft.price_found,
+    customerName: lead.business_name,
+    customerLines: lines,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────
 // On-Hold: park a lead + auto-build a follow-up routine
 // ─────────────────────────────────────────────────────────────────────
 
@@ -1885,34 +1931,55 @@ export async function putLeadOnHold(leadId: string) {
     /* briefing is best-effort */
   }
 
-  const followUpAt = new Date(
-    Date.now() + 7 * 24 * 60 * 60 * 1000,
-  ).toISOString();
-  const today = new Date().toLocaleDateString("de-DE");
+  // Follow-up in 7 days at 10:00 local — a concrete calendar slot, not
+  // just a note. This becomes a real Google-Calendar event via
+  // createAppointment.
+  const followUp = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  followUp.setHours(10, 0, 0, 0);
+  const followUpAt = followUp.toISOString();
+
   const briefing = bullets.length
     ? bullets.map((b) => `• ${b}`).join("\n")
-    : "• Follow-up-Rückruf — letzter Stand siehe Notes.";
-  const header = `⏸ ON HOLD — Follow-up angelegt (${today})\n${briefing}`;
-  const prevNotes =
-    typeof l.notes === "string" && l.notes.trim() ? l.notes.trim() : "";
-  const newNotes = prevNotes ? `${header}\n\n— bisher —\n${prevNotes}` : header;
+    : "• Follow-up-Rückruf — letzter Stand siehe Lead-Detail.";
 
+  // Park the lead: keep the next-step tracker + outcome alive (the D2D
+  // card's overdue logic relies on it) but DON'T dump a briefing wall into
+  // notes anymore — the briefing now lives on the calendar appointment.
   const { error } = await db
     .from("leads")
     .update({
       next_step: "Follow-up Rückruf",
       next_step_at: followUpAt,
       last_contact_outcome: "on_hold",
-      notes: newNotes,
     })
     .eq("id", leadId);
   if (error) throw new Error(error.message);
 
+  // Create the actual calendar entry (callback) with the briefing as its
+  // notes. Best-effort — never let a calendar hiccup break the on-hold.
+  let appointmentId: string | null = null;
+  try {
+    const appt = await createAppointment({
+      leadId,
+      type: "callback",
+      scheduledFor: followUpAt,
+      durationMinutes: 15,
+      notes: `Follow-up / Rückruf\n\n${briefing}`,
+      createdByTask: null,
+    });
+    appointmentId = appt.id;
+  } catch {
+    /* calendar push is best-effort */
+  }
+
   await appendLeadEvent({
     leadId,
-    type: "note",
+    type: appointmentId ? "appointment_booked" : "note",
     outcome: "on_hold",
-    notes: "Auf Hold gesetzt — Follow-up-Rückruf in 7 Tagen angelegt",
+    notes: "Auf Hold gesetzt — Follow-up-Rückruf in 7 Tagen im Kalender angelegt",
+    metadata: appointmentId
+      ? { appointmentId, scheduledFor: followUpAt }
+      : { scheduledFor: followUpAt },
   });
 
   revalidatePath(`/akquise/leads/${leadId}`);

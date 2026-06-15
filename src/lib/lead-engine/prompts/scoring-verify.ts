@@ -38,6 +38,9 @@ ENTSCHEIDUNG:
    · reason: kurz, was falsch war
    · fixed_fit_offer: der korrekte Archetyp (NIE einer der etwas Vorhandenes anbietet)
    · fixed_fit_offer_pitch: korrigierter 1-Satz-Pitch, der zur Realität passt
+   · fixed_offer_deliverable: korrigierter konkreter "DAS BEKOMMEN SIE"-Satz (25-45
+     Wörter, bildhaft, WAS der Kunde bekommt + wie es hilft), passend zum korrigierten
+     fit_offer. Passt der Deliverable schon → unverändert zurückgeben.
    · fixed_pain_points: korrigierte, datengedeckte Pain-Points (2-3)
    · fixed_hook: faktisch korrekte Kunden-Verlust-Story aus Ich-Perspektive
      („Wollte gerade bei Ihnen X…, finde aber keinen Weg…, hab's dann gelassen."),

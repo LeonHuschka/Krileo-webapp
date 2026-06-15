@@ -55,6 +55,7 @@ export type ScoringResult = {
   pickup_line: string;
   gatekeeper_line: string;
   fit_offer_pitch: string;
+  offer_deliverable: string;
 };
 
 const SCORING_SCHEMA = {
@@ -133,6 +134,7 @@ const SCORING_SCHEMA = {
     pickup_line: { type: "string" },
     gatekeeper_line: { type: "string" },
     fit_offer_pitch: { type: "string" },
+    offer_deliverable: { type: "string" },
   },
   required: [
     "score_breakdown",
@@ -149,6 +151,7 @@ const SCORING_SCHEMA = {
     "pickup_line",
     "gatekeeper_line",
     "fit_offer_pitch",
+    "offer_deliverable",
   ],
   additionalProperties: false,
 } as const;
@@ -197,6 +200,7 @@ type VerifyResult = {
   reason: string;
   fixed_fit_offer: FitOffer;
   fixed_fit_offer_pitch: string;
+  fixed_offer_deliverable: string;
   fixed_pain_points: string[];
   fixed_hook: string;
   severity_penalty: number;
@@ -212,6 +216,7 @@ const VERIFY_SCHEMA = {
       enum: ["website", "booking", "automation", "saas"],
     },
     fixed_fit_offer_pitch: { type: "string" },
+    fixed_offer_deliverable: { type: "string" },
     fixed_pain_points: { type: "array", items: { type: "string" } },
     fixed_hook: { type: "string" },
     severity_penalty: { type: "integer" },
@@ -221,6 +226,7 @@ const VERIFY_SCHEMA = {
     "reason",
     "fixed_fit_offer",
     "fixed_fit_offer_pitch",
+    "fixed_offer_deliverable",
     "fixed_pain_points",
     "fixed_hook",
     "severity_penalty",
@@ -245,6 +251,7 @@ async function verifyOffer(
       "VORGESCHLAGENE OFFER + HOOK (vom Scorer):",
       `fit_offer: ${proposed.fit_offer}`,
       `fit_offer_pitch: ${proposed.fit_offer_pitch}`,
+      `offer_deliverable: ${proposed.offer_deliverable}`,
       `pain_points: ${proposed.pain_points.join(" | ")}`,
       `hook: ${proposed.personalized_hook}`,
       `website_assessment.already_has_online_ordering: ${proposed.website_assessment.already_has_online_ordering}`,
@@ -356,6 +363,9 @@ export async function scoreLead(leadId: string): Promise<ScoringResult> {
     if (verdict.fixed_fit_offer_pitch?.trim()) {
       parsed.fit_offer_pitch = verdict.fixed_fit_offer_pitch.trim();
     }
+    if (verdict.fixed_offer_deliverable?.trim()) {
+      parsed.offer_deliverable = verdict.fixed_offer_deliverable.trim();
+    }
     if (verdict.fixed_pain_points?.length) {
       parsed.pain_points = verdict.fixed_pain_points;
     }
@@ -411,6 +421,7 @@ export async function scoreLead(leadId: string): Promise<ScoringResult> {
       pickup_line: parsed.pickup_line,
       gatekeeper_line: parsed.gatekeeper_line,
       fit_offer_pitch: parsed.fit_offer_pitch,
+      offer_deliverable: parsed.offer_deliverable,
       outreach_status: "scored",
     })
     .eq("id", leadId);

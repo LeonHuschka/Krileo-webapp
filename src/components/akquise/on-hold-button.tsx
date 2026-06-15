@@ -24,14 +24,14 @@ export function OnHoldButton({
   function onHold() {
     if (
       !window.confirm(
-        "Lead auf Hold setzen? Es wird automatisch ein Follow-up-Rückruf (+7 Tage) + ein kurzes Briefing aus deinen Notes angelegt.",
+        "Lead auf Hold setzen? Es wird ein Follow-up-Rückruf (+7 Tage, 10:00) in den Kalender gelegt — mit kurzem Briefing aus deinen Notes.",
       )
     )
       return;
     startTransition(async () => {
       try {
         await putLeadOnHold(leadId);
-        toast.success("Auf Hold — Follow-up in 7 Tagen angelegt");
+        toast.success("Auf Hold — Rückruf in 7 Tagen im Kalender");
         router.refresh();
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Fehler");

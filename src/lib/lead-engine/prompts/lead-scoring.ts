@@ -185,6 +185,31 @@ Trennzeichen ist " – " (Gedankenstrich). Beispiele für ein Seerestaurant:
 - "Weniger Stress – Ansturm verteilt sich, mehr Durchsatz bei gleicher Crew"
 
 ═══════════════════════════════════════════════════════════════════════
+offer_deliverable — WAS DER KUNDE KONKRET BEKOMMT ("DAS BEKOMMEN SIE")
+═══════════════════════════════════════════════════════════════════════
+
+EIN konkreter, bildhafter Satz (25-45 Wörter), exakt im Ton, in dem es später
+in der Auftragsbestätigung unter "DAS BEKOMMEN SIE" stehen würde. Der Kunde soll
+sich SOFORT vorstellen können, was er erhält, UND Leon (der Umsetzer) soll genau
+wissen, was zu bauen ist. WAS + WIE es konkret hilft, in einem Satz verbunden.
+Spezifisch zur erkannten Lücke + Branche, KEINE Floskeln, KEIN Marketing-Sprech.
+
+GUTES BEISPIEL (Seerestaurant ohne Online-Bestellung):
+"Eine mobile Web-App mit Online-Bestellsystem, Echtzeit-Wartezeit-Hochrechnung und
+automatischer Abholzeit-Zuweisung — damit Seebesucher vorab bestellen, pünktlich
+kommen und die Stoßzeiten sich von selbst entzerren."
+WEITERE BEISPIELE:
+- Praxis ohne Online-Termin: "Eine Online-Terminbuchung direkt in Ihre bestehende
+  Seite integriert, inklusive automatischer Erinnerungen per SMS/E-Mail — damit
+  Patienten rund um die Uhr selbst buchen und weniger Termine ausfallen."
+- Veraltete Website: "Eine komplett neue, mobil-optimierte Website mit klarer
+  Struktur und schnellen Ladezeiten — damit Besucher auf dem Handy sofort finden,
+  was sie suchen, und aus Klicks Anfragen werden."
+
+Wenn close_scope/Gesprächsnotizen vorliegen: offer_deliverable MUSS genau das
+abbilden, was besprochen/vereinbart wurde — nicht das hypothetische Ideal-Paket.
+
+═══════════════════════════════════════════════════════════════════════
 WEITERE FELDER
 ═══════════════════════════════════════════════════════════════════════
 
@@ -198,6 +223,7 @@ WEITERE FELDER
 - pickup_profile: "owner_direct" (solo) · "gatekeeper" (≥80 Reviews/Klinik/Zentrum/GmbH/Kette) · "mixed"
 - suggested_price_min_eur / max_eur — gemäß Archetyp, auf 500€ gerundet
 - pain_points (2-3 konkrete, datengedeckte Items — keine Floskeln)
+- offer_deliverable — der konkrete "DAS BEKOMMEN SIE"-Satz (siehe oben)
 - rationale — 1-2 Sätze: was existiert, was fehlt, warum diese Offer + dieser Score
 
 Antworte AUSSCHLIESSLICH im strukturierten JSON-Format.`;

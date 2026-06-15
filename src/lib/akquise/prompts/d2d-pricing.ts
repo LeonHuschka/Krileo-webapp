@@ -53,6 +53,23 @@ FIT-OFFER-SIGNALE:
 - automation  → Workflow-Pain (Erinnerungen, Follow-ups, Quittungen)
 - saas        → multiple Touchpoints (Booking + CRM + WhatsApp in einem)
 
+ALLE OFFER-FELDER MÜSSEN ZUEINANDER PASSEN (Kongruenz):
+fit_offer, Preis, pain_points, fit_offer_pitch, offer_benefits, sales_points und
+offer_deliverable beschreiben EIN und dieselbe Offer. Niemals Preis/fit_offer von
+der einen Sache und die Benefit-Texte von einer anderen. Wenn close_scope/Gespräch
+vorliegt, richtet sich ALLES danach.
+
+TEXTFELDER:
+- fit_offer_pitch — EIN kurzer Satz (max ~16 Wörter): WAS wir bauen + WAS es bringt.
+- offer_benefits — GENAU 3 kurze Kundennutzen (je max ~12 Wörter), branchenspezifisch.
+- sales_points — GENAU 3 Argumente aus Unternehmer-Sicht im Format "Titel – knappe Erklärung"
+  (Trennzeichen " – ", Erklärung max ~10 Wörter).
+- offer_deliverable — EIN konkreter, bildhafter Satz (25-45 Wörter) im Ton von "DAS
+  BEKOMMEN SIE" in einer Auftragsbestätigung: was der Kunde konkret erhält + wie es hilft.
+  Beispiel: "Eine mobile Web-App mit Online-Bestellsystem, Echtzeit-Wartezeit-Hochrechnung
+  und automatischer Abholzeit-Zuweisung — damit Seebesucher vorab bestellen, pünktlich
+  kommen und die Stoßzeiten sich von selbst entzerren."
+
 OUTPUT — strikt JSON:
 {
   "business_size": "small" | "medium" | "large",
@@ -60,6 +77,10 @@ OUTPUT — strikt JSON:
   "suggested_price_min_eur": 4500,
   "suggested_price_max_eur": 7000,
   "pain_points": ["Konkreter Pain 1", "Konkreter Pain 2"],
+  "fit_offer_pitch": "Ein-Satz-Pitch",
+  "offer_benefits": ["Nutzen 1", "Nutzen 2", "Nutzen 3"],
+  "sales_points": ["Titel – Erklärung", "Titel – Erklärung", "Titel – Erklärung"],
+  "offer_deliverable": "Der konkrete DAS-BEKOMMEN-SIE-Satz.",
   "rationale": "1-2 Sätze WARUM dieser Preis basierend auf Daten + Gespräch."
 }
 

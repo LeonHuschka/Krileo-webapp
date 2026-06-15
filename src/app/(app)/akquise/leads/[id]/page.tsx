@@ -22,6 +22,7 @@ import { DayCalendar, type ExternalEvent } from "@/components/akquise/day-calend
 import { LeadNotes } from "@/components/akquise/lead-notes";
 import { NextStepButton } from "@/components/akquise/next-step-button";
 import { DemoLinkButton } from "@/components/akquise/demo-link-button";
+import { OfferPdfButton } from "@/components/akquise/offer-pdf-button";
 import { OnHoldButton } from "@/components/akquise/on-hold-button";
 import { PhoneManager } from "@/components/akquise/phone-manager";
 import { SalesPointsEditor } from "@/components/akquise/sales-points-editor";
@@ -251,7 +252,7 @@ export default async function LeadDetailPage({
               )}
 
               {/* Offer block */}
-              {(lead.fit_offer || lead.fit_offer_pitch || priceRange) && (
+              {(lead.fit_offer || lead.fit_offer_pitch || lead.offer_deliverable || priceRange) && (
                 <div className="space-y-2 rounded-lg border border-emerald-500/25 bg-emerald-500/[0.05] p-3">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-emerald-300">
@@ -276,9 +277,9 @@ export default async function LeadDetailPage({
                       </span>
                     )}
                   </div>
-                  {lead.fit_offer_pitch && (
+                  {(lead.offer_deliverable || lead.fit_offer_pitch) && (
                     <p className="text-sm leading-snug text-foreground">
-                      {lead.fit_offer_pitch}
+                      {lead.offer_deliverable ?? lead.fit_offer_pitch}
                     </p>
                   )}
                 </div>
@@ -322,6 +323,7 @@ export default async function LeadDetailPage({
                   </Button>
                 )}
                 <DemoLinkButton leadId={lead.id} demoUrl={lead.demo_url} />
+                <OfferPdfButton leadId={lead.id} />
                 </div>
               </div>
 

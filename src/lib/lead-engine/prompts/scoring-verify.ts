@@ -45,6 +45,9 @@ PRÜFE HART, in dieser Reihenfolge:
      (—/–) oder Doppelpunkt-Dramatik/Aufzählungen? Das ist der häufigste Fehler. Der Hook
      muss locker und beiläufig klingen, mit Komma/Punkt/„und"/„aber" verbunden, KEINE
      Gedankenstriche, keine geschliffene Dramaturgie.
+   - RECHTSCHREIBUNG korrekt? Lockerer Ton heißt NICHT alles klein. Satzanfänge GROSS, Nomen
+     GROSS (normale deutsche Orthographie). Nur das allererste Wort darf klein sein (schließt
+     an die Anrede an). Ist mitten im Text alles kleingeschrieben → korrigieren.
    All das muss korrigiert werden.
 
 ENTSCHEIDUNG:
@@ -65,10 +68,10 @@ ENTSCHEIDUNG:
      beiläufig, OHNE Gedankenstriche, ohne Doppelpunkt-Dramatik (mit Komma/Punkt/„und"
      verbunden):
      Absatz 1 „wollte vorhin [X anfragen/buchen], [konkreter, durch die Seite belegter
-     Engpass]. hab's dann ehrlich gesagt gelassen und woanders geschaut." Hat der Lead ein
+     Engpass]. Hab's dann ehrlich gesagt gelassen und woanders geschaut." Hat der Lead ein
      Kontaktformular: dieses anerkennen und pivotieren („ihr habt zwar ein Kontaktformular,
      aber Termin und Verfügbarkeit konnte ich da nicht angeben und Preise stehen nirgends,
-     hieß also wieder anrufen").
+     hieß also wieder anrufen"). Korrekte Groß-/Kleinschreibung, nur das erste Wort klein.
      Absatz 2 „Ich tippe, da bin ich nicht der Einzige. [implizit verlorene Anfragen,
      z.B. spontane Anfragen abends/am Wochenende gehen verloren]."
      KEINE Anrede, KEINE Vorstellung, KEIN CTA/Frage, KEIN Gruß, KEIN Link, KEINE Lösung.

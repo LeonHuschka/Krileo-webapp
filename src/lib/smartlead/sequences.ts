@@ -118,7 +118,7 @@ export const SAMPLE_VARS: Record<string, string> = {
   location: "Stuttgart",
   city: "Stuttgart",
   category: "Physiotherapie",
-  hook: "ich wollte vorhin online einen Termin bei euch machen, ging aber nur telefonisch, und um die Zeit habt ihr zu. hab's dann erstmal gelassen.\nund ich glaub, so geht's nicht nur mir, gerade abends gehen so einige Anfragen verloren, bevor sie bei dir ankommen.",
+  hook: "ich wollte vorhin online einen Termin bei euch machen, ging aber nur telefonisch, und um die Zeit habt ihr zu. Hab's dann erstmal gelassen.\nUnd ich glaub, so geht's nicht nur mir, gerade abends gehen so einige Anfragen verloren, bevor sie bei dir ankommen.",
   offer_pitch:
     "Wir integrieren eine Online-Terminbuchung in deine bestehende Seite, damit Patienten rund um die Uhr selbst buchen — ganz ohne Telefon.",
   offer_type: "booking",

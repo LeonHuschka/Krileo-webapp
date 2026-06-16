@@ -135,36 +135,40 @@ AUFBAU — zwei kurze Absätze, zusammen ~3-4 Sätze, getrennt durch einen Zeile
 
 Absatz 1 — die erlebte Beobachtung (Ich = echter Interessent, der gerade auf der Seite war):
 „ich wollte [konkret X anfragen/buchen/reservieren], [der konkrete Engpass auf GENAU DIESER
-Seite, beiläufig erzählt]." Dann enden auf MEINEM eigenen Verhalten: „hab's dann ehrlich
+Seite, beiläufig erzählt]." Dann enden auf MEINEM eigenen Verhalten: „Hab's dann ehrlich
 gesagt gelassen und woanders geschaut."
 
 Absatz 2 — ganz beiläufig auf den Verlust hochskalieren:
-„und ich glaub, so geht's nicht nur mir." Dann die implizit verlorene Anfrage, z.B.
-„gerade die spontanen Sachen abends und am Wochenende fragt halt keiner extra per Anruf an,
-die sind dann einfach weg." NICHT auf einer Lösung enden, kein Pitch. Verlust bleibt implizit.
+„Und ich glaub, so geht's nicht nur mir." Dann die implizit verlorene Anfrage, z.B.
+„Gerade die spontanen Sachen abends und am Wochenende ruft halt keiner extra an, die sind dann
+einfach weg." NICHT auf einer Lösung enden, kein Pitch. Verlust bleibt implizit.
 
 ⛔⛔ SCHREIBSTIL — MUSS KLINGEN WIE SCHNELL VOM HANDY GETIPPT (das ist das Wichtigste!):
-Es soll wirken, als hätte Leon die Zeilen eben locker vom Handy getippt — NICHT wie ein
+Es soll wirken, als hätte Leon die Zeilen eben locker vom Handy getippt, NICHT wie ein
 geschliffener Marketing- oder KI-Text.
 - ⛔ KEINE Gedankenstriche (— oder –). Das ist der größte „KI-Verräter". Verbinde mit Komma,
   Punkt oder einem einfachen „und" / „aber".
 - ⛔ KEINE Doppelpunkt-Dramatik, KEINE Aufzählungs-Doppelpunkte, keine geschachtelten Sätze.
 - Kurze, einfache Sätze. Alltagssprache, ruhig mit „hab", „ne", „eben", „ehrlich gesagt",
   „glaub", „halt", „dann". Lieber ein bisschen unperfekt als zu glatt.
+- ✅ ABER KORREKTE RECHTSCHREIBUNG inkl. Groß-/Kleinschreibung! Satzanfänge GROSS, Nomen GROSS,
+  ganz normale deutsche Orthographie. Lockerer Ton heißt NICHT alles klein. EINZIGE Ausnahme:
+  das allererste Wort des Hooks ist klein, weil es direkt an die Anrede („Servus {{first_name}},")
+  anschließt. Jeder folgende Satz beginnt normal mit Großbuchstaben.
 - Keine Werbe-Wörter, keine perfekte Dramaturgie. Einfach echt und beiläufig.
 
 GUTES BEISPIEL A — Seite hat NUR Telefon (wirklich kein Formular):
 „wollte vorhin für ein Vereinsfest bei euch den Hau den Lukas anfragen, hab auf der Seite aber
-nur eine Telefonnummer gefunden, keine Preise und keinen Weg das online zu machen. hab's dann
+nur eine Telefonnummer gefunden, keine Preise und keinen Weg das online zu machen. Hab's dann
 ehrlich gesagt gelassen und woanders weitergeschaut.
-und ich glaub, so geht's nicht nur mir. gerade die spontanen Anfragen abends und am Wochenende
+Und ich glaub, so geht's nicht nur mir. Gerade die spontanen Anfragen abends und am Wochenende
 ruft halt keiner extra an, die sind dann einfach weg."
 
 GUTES BEISPIEL B — Seite HAT bereits ein Kontaktformular (Formular anerkennen, dann pivotieren):
 „wollte vorhin eine Hüpfburg anfragen, ihr habt zwar ein Kontaktformular, aber Termin und
-Verfügbarkeit konnte ich da nicht angeben und Preise stehen auch nirgends. hieß also wieder
+Verfügbarkeit konnte ich da nicht angeben und Preise stehen auch nirgends. Hieß also wieder
 anrufen, und das hab ich dann gelassen.
-und ehrlich, so geht's bestimmt nicht nur mir. die spontanen Anfragen am Wochenende fallen so
+Und ehrlich, so geht's bestimmt nicht nur mir. Die spontanen Anfragen am Wochenende fallen so
 hinten runter, bevor sie überhaupt bei dir ankommen."
 
 GENAUIGKEIT — der Engpass MUSS zur ECHTEN Seite passen (eine falsch behauptete Lücke verbrennt

@@ -12,6 +12,10 @@ PRÜFE HART, in dieser Reihenfolge:
    - "booking" vorgeschlagen, aber Seite hat schon Online-Terminbuchung → FALSCH
    - Offer für Online-Bestellsystem/Shop, aber Seite hat schon Bestellung/Shop → FALSCH
    - "website" (Neubau) vorgeschlagen, aber Seite ist modern & mobil → FALSCH
+   - BEGRIFFE: Verspricht die Offer ein "Kontaktformular" / "Anfrageformular"? Das hat der
+     Lead oft schon — das ist NICHT unser Angebot. Wir bieten das BUCHUNGSSYSTEM dahinter
+     (strukturierter Buchungsprozess, Verfügbarkeit/Preise einsehen, verbindlich buchen).
+     → auf diese Begriffe umschreiben.
 
 2. SIND DIE PAIN-POINTS durch die echten Daten gedeckt, oder erfunden/Floskel?
 
@@ -29,7 +33,9 @@ PRÜFE HART, in dieser Reihenfolge:
    Verlust-Eskalation enthalten (zwei kurze Absätze, Du-Form). Prüfe:
    - Behauptet er eine Lücke, die die Website WIDERLEGT? (z.B. „nur Telefon / kein Formular",
      obwohl ein Formular/eine Online-Buchung da ist). Gefährlichster Fehler — wirkt, als
-     hätte niemand hingeschaut.
+     hätte niemand hingeschaut. Hat der Lead ein Kontaktformular → der Hook muss es ANERKENNEN
+     und auf die echte Lücke pivotieren („ihr habt zwar ein Kontaktformular, aber kein direkter
+     Termin / keine Verfügbarkeit / keine Preise"), NIE „kein Formular" behaupten.
    - Enthält er VERBOTENES, das danach eh statisch kommt → Doppelung: eine Anrede („Hi…"),
      eine SELBSTVORSTELLUNG („Ich bin Leon", „kleine Agentur"), eine Frage / einen CTA
      („passt das kurz?"), einen Gruß/Sign-off, einen Link, oder eine Lösung/Pitch.
@@ -52,7 +58,9 @@ ENTSCHEIDUNG:
      DU-Form, erste Person als Interessent:
      Absatz 1 „ich wollte vorhin [X anfragen/buchen] — und bin dann hängengeblieben:
      [konkreter, durch die Seite belegter Engpass]. Hab's erstmal gelassen und woanders
-     weitergeschaut."
+     weitergeschaut." Hat der Lead ein Kontaktformular: dieses anerkennen und auf die echte
+     Lücke pivotieren („ihr habt zwar ein Kontaktformular, aber kein direkter Termin /
+     keine Verfügbarkeit / keine Preise — hieß also doch wieder anrufen").
      Absatz 2 „Ich tippe, da bin ich nicht der Einzige. [implizit verlorene Anfragen,
      z.B. spontane Anfragen abends/am Wochenende gehen verloren]."
      KEINE Anrede, KEINE Vorstellung, KEIN CTA/Frage, KEIN Gruß, KEIN Link, KEINE Lösung.

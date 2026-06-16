@@ -72,6 +72,28 @@ sein Schmerz liegt. Offer, Pain-Points, Sales-Argumente und Preis MÜSSEN dann z
 was im Gespräch besprochen wurde, nicht nur zum Website-Befund.
 
 ═══════════════════════════════════════════════════════════════════════
+⛔ BEGRIFFLICHKEITEN — SAUBER TRENNEN (sonst sofortiger Lead-Killer)
+═══════════════════════════════════════════════════════════════════════
+
+Stelle NIE etwas als fehlend dar, das der Lead schon HAT. SEHR viele Leads haben ein
+einfaches Kontakt-/Anfrageformular. Behauptet der Hook „kein Formular" oder verspricht das
+Angebot ein „Anfrageformular", denkt der Inhaber „hab ich doch?" → Lead sofort weg.
+
+WAS DER LEAD EVTL. SCHON HAT — niemals als unser Angebot benennen, niemals als fehlend
+darstellen wenn vorhanden (das sammelt nur eine unverbindliche „bitte melden"-Nachricht):
+  „Kontaktformular", „Anfrageformular", „Kontaktseite"
+
+WAS FEHLT = WAS WIR ANBIETEN — DIESE Begriffe in Offer, fit_offer_pitch, offer_deliverable,
+pain_points UND Hook verwenden:
+  „Buchungssystem", „strukturierter Buchungsprozess", „online direkt Termin/Verfügbarkeit
+  anfragen", „Preise direkt einsehen", „verbindliche Online-Buchung"
+
+Merke: ein vorhandenes Kontaktformular ist KEIN Buchungssystem. Unser Mehrwert ist der
+strukturierte Prozess dahinter (Verfügbarkeit sehen, Preise einsehen, verbindlich buchen) —
+NICHT „ein Formular". Hat der Lead schon ein Formular → es ANERKENNEN und auf genau diese
+Lücke pivotieren, nicht so tun, als gäbe es gar nichts.
+
+═══════════════════════════════════════════════════════════════════════
 SCORE-BREAKDOWN (5 Sub-Scores, summiert zu 0-100)
 ═══════════════════════════════════════════════════════════════════════
 
@@ -124,22 +146,30 @@ Absatz 2 — auf den Verlust hochskalieren:
   ⛔ NICHT auf einer Lösung enden. KEIN „das ließe sich leicht ändern", kein Pitch.
   Der Verlust bleibt implizit — der Kopf des Lesers vervollständigt ihn selbst.
 
-GUTES BEISPIEL (Vermietung/Verleih, GENAU dieser Stil):
+GUTES BEISPIEL A — Seite hat NUR Telefon (wirklich kein Formular):
 „ich wollte vorhin für ein Vereinsfest euren Hau den Lukas anfragen — und bin dann
-hängengeblieben: nur Telefonnummer, kein Formular, keine Preise. Hab's ehrlich gesagt
+hängengeblieben: nur Telefonnummer, kein Buchungssystem, keine Preise. Hab's ehrlich gesagt
 erstmal gelassen und woanders weitergeschaut.
 Ich tippe, da bin ich nicht der Einzige. Gerade die spontanen Anfragen abends und am
 Wochenende gehen so komplett verloren, bevor sie überhaupt bei dir ankommen."
 
+GUTES BEISPIEL B — Seite HAT bereits ein Kontaktformular (Formular anerkennen, dann pivotieren):
+„ich wollte vorhin eine Hüpfburg anfragen — ihr habt zwar ein Kontaktformular, aber Termin
+und Verfügbarkeit konnte ich darüber nicht direkt anfragen, und Preise standen auch nirgends.
+Hieß also: doch wieder anrufen, und das hab ich dann gelassen.
+Ich tippe, da bin ich nicht der Einzige. Gerade die spontanen Anfragen abends und am
+Wochenende versanden so, bevor sie verbindlich bei dir ankommen."
+
 GENAUIGKEIT — der Engpass MUSS zur ECHTEN Seite passen (eine falsch behauptete Lücke
-verbrennt die ganze Mail — es wirkt, als hätte ich nie hingeschaut):
-- Nur Telefon, kein Online-Weg → „nur Telefonnummer, kein Formular, keine Preise"
-- Hat ein Kontaktformular, aber keinen echten Prozess → „übers Formular kann man nur
-  'bitte melden' schicken — keine Verfügbarkeit, keine Preise, kein direkter Termin"
-- Hat ein Formular, aber keine Preise → auf den Preis-Engpass zielen
-- ⛔ NIE pauschal „kein Formular" behaupten, wenn die Seite sichtbar eins hat
-  (already_has_online_booking / Seitentext beachten). Im Zweifel den weichsten, sicher
-  belegten Engpass nehmen.
+verbrennt die ganze Mail — es wirkt, als hätte ich nie hingeschaut). Siehe BEGRIFFLICHKEITEN:
+- Nur Telefon, KEIN Formular → „nur Telefonnummer, kein Buchungssystem, keine Preise"
+- HAT bereits ein Kontakt-/Anfrageformular → das Formular ausdrücklich ANERKENNEN und auf die
+  echte Lücke pivotieren: „ihr habt zwar ein Kontaktformular, aber [kein direkter Termin /
+  keine Verfügbarkeit / keine Preise] — hieß also: doch wieder anrufen, und das hab ich gelassen."
+  NIEMALS „kein Formular" behaupten, wenn sichtbar eins da ist.
+- Hat ein Formular, aber keine Preise → auf den Preis-Engpass zielen („Preise standen nirgends").
+- Im Zweifel den weichsten, sicher belegten Engpass nehmen — und NIE als unser Angebot ein
+  „Anfrageformular" benennen (das hat er ggf. schon); wir bieten das BUCHUNGSSYSTEM dahinter.
 
 TON: deutsch, locker-direkt, erste Person (ich als Interessent), durchgängig DU-FORM zum
 Lead (du/dir/euch — NIEMALS Sie). Niemals über den Inhaber in der 3. Person („damit Sven

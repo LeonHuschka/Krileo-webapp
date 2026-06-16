@@ -12,6 +12,7 @@ import {
   Users,
   Target,
   TrendingUp,
+  Flag,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { leadEngine } from "@/lib/lead-engine/supabase";
@@ -27,7 +28,6 @@ import type {
   ContactRow,
   OrderRow,
   OrderStatus,
-  OrderTodoRow,
 } from "@/lib/types/database";
 import { cn } from "@/lib/utils";
 
@@ -55,27 +55,18 @@ export default async function DashboardPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [{ data: orders }, { data: todos }, { data: contacts }] =
-    await Promise.all([
-      supabase.from("orders").select("*"),
-      supabase
-        .from("order_todos")
-        .select("*")
-        .eq("done", false)
-        .order("due_date", { ascending: true, nullsFirst: false }),
-      supabase
-        .from("contacts")
-        .select("*")
-        .order("created_at", { ascending: false }),
-    ]);
+  const [{ data: orders }, { data: contacts }] = await Promise.all([
+    supabase.from("orders").select("*"),
+    supabase
+      .from("contacts")
+      .select("*")
+      .order("created_at", { ascending: false }),
+  ]);
 
   const allOrders = (orders ?? []) as OrderRow[];
   const openOrders = allOrders.filter((o) => o.status !== "archiv");
   const myOpenOrders = openOrders.filter(
     (o) => o.assigned_to === user?.id || o.created_by === user?.id,
-  );
-  const myTodos = (todos ?? []).filter(
-    (t: OrderTodoRow) => t.assigned_to === user?.id || t.assigned_to == null,
   );
   const allContacts = (contacts ?? []) as ContactRow[];
 
@@ -389,6 +380,77 @@ export default async function DashboardPage() {
         })}
       </div>
 
+      {/* Next Steps — the things that actually have to get done */}
+      <Card className="border-border/60">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Flag className="h-4 w-4 text-primary" />
+            Next Steps — zu erledigen
+            {openNextSteps.length > 0 && (
+              <Badge variant="outline" className="border-border/60">
+                {openNextSteps.length}
+              </Badge>
+            )}
+          </CardTitle>
+          <Link
+            href="/akquise/d2d"
+            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+          >
+            Zu D2D <ArrowRight className="h-3 w-3" />
+          </Link>
+        </CardHeader>
+        <CardContent>
+          {openNextSteps.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Keine offenen Next-Steps. ✨
+            </p>
+          ) : (
+            <ul className="grid grid-cols-1 gap-2 lg:grid-cols-2">
+              {openNextSteps.slice(0, 12).map((l) => {
+                const overdue =
+                  l.next_step_at &&
+                  new Date(l.next_step_at).getTime() < Date.now();
+                return (
+                  <li key={l.id}>
+                    <Link
+                      href={`/akquise/leads/${l.id}`}
+                      className={cn(
+                        "flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-card",
+                        overdue
+                          ? "border-rose-500/40 bg-rose-500/[0.06]"
+                          : "border-border/50 bg-card/60",
+                      )}
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-medium">
+                          {l.next_step}
+                        </span>
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {l.owner_name
+                            ? `${l.owner_name} · ${l.business_name ?? ""}`
+                            : l.business_name ?? "—"}
+                        </span>
+                      </span>
+                      <span
+                        className={cn(
+                          "shrink-0 text-right text-xs",
+                          overdue ? "text-rose-300" : "text-muted-foreground",
+                        )}
+                      >
+                        {formatDate(l.next_step_at)}
+                        {overdue && (
+                          <span className="block">überfällig</span>
+                        )}
+                      </span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
@@ -464,100 +526,6 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Meine offenen To-Dos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {myTodos.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Alles erledigt — gut so. ✨
-              </p>
-            ) : (
-              <ul className="space-y-2">
-                {myTodos.slice(0, 8).map((t) => (
-                  <li
-                    key={t.id}
-                    className="flex items-center justify-between rounded-md border border-border/50 bg-card px-3 py-2 text-sm"
-                  >
-                    <Link
-                      href={`/orders/${t.order_id}`}
-                      className="hover:underline"
-                    >
-                      {t.title}
-                    </Link>
-                    <span className="text-xs text-muted-foreground">
-                      {formatDate(t.due_date)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-base">Akquise: Next Steps</CardTitle>
-            <Link
-              href="/akquise/d2d"
-              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-            >
-              Zu D2D <ArrowRight className="h-3 w-3" />
-            </Link>
-          </CardHeader>
-          <CardContent>
-            {openNextSteps.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Keine offenen Next-Steps. ✨
-              </p>
-            ) : (
-              <ul className="space-y-2">
-                {openNextSteps.slice(0, 8).map((l) => {
-                  const overdue =
-                    l.next_step_at &&
-                    new Date(l.next_step_at).getTime() < Date.now();
-                  return (
-                    <li
-                      key={l.id}
-                      className={cn(
-                        "flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm",
-                        overdue
-                          ? "border-rose-500/40 bg-rose-500/[0.06]"
-                          : "border-border/50 bg-card",
-                      )}
-                    >
-                      <Link
-                        href={`/akquise/leads/${l.id}`}
-                        className="min-w-0 flex-1 hover:underline"
-                      >
-                        <span className="block truncate font-medium">
-                          {l.next_step}
-                        </span>
-                        <span className="block truncate text-xs text-muted-foreground">
-                          {l.owner_name
-                            ? `${l.owner_name} · ${l.business_name ?? ""}`
-                            : l.business_name ?? "—"}
-                        </span>
-                      </Link>
-                      <span
-                        className={cn(
-                          "shrink-0 text-xs",
-                          overdue ? "text-rose-300" : "text-muted-foreground",
-                        )}
-                      >
-                        {formatDate(l.next_step_at)}
-                        {overdue && " · überfällig"}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-      </div>
     </div>
   );
 }

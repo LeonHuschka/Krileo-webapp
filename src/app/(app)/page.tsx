@@ -90,6 +90,14 @@ export default async function DashboardPage() {
     d2dActive: 0,
     callsDoneThisWeek: 0,
   };
+  type NextStepTodo = {
+    id: string;
+    business_name: string | null;
+    owner_name: string | null;
+    next_step: string | null;
+    next_step_at: string | null;
+  };
+  let openNextSteps: NextStepTodo[] = [];
   try {
     const db = leadEngine();
     const weekStartIso = weekStart.toISOString();
@@ -140,6 +148,16 @@ export default async function DashboardPage() {
       d2dActive: d2dActive ?? 0,
       callsDoneThisWeek: callsDoneThisWeek ?? 0,
     };
+
+    // Open next-steps across all leads → dashboard to-dos. Overdue first.
+    const { data: nextStepRows } = await db
+      .from("leads")
+      .select("id, business_name, owner_name, next_step, next_step_at")
+      .not("next_step", "is", null)
+      .not("outreach_status", "in", "(won,lost,suppressed)")
+      .order("next_step_at", { ascending: true, nullsFirst: false })
+      .limit(20);
+    openNextSteps = (nextStepRows ?? []) as NextStepTodo[];
   } catch {
     /* swallow — lead engine offline, dashboard still works */
   }
@@ -446,37 +464,100 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Meine offenen To-Dos</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {myTodos.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Alles erledigt — gut so. ✨
-            </p>
-          ) : (
-            <ul className="space-y-2">
-              {myTodos.slice(0, 8).map((t) => (
-                <li
-                  key={t.id}
-                  className="flex items-center justify-between rounded-md border border-border/50 bg-card px-3 py-2 text-sm"
-                >
-                  <Link
-                    href={`/orders/${t.order_id}`}
-                    className="hover:underline"
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Meine offenen To-Dos</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {myTodos.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Alles erledigt — gut so. ✨
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {myTodos.slice(0, 8).map((t) => (
+                  <li
+                    key={t.id}
+                    className="flex items-center justify-between rounded-md border border-border/50 bg-card px-3 py-2 text-sm"
                   >
-                    {t.title}
-                  </Link>
-                  <span className="text-xs text-muted-foreground">
-                    {formatDate(t.due_date)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+                    <Link
+                      href={`/orders/${t.order_id}`}
+                      className="hover:underline"
+                    >
+                      {t.title}
+                    </Link>
+                    <span className="text-xs text-muted-foreground">
+                      {formatDate(t.due_date)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-base">Akquise: Next Steps</CardTitle>
+            <Link
+              href="/akquise/d2d"
+              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+            >
+              Zu D2D <ArrowRight className="h-3 w-3" />
+            </Link>
+          </CardHeader>
+          <CardContent>
+            {openNextSteps.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Keine offenen Next-Steps. ✨
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {openNextSteps.slice(0, 8).map((l) => {
+                  const overdue =
+                    l.next_step_at &&
+                    new Date(l.next_step_at).getTime() < Date.now();
+                  return (
+                    <li
+                      key={l.id}
+                      className={cn(
+                        "flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm",
+                        overdue
+                          ? "border-rose-500/40 bg-rose-500/[0.06]"
+                          : "border-border/50 bg-card",
+                      )}
+                    >
+                      <Link
+                        href={`/akquise/leads/${l.id}`}
+                        className="min-w-0 flex-1 hover:underline"
+                      >
+                        <span className="block truncate font-medium">
+                          {l.next_step}
+                        </span>
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {l.owner_name
+                            ? `${l.owner_name} · ${l.business_name ?? ""}`
+                            : l.business_name ?? "—"}
+                        </span>
+                      </Link>
+                      <span
+                        className={cn(
+                          "shrink-0 text-xs",
+                          overdue ? "text-rose-300" : "text-muted-foreground",
+                        )}
+                      >
+                        {formatDate(l.next_step_at)}
+                        {overdue && " · überfällig"}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

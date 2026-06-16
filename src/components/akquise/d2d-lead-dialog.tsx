@@ -81,9 +81,14 @@ export function D2DLeadDialog({
     }
     setFetching(true);
     try {
-      const r = await previewD2DMapsUrl(mapsUrl);
+      const res = await previewD2DMapsUrl(mapsUrl);
+      if (!res.ok) {
+        toast.error(res.error);
+        return;
+      }
+      const r = res.data;
       if (!r.raw) {
-        toast.warning("Apify hat nichts geliefert — manuell ausfüllen");
+        toast.warning("Maps hat nichts geliefert — bitte manuell ausfüllen");
         return;
       }
       if (r.businessName) setBusinessName(r.businessName);

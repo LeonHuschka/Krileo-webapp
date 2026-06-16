@@ -710,8 +710,19 @@ export async function deleteSingleLead(
 // ── D2D leads (door-to-door, manually added) ─────────────────────────
 
 export async function previewD2DMapsUrl(url: string) {
-  if (!url.trim()) throw new Error("Maps-URL fehlt");
-  return previewMapsUrl(url.trim());
+  // Return the error instead of throwing: thrown server-action errors are
+  // masked in production ("An error occurred in the Server Components
+  // render…"), which hid the real Apify failure from the user.
+  if (!url.trim()) return { ok: false as const, error: "Maps-URL fehlt" };
+  try {
+    const data = await previewMapsUrl(url.trim());
+    return { ok: true as const, data };
+  } catch (err) {
+    return {
+      ok: false as const,
+      error: err instanceof Error ? err.message : "Maps-Scrape fehlgeschlagen",
+    };
+  }
 }
 
 export async function addD2DLead(input: D2DLeadInput) {

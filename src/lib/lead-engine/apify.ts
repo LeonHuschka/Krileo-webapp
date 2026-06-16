@@ -414,7 +414,19 @@ export async function scrapeMapsUrl(url: string): Promise<ApifyPlace | null> {
 
   if (!resp.ok) {
     const body = await resp.text().catch(() => "");
-    throw new Error(`Maps-URL-Scrape fehlgeschlagen (${resp.status}): ${body.slice(0, 300)}`);
+    if (resp.status === 401 || resp.status === 403) {
+      throw new Error(
+        "Apify-Token ungültig oder abgelaufen — APIFY_API_TOKEN prüfen/rotieren.",
+      );
+    }
+    if (resp.status === 402) {
+      throw new Error(
+        "Apify-Credits aufgebraucht — Konto aufladen, dann klappt der Maps-Import wieder.",
+      );
+    }
+    throw new Error(
+      `Maps-URL-Scrape fehlgeschlagen (${resp.status}): ${body.slice(0, 200)}`,
+    );
   }
   const places: ApifyPlace[] = await resp.json();
   return Array.isArray(places) && places.length > 0 ? places[0] : null;

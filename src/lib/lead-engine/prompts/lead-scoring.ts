@@ -133,48 +133,55 @@ Hook AUSSCHLIESSLICH die personalisierte Beobachtung enthalten — sonst NICHTS.
 
 AUFBAU — zwei kurze Absätze, zusammen ~3-4 Sätze, getrennt durch einen Zeilenumbruch (\\n):
 
-Absatz 1 — die erlebte Beobachtung (Ich = echter Interessent, der GERADE auf der Seite war):
-  „ich wollte vorhin/gerade [konkret X anfragen/buchen/reservieren] — und bin dann
-   hängengeblieben: [der KONKRETE Engpass auf GENAU DIESER Seite]."
-  Enden auf MEINEM eigenen Verhalten: „Hab's ehrlich gesagt erstmal gelassen und woanders
-  weitergeschaut." (oder sinngemäß)
+Absatz 1 — die erlebte Beobachtung (Ich = echter Interessent, der gerade auf der Seite war):
+„ich wollte [konkret X anfragen/buchen/reservieren], [der konkrete Engpass auf GENAU DIESER
+Seite, beiläufig erzählt]." Dann enden auf MEINEM eigenen Verhalten: „hab's dann ehrlich
+gesagt gelassen und woanders geschaut."
 
-Absatz 2 — auf den Verlust hochskalieren:
-  „Ich tippe, da bin ich nicht der Einzige." → enden auf der IMPLIZIT verlorenen Anfrage,
-  z.B. „Gerade die spontanen Anfragen abends und am Wochenende gehen so komplett verloren,
-  bevor sie überhaupt bei dir ankommen."
-  ⛔ NICHT auf einer Lösung enden. KEIN „das ließe sich leicht ändern", kein Pitch.
-  Der Verlust bleibt implizit — der Kopf des Lesers vervollständigt ihn selbst.
+Absatz 2 — ganz beiläufig auf den Verlust hochskalieren:
+„und ich glaub, so geht's nicht nur mir." Dann die implizit verlorene Anfrage, z.B.
+„gerade die spontanen Sachen abends und am Wochenende fragt halt keiner extra per Anruf an,
+die sind dann einfach weg." NICHT auf einer Lösung enden, kein Pitch. Verlust bleibt implizit.
+
+⛔⛔ SCHREIBSTIL — MUSS KLINGEN WIE SCHNELL VOM HANDY GETIPPT (das ist das Wichtigste!):
+Es soll wirken, als hätte Leon die Zeilen eben locker vom Handy getippt — NICHT wie ein
+geschliffener Marketing- oder KI-Text.
+- ⛔ KEINE Gedankenstriche (— oder –). Das ist der größte „KI-Verräter". Verbinde mit Komma,
+  Punkt oder einem einfachen „und" / „aber".
+- ⛔ KEINE Doppelpunkt-Dramatik, KEINE Aufzählungs-Doppelpunkte, keine geschachtelten Sätze.
+- Kurze, einfache Sätze. Alltagssprache, ruhig mit „hab", „ne", „eben", „ehrlich gesagt",
+  „glaub", „halt", „dann". Lieber ein bisschen unperfekt als zu glatt.
+- Keine Werbe-Wörter, keine perfekte Dramaturgie. Einfach echt und beiläufig.
 
 GUTES BEISPIEL A — Seite hat NUR Telefon (wirklich kein Formular):
-„ich wollte vorhin für ein Vereinsfest euren Hau den Lukas anfragen — und bin dann
-hängengeblieben: nur Telefonnummer, kein Buchungssystem, keine Preise. Hab's ehrlich gesagt
-erstmal gelassen und woanders weitergeschaut.
-Ich tippe, da bin ich nicht der Einzige. Gerade die spontanen Anfragen abends und am
-Wochenende gehen so komplett verloren, bevor sie überhaupt bei dir ankommen."
+„wollte vorhin für ein Vereinsfest bei euch den Hau den Lukas anfragen, hab auf der Seite aber
+nur eine Telefonnummer gefunden, keine Preise und keinen Weg das online zu machen. hab's dann
+ehrlich gesagt gelassen und woanders weitergeschaut.
+und ich glaub, so geht's nicht nur mir. gerade die spontanen Anfragen abends und am Wochenende
+ruft halt keiner extra an, die sind dann einfach weg."
 
 GUTES BEISPIEL B — Seite HAT bereits ein Kontaktformular (Formular anerkennen, dann pivotieren):
-„ich wollte vorhin eine Hüpfburg anfragen — ihr habt zwar ein Kontaktformular, aber Termin
-und Verfügbarkeit konnte ich darüber nicht direkt anfragen, und Preise standen auch nirgends.
-Hieß also: doch wieder anrufen, und das hab ich dann gelassen.
-Ich tippe, da bin ich nicht der Einzige. Gerade die spontanen Anfragen abends und am
-Wochenende versanden so, bevor sie verbindlich bei dir ankommen."
+„wollte vorhin eine Hüpfburg anfragen, ihr habt zwar ein Kontaktformular, aber Termin und
+Verfügbarkeit konnte ich da nicht angeben und Preise stehen auch nirgends. hieß also wieder
+anrufen, und das hab ich dann gelassen.
+und ehrlich, so geht's bestimmt nicht nur mir. die spontanen Anfragen am Wochenende fallen so
+hinten runter, bevor sie überhaupt bei dir ankommen."
 
-GENAUIGKEIT — der Engpass MUSS zur ECHTEN Seite passen (eine falsch behauptete Lücke
-verbrennt die ganze Mail — es wirkt, als hätte ich nie hingeschaut). Siehe BEGRIFFLICHKEITEN:
-- Nur Telefon, KEIN Formular → „nur Telefonnummer, kein Buchungssystem, keine Preise"
+GENAUIGKEIT — der Engpass MUSS zur ECHTEN Seite passen (eine falsch behauptete Lücke verbrennt
+die ganze Mail, es wirkt als hätte ich nie hingeschaut). Siehe BEGRIFFLICHKEITEN:
+- Nur Telefon, KEIN Formular → „nur eine Telefonnummer, keine Preise, kein Weg online anzufragen"
 - HAT bereits ein Kontakt-/Anfrageformular → das Formular ausdrücklich ANERKENNEN und auf die
-  echte Lücke pivotieren: „ihr habt zwar ein Kontaktformular, aber [kein direkter Termin /
-  keine Verfügbarkeit / keine Preise] — hieß also: doch wieder anrufen, und das hab ich gelassen."
-  NIEMALS „kein Formular" behaupten, wenn sichtbar eins da ist.
-- Hat ein Formular, aber keine Preise → auf den Preis-Engpass zielen („Preise standen nirgends").
-- Im Zweifel den weichsten, sicher belegten Engpass nehmen — und NIE als unser Angebot ein
-  „Anfrageformular" benennen (das hat er ggf. schon); wir bieten das BUCHUNGSSYSTEM dahinter.
+  echte Lücke pivotieren: „ihr habt zwar ein Kontaktformular, aber Termin und Verfügbarkeit
+  konnte ich da nicht angeben und Preise stehen nirgends, hieß also wieder anrufen". NIEMALS
+  „kein Formular" behaupten, wenn sichtbar eins da ist.
+- Hat ein Formular, aber keine Preise → auf den Preis-Engpass zielen („Preise stehen nirgends").
+- Im Zweifel den weichsten, sicher belegten Engpass nehmen, und NIE als unser Angebot ein
+  „Anfrageformular" benennen (das hat er ggf. schon), wir bieten das Buchungssystem dahinter.
 
-TON: deutsch, locker-direkt, erste Person (ich als Interessent), durchgängig DU-FORM zum
-Lead (du/dir/euch — NIEMALS Sie). Niemals über den Inhaber in der 3. Person („damit Sven
-nicht…") — immer direkt „du". Der Hook muss so enden, dass danach nahtlos
-„Ich bin Leon, Inhaber von Krileo …" anschließt.
+TON: deutsch, locker, erste Person (ich als Interessent), durchgängig DU-FORM zum Lead
+(du/dir/euch, NIEMALS Sie). Nie über den Inhaber in der 3. Person („damit Sven nicht…"), immer
+direkt „du". Der Hook endet so, dass danach nahtlos „Ich bin Leon, Inhaber von Krileo …"
+anschließt.
 
 ⛔ VERBOTEN im Hook (steht danach eh schon im statischen Teil → Doppelung + unsinnige Mail):
 - KEINE Anrede („Hallo…", „Hi…")
@@ -183,8 +190,10 @@ nicht…") — immer direkt „du". Der Hook muss so enden, dass danach nahtlos
 - KEIN Gruß / Sign-off
 - KEIN Link
 - KEINE Lösung / kein Pitch / kein Angebot (kommt im statischen Teil danach)
-SCHLECHT (so NICHT): „…Ich bin Leon, kleine Agentur — passt das kurz?" → enthält
-Vorstellung + CTA, die danach im Template eh stehen. Reiner Beobachtungs-Block, sonst nichts.
+- KEINE Gedankenstriche (—/–) und keine Doppelpunkt-Dramatik (klingt sofort nach KI)
+SCHLECHT (zu glatt / KI): „ich wollte buchen — fand aber keinen Weg: nur Telefon. So verlieren
+Sie Anfragen." → Gedankenstrich, Doppelpunkt-Liste, Sie-Form, Urteil. Stattdessen beiläufig vom
+Handy getippt, Du-Form, ohne Gedankenstriche.
 
 WENN KEINE LÜCKE SICHER BELEGT IST (gute, vollständige Seite): keine erfundene Lücke.
 Dann der weichste echte Reibungspunkt im selben Aufbau — oder ehrlich neugierig statt

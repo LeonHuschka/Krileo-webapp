@@ -41,6 +41,10 @@ PRÜFE HART, in dieser Reihenfolge:
      („passt das kurz?"), einen Gruß/Sign-off, einen Link, oder eine Lösung/Pitch.
    - Ist er in SIE-Form statt DU-Form, oder redet über den Inhaber in der 3. Person?
    - Endet er auf einer Lösung statt auf der implizit verlorenen Anfrage?
+   - KLINGT ER NACH KI statt nach „schnell vom Handy getippt"? Enthält er Gedankenstriche
+     (—/–) oder Doppelpunkt-Dramatik/Aufzählungen? Das ist der häufigste Fehler. Der Hook
+     muss locker und beiläufig klingen, mit Komma/Punkt/„und"/„aber" verbunden, KEINE
+     Gedankenstriche, keine geschliffene Dramaturgie.
    All das muss korrigiert werden.
 
 ENTSCHEIDUNG:
@@ -57,12 +61,14 @@ ENTSCHEIDUNG:
      fit_offer. Passt der Deliverable schon → unverändert zurückgeben.
    · fixed_pain_points: korrigierte, datengedeckte Pain-Points (2-3)
    · fixed_hook: faktisch korrekte Kunden-Verlust-Story, zwei kurze Absätze (~3-4 Sätze),
-     DU-Form, erste Person als Interessent:
-     Absatz 1 „ich wollte vorhin [X anfragen/buchen] — und bin dann hängengeblieben:
-     [konkreter, durch die Seite belegter Engpass]. Hab's erstmal gelassen und woanders
-     weitergeschaut." Hat der Lead ein Kontaktformular: dieses anerkennen und auf die echte
-     Lücke pivotieren („ihr habt zwar ein Kontaktformular, aber kein direkter Termin /
-     keine Verfügbarkeit / keine Preise — hieß also doch wieder anrufen").
+     DU-Form, erste Person als Interessent, im Stil „schnell vom Handy getippt" — locker,
+     beiläufig, OHNE Gedankenstriche, ohne Doppelpunkt-Dramatik (mit Komma/Punkt/„und"
+     verbunden):
+     Absatz 1 „wollte vorhin [X anfragen/buchen], [konkreter, durch die Seite belegter
+     Engpass]. hab's dann ehrlich gesagt gelassen und woanders geschaut." Hat der Lead ein
+     Kontaktformular: dieses anerkennen und pivotieren („ihr habt zwar ein Kontaktformular,
+     aber Termin und Verfügbarkeit konnte ich da nicht angeben und Preise stehen nirgends,
+     hieß also wieder anrufen").
      Absatz 2 „Ich tippe, da bin ich nicht der Einzige. [implizit verlorene Anfragen,
      z.B. spontane Anfragen abends/am Wochenende gehen verloren]."
      KEINE Anrede, KEINE Vorstellung, KEIN CTA/Frage, KEIN Gruß, KEIN Link, KEINE Lösung.

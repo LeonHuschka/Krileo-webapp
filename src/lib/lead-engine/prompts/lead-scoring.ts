@@ -101,52 +101,64 @@ Differenziere bewusst — zwei Leads dürfen NIE den exakt gleichen Total-Score 
    9 = einige Signale · 3 = ruhig/eingeschlafen
 
 ═══════════════════════════════════════════════════════════════════════
-HOOK — DIE KUNDEN-VERLUST-STORY (wichtigstes Text-Feld)
+HOOK — DIE KUNDEN-VERLUST-STORY (wichtigstes Text-Feld: personalized_hook)
 ═══════════════════════════════════════════════════════════════════════
 
-Der Hook ist die Öffnungszeile der Cold-Mail. Ziel: der Inhaber liest „oh, eine Anfrage"
-und FÜHLT beim Lesen, dass ihm gerade ein Kunde durch die Lappen geht — OHNE dass wir es
-behaupten. Du schreibst aus Ich-Perspektive, als wärst du eben selbst Kunde gewesen.
+Der Hook ist der EINZIGE frei generierte Textblock der Cold-Mail. ALLES danach
+(Vorstellung „Ich bin Leon…", das Angebot, der CTA, der Gruß) ist STATISCH und wird
+automatisch angehängt. Was der Hook ausgibt, steht 1:1 in der Mail. Deshalb darf der
+Hook AUSSCHLIESSLICH die personalisierte Beobachtung enthalten — sonst NICHTS.
 
-3 KURZE BEATS:
-1. „Wollte gerade bei Ihnen [X buchen/bestellen/anfragen]…" → klingt wie ein echter Kunde
-2. die KONKRETE, BELEGTE Lücke, die mich gestoppt hat („…finde auf dem Handy aber keinen
-   Weg, das direkt zu tun, nur eine Telefonnummer…")
-3. ENDE auf MEINEM Verhalten als Kunde: „…hab's dann erstmal gelassen." /
-   „…hätte ich abends in 30 Sekunden vom Sofa erledigt."
+AUFBAU — zwei kurze Absätze, zusammen ~3-4 Sätze, getrennt durch einen Zeilenumbruch (\\n):
 
-⛔ HÖR DA AUF. Schreib NICHT das Urteil über sein Geschäft („so verlieren Sie Buchungen",
-   „da geht Ihnen Umsatz verloren"). Das ist eine Behauptung, die er bestreiten kann → Abwehr.
-   Der Verlust bleibt IMPLIZIT — sein Kopf vervollständigt den Gedanken selbst, das sitzt tiefer.
-⛔ KEINE Selbstvorstellung, KEIN CTA, KEIN „Ich bin Leon…", KEINE Frage. Das macht der
-   Mailtext NACH dem Hook. Der Hook ist NUR die Kunden-Story.
+Absatz 1 — die erlebte Beobachtung (Ich = echter Interessent, der GERADE auf der Seite war):
+  „ich wollte vorhin/gerade [konkret X anfragen/buchen/reservieren] — und bin dann
+   hängengeblieben: [der KONKRETE Engpass auf GENAU DIESER Seite]."
+  Enden auf MEINEM eigenen Verhalten: „Hab's ehrlich gesagt erstmal gelassen und woanders
+  weitergeschaut." (oder sinngemäß)
 
-ACCURACY — 1000% PFLICHT (eine falsch behauptete Lücke killt sofort die Glaubwürdigkeit):
-- Behaupte als Lücke NUR, was website_assessment bestätigt: already_has_online_booking=false
-  bzw. already_has_online_ordering=false, bzw. Design klar veraltet.
-- Hat die Seite ein Buchungs-/Bestell-/Shop-Element → NIEMALS „geht nur telefonisch /
-  keine Bestellung / keine Buchung". Im Zweifel KEINE harte Behauptung.
+Absatz 2 — auf den Verlust hochskalieren:
+  „Ich tippe, da bin ich nicht der Einzige." → enden auf der IMPLIZIT verlorenen Anfrage,
+  z.B. „Gerade die spontanen Anfragen abends und am Wochenende gehen so komplett verloren,
+  bevor sie überhaupt bei dir ankommen."
+  ⛔ NICHT auf einer Lösung enden. KEIN „das ließe sich leicht ändern", kein Pitch.
+  Der Verlust bleibt implizit — der Kopf des Lesers vervollständigt ihn selbst.
 
-WENN KEINE LÜCKE SICHER BELEGT IST (gute, vollständige Seite):
-Keine erfundene Lücke. Stattdessen ehrlich + neugierig, z.B.:
-„Hab Ihre Seite angeschaut, um online einen Termin zu machen — lief rund. Eine Kleinigkeit
-ist mir trotzdem aufgefallen, die wahrscheinlich der Grund ist, warum manche abspringen."
+GUTES BEISPIEL (Vermietung/Verleih, GENAU dieser Stil):
+„ich wollte vorhin für ein Vereinsfest euren Hau den Lukas anfragen — und bin dann
+hängengeblieben: nur Telefonnummer, kein Formular, keine Preise. Hab's ehrlich gesagt
+erstmal gelassen und woanders weitergeschaut.
+Ich tippe, da bin ich nicht der Einzige. Gerade die spontanen Anfragen abends und am
+Wochenende gehen so komplett verloren, bevor sie überhaupt bei dir ankommen."
 
-STIL: 25-45 Wörter, einfache Sprache, süddeutsch-direkt, Sie-Form, warm. Echte Person,
-kein Marketing.
+GENAUIGKEIT — der Engpass MUSS zur ECHTEN Seite passen (eine falsch behauptete Lücke
+verbrennt die ganze Mail — es wirkt, als hätte ich nie hingeschaut):
+- Nur Telefon, kein Online-Weg → „nur Telefonnummer, kein Formular, keine Preise"
+- Hat ein Kontaktformular, aber keinen echten Prozess → „übers Formular kann man nur
+  'bitte melden' schicken — keine Verfügbarkeit, keine Preise, kein direkter Termin"
+- Hat ein Formular, aber keine Preise → auf den Preis-Engpass zielen
+- ⛔ NIE pauschal „kein Formular" behaupten, wenn die Seite sichtbar eins hat
+  (already_has_online_booking / Seitentext beachten). Im Zweifel den weichsten, sicher
+  belegten Engpass nehmen.
 
-GUTE BEISPIELE (nur bei belegter Lücke):
-- Verleih ohne Online-Buchung: „Wollte vorhin für nächstes Wochenende eine Hüpfburg bei Ihnen
-  buchen — finde auf dem Handy aber nirgends Preise oder Verfügbarkeit, nur eine Telefonnummer.
-  Hab's dann erstmal gelassen."
-- Praxis ohne Online-Termin: „Wollte gerade online einen Termin bei Ihnen machen — geht nur
-  telefonisch, und um die Zeit haben Sie zu. Hätte ich abends in 30 Sekunden vom Sofa erledigt."
-- Copyshop ohne Online-Bestellung: „Wollte eben 50 Flyer bei Ihnen drucken lassen — finde auf
-  der Seite aber keinen Weg, die Datei hochzuladen und direkt zu bestellen. Hätte ich gern
-  sofort gemacht."
+TON: deutsch, locker-direkt, erste Person (ich als Interessent), durchgängig DU-FORM zum
+Lead (du/dir/euch — NIEMALS Sie). Niemals über den Inhaber in der 3. Person („damit Sven
+nicht…") — immer direkt „du". Der Hook muss so enden, dass danach nahtlos
+„Ich bin Leon, Inhaber von Krileo …" anschließt.
 
-VERBOTEN: Urteils-Sätze über sein Geschäft, erfundene Lücken, Selbstvorstellung/CTA im Hook,
-„Ich habe gesehen Sie haben X Bewertungen", „Wir helfen Praxen wie Ihrer".
+⛔ VERBOTEN im Hook (steht danach eh schon im statischen Teil → Doppelung + unsinnige Mail):
+- KEINE Anrede („Hallo…", „Hi…")
+- KEINE Vorstellung („Ich bin Leon", „kleine Agentur", „wir von Krileo")
+- KEINE Frage / kein CTA an den Lead („passt das kurz?", „wäre das interessant?")
+- KEIN Gruß / Sign-off
+- KEIN Link
+- KEINE Lösung / kein Pitch / kein Angebot (kommt im statischen Teil danach)
+SCHLECHT (so NICHT): „…Ich bin Leon, kleine Agentur — passt das kurz?" → enthält
+Vorstellung + CTA, die danach im Template eh stehen. Reiner Beobachtungs-Block, sonst nichts.
+
+WENN KEINE LÜCKE SICHER BELEGT IST (gute, vollständige Seite): keine erfundene Lücke.
+Dann der weichste echte Reibungspunkt im selben Aufbau — oder ehrlich neugierig statt
+behauptet. Lieber zurückhaltend als falsch.
 
 ═══════════════════════════════════════════════════════════════════════
 PICKUP-LINES — MENSCHLICH (für den Call-Kanal, trotzdem ausfüllen)

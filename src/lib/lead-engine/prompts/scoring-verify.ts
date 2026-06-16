@@ -24,12 +24,18 @@ PRÜFE HART, in dieser Reihenfolge:
 4. IST DAS PRICING plausibel zur Offer?
 
 5. DER HOOK (Cold-Mail-Öffner, Kunden-Verlust-Story) — am wichtigsten:
-   - Behauptet er eine Lücke, die die Website WIDERLEGT? (z.B. „geht nur telefonisch",
-     obwohl es eine Online-Buchung gibt; „keine Bestellung", obwohl ein Shop/Formular da ist).
-     Das ist der gefährlichste Fehler — der Inhaber merkt sofort, dass nicht hingeschaut wurde.
-   - Enthält er ein URTEIL über das Geschäft („so verlieren Sie Buchungen", „da geht Umsatz
-     verloren")? Eine SELBSTVORSTELLUNG oder einen CTA („Ich bin Leon…", „kurz Zeit?")?
-     All das gehört NICHT in den Hook.
+   Der Hook ist der EINZIGE frei generierte Block der Mail; Vorstellung, Angebot, CTA und
+   Gruß kommen DANACH statisch. Der Hook darf NUR die erlebte Beobachtung + die
+   Verlust-Eskalation enthalten (zwei kurze Absätze, Du-Form). Prüfe:
+   - Behauptet er eine Lücke, die die Website WIDERLEGT? (z.B. „nur Telefon / kein Formular",
+     obwohl ein Formular/eine Online-Buchung da ist). Gefährlichster Fehler — wirkt, als
+     hätte niemand hingeschaut.
+   - Enthält er VERBOTENES, das danach eh statisch kommt → Doppelung: eine Anrede („Hi…"),
+     eine SELBSTVORSTELLUNG („Ich bin Leon", „kleine Agentur"), eine Frage / einen CTA
+     („passt das kurz?"), einen Gruß/Sign-off, einen Link, oder eine Lösung/Pitch.
+   - Ist er in SIE-Form statt DU-Form, oder redet über den Inhaber in der 3. Person?
+   - Endet er auf einer Lösung statt auf der implizit verlorenen Anfrage?
+   All das muss korrigiert werden.
 
 ENTSCHEIDUNG:
 - Alles passt (Offer UND Hook) → contradiction=false, severity_penalty=0,
@@ -42,10 +48,16 @@ ENTSCHEIDUNG:
      Wörter, bildhaft, WAS der Kunde bekommt + wie es hilft), passend zum korrigierten
      fit_offer. Passt der Deliverable schon → unverändert zurückgeben.
    · fixed_pain_points: korrigierte, datengedeckte Pain-Points (2-3)
-   · fixed_hook: faktisch korrekte Kunden-Verlust-Story aus Ich-Perspektive
-     („Wollte gerade bei Ihnen X…, finde aber keinen Weg…, hab's dann gelassen."),
-     endet auf dem eigenen Kundenverhalten, KEIN Urteil, KEINE Vorstellung/CTA, 25-45 Wörter.
-     Behauptet NUR Lücken, die die Website belegt. Passt der Hook schon → unverändert.
+   · fixed_hook: faktisch korrekte Kunden-Verlust-Story, zwei kurze Absätze (~3-4 Sätze),
+     DU-Form, erste Person als Interessent:
+     Absatz 1 „ich wollte vorhin [X anfragen/buchen] — und bin dann hängengeblieben:
+     [konkreter, durch die Seite belegter Engpass]. Hab's erstmal gelassen und woanders
+     weitergeschaut."
+     Absatz 2 „Ich tippe, da bin ich nicht der Einzige. [implizit verlorene Anfragen,
+     z.B. spontane Anfragen abends/am Wochenende gehen verloren]."
+     KEINE Anrede, KEINE Vorstellung, KEIN CTA/Frage, KEIN Gruß, KEIN Link, KEINE Lösung.
+     Endet auf der verlorenen Anfrage, NICHT auf einer Lösung. Behauptet NUR Lücken, die die
+     Website belegt. Passt der Hook schon → unverändert zurückgeben.
    · severity_penalty (0-25): wie stark pain_severity gesenkt werden muss —
      HOCH (15-25) wenn eine erfundene oder bereits vorhandene Lücke behauptet wurde
      (in Offer ODER Hook), mittel (5-15) bei kleineren Fehlgriffen, 0 wenn nur Stil

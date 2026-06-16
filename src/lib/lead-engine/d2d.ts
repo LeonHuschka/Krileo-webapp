@@ -2,6 +2,7 @@ import "server-only";
 
 import { leadEngine } from "@/lib/lead-engine/supabase";
 import { searchPlaces, type DfsMapsPlace } from "@/lib/lead-engine/dataforseo";
+import { scanWebsiteContacts } from "@/lib/lead-engine/enrichment";
 import { appendLeadEvent } from "@/lib/lead-engine/events";
 import type { Lead } from "@/lib/lead-engine/types";
 
@@ -101,6 +102,7 @@ function parseMapsUrl(url: string): { name?: string; coordinate?: string } {
  */
 export async function previewMapsUrl(url: string): Promise<{
   businessName?: string;
+  ownerName?: string;
   phone?: string;
   websiteUrl?: string;
   ownerEmail?: string;
@@ -137,11 +139,27 @@ export async function previewMapsUrl(url: string): Promise<{
   const place = places[0];
   if (!place) return { raw: null };
 
+  // Maps gives no owner/e-mail — scan the website (Impressum/Kontakt) for
+  // those, same as the enrichment step. Best-effort: a failed/slow scan
+  // must not block the import.
+  let ownerName: string | null = null;
+  let ownerEmail: string | null = null;
+  if (place.url) {
+    try {
+      const c = await scanWebsiteContacts(place.url, place.phone);
+      ownerName = c.ownerName;
+      ownerEmail = c.ownerEmail;
+    } catch {
+      /* leave owner/e-mail empty */
+    }
+  }
+
   return {
     businessName: place.title,
+    ownerName: ownerName ?? undefined,
     phone: place.phone,
     websiteUrl: place.url,
-    ownerEmail: undefined,
+    ownerEmail: ownerEmail ?? undefined,
     city: place.address_info?.city,
     address: place.address ?? place.address_info?.address,
     category: place.category,

@@ -583,6 +583,58 @@ export async function enrichLead(leadId: string): Promise<EnrichResult> {
 }
 
 /**
+ * Stateless variant of the deep-contact scan: takes a website URL, fetches
+ * homepage + Impressum + /kontakt, and returns the owner name + best e-mail
+ * WITHOUT touching the DB. Used by the D2D Maps import to pre-fill the form
+ * (DataForSEO Maps doesn't return owner/e-mail; this fills that gap).
+ */
+export async function scanWebsiteContacts(
+  website: string | null | undefined,
+  knownPhone?: string | null,
+): Promise<{
+  ownerName: string | null;
+  ownerEmail: string | null;
+  legalForm: string | null;
+}> {
+  if (!website) return { ownerName: null, ownerEmail: null, legalForm: null };
+
+  const htmlPages: string[] = [];
+  const homeHtml = await fetchWithTimeout(website);
+  if (homeHtml) htmlPages.push(homeHtml);
+
+  let impressumHtml: string | null = null;
+  const impressumUrl = await findImpressumUrl(website);
+  if (impressumUrl) {
+    impressumHtml = await fetchWithTimeout(impressumUrl);
+    if (impressumHtml) htmlPages.push(impressumHtml);
+  }
+
+  const kontaktUrl = await findKontaktUrl(website, homeHtml);
+  if (kontaktUrl && kontaktUrl !== impressumUrl) {
+    const kontaktHtml = await fetchWithTimeout(kontaktUrl);
+    if (kontaktHtml && /kontakt|contact|impressum/i.test(kontaktHtml)) {
+      htmlPages.push(kontaktHtml);
+    }
+  }
+
+  let extracted: ExtractResult | null = null;
+  const ownerSourceHtml = impressumHtml ?? homeHtml;
+  if (ownerSourceHtml) {
+    const text = stripHtml(ownerSourceHtml);
+    if (text.length >= 50) extracted = await extractFromText(text);
+  }
+
+  const ownerName = extracted?.owner_name ?? null;
+  const channels = htmlPages.length
+    ? extractContactChannels(htmlPages, ownerName, knownPhone ?? null)
+    : [];
+  const bestEmail = channels.find((c) => c.type === "email");
+  const ownerEmail = bestEmail?.value ?? extracted?.owner_email ?? null;
+
+  return { ownerName, ownerEmail, legalForm: extracted?.legal_form ?? null };
+}
+
+/**
  * Enrich every 'raw' lead. We no longer require a website — fallbacks
  * (email-local-part, raw_data fields) work on website-less leads too.
  */

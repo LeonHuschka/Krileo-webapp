@@ -92,13 +92,20 @@ export function D2DLeadDialog({
         return;
       }
       if (r.businessName) setBusinessName(r.businessName);
+      if (r.ownerName) setOwnerName(r.ownerName);
       if (r.phone) setPhone(r.phone);
       if (r.websiteUrl) setWebsite(r.websiteUrl);
       if (r.ownerEmail) setEmail(r.ownerEmail);
       if (r.city) setCity(r.city);
       if (r.address) setAddress(r.address);
       if (r.category) setCategory(r.category);
-      toast.success(`Daten gezogen: ${r.businessName ?? "—"}`);
+      const extras = [
+        r.ownerName ? "Inhaber" : null,
+        r.ownerEmail ? "E-Mail" : null,
+      ].filter(Boolean);
+      toast.success(
+        `Daten gezogen: ${r.businessName ?? "—"}${extras.length ? ` (+ ${extras.join(" + ")})` : ""}`,
+      );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Maps-Scrape Fehler");
     } finally {

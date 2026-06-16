@@ -34,8 +34,14 @@ PRÜFE HART, in dieser Reihenfolge:
    - Behauptet er eine Lücke, die die Website WIDERLEGT? (z.B. „nur Telefon / kein Formular",
      obwohl ein Formular/eine Online-Buchung da ist). Gefährlichster Fehler — wirkt, als
      hätte niemand hingeschaut. Hat der Lead ein Kontaktformular → der Hook muss es ANERKENNEN
-     und auf die echte Lücke pivotieren („ihr habt zwar ein Kontaktformular, aber kein direkter
-     Termin / keine Verfügbarkeit / keine Preise"), NIE „kein Formular" behaupten.
+     und auf die echte Lücke pivotieren, NIE „kein Formular" behaupten.
+   - ⛔ Formuliert er die Lücke als „kann nicht (online) anfragen / keinen Weg online
+     anzufragen"? Das ist FALSCH — anfragen kann jedes Kontaktformular, der Inhaber denkt sofort
+     „doch". Die Lücke MUSS über „keine Verfügbarkeit sichtbar / keine Preise sichtbar / nicht
+     direkt verbindlich buchbar" laufen, nicht über „anfragen können". Sonst korrigieren.
+   - Enthält er einen Zeitbezug, der eine Verzögerung andeutet („letzte Woche", „neulich",
+     „vor ein paar Tagen", „kürzlich")? → auf unmittelbar ändern („grade eben", „vorhin"),
+     sonst denkt der Inhaber „warum schreibt der erst jetzt?".
    - Enthält er VERBOTENES, das danach eh statisch kommt → Doppelung: eine Anrede („Hi…"),
      eine SELBSTVORSTELLUNG („Ich bin Leon", „kleine Agentur"), eine Frage / einen CTA
      („passt das kurz?"), einen Gruß/Sign-off, einen Link, oder eine Lösung/Pitch.
@@ -67,10 +73,12 @@ ENTSCHEIDUNG:
      DU-Form, erste Person als Interessent, im Stil „schnell vom Handy getippt" — locker,
      beiläufig, OHNE Gedankenstriche, ohne Doppelpunkt-Dramatik (mit Komma/Punkt/„und"
      verbunden):
-     Absatz 1 „wollte vorhin [X anfragen/buchen], [konkreter, durch die Seite belegter
-     Engpass]. Hab's dann ehrlich gesagt gelassen und woanders geschaut." Hat der Lead ein
+     Absatz 1 „wollte grade eben [X buchen], [konkreter Engpass: keine Verfügbarkeit sichtbar /
+     keine Preise / nicht direkt buchbar]. Hab's dann ehrlich gesagt gelassen und woanders
+     geschaut." Zeitbezug unmittelbar (grade eben/vorhin), nie „letzte Woche". Lücke über
+     „sehen + direkt buchen", NIE über „anfragen können". Hat der Lead ein
      Kontaktformular: dieses anerkennen und pivotieren („ihr habt zwar ein Kontaktformular,
-     aber Termin und Verfügbarkeit konnte ich da nicht angeben und Preise stehen nirgends,
+     aber ich konnte nirgends sehen ob mein Termin frei ist und auch keine Preise,
      hieß also wieder anrufen"). Korrekte Groß-/Kleinschreibung, nur das erste Wort klein.
      Absatz 2 „Ich tippe, da bin ich nicht der Einzige. [implizit verlorene Anfragen,
      z.B. spontane Anfragen abends/am Wochenende gehen verloren]."

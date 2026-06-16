@@ -85,13 +85,24 @@ darstellen wenn vorhanden (das sammelt nur eine unverbindliche „bitte melden"-
 
 WAS FEHLT = WAS WIR ANBIETEN — DIESE Begriffe in Offer, fit_offer_pitch, offer_deliverable,
 pain_points UND Hook verwenden:
-  „Buchungssystem", „strukturierter Buchungsprozess", „online direkt Termin/Verfügbarkeit
-  anfragen", „Preise direkt einsehen", „verbindliche Online-Buchung"
+  „Buchungssystem", „strukturierter Buchungsprozess", „Verfügbarkeit direkt sehen",
+  „Preise direkt sehen", „direkt / verbindlich online buchen"
+
+⛔⛔ DAS VERB „ANFRAGEN" IST DIE LÜCKE NICHT — NIE als fehlend darstellen!
+„Anfragen" / „online anfragen" / „eine Anfrage schicken" kann JEDES Kontaktformular, und das
+hat fast jeder. Behauptet der Hook „man kann nicht (online) anfragen / keinen Weg, das online
+anzufragen", denkt der Inhaber sofort „doch, per Formular oder Anruf" → Lead weg. Die echte,
+unbestreitbare Lücke ist NICHT „anfragen", sondern:
+  · man sieht NICHT, ob/wann etwas frei ist (keine Verfügbarkeit einsehbar)
+  · man kann NICHT direkt/verbindlich buchen (nur „bitte melden" + warten)
+  · man sieht keine Preise
+Formuliere die Lücke IMMER über „sehen/einsehen" + „direkt/verbindlich buchen", NIE über
+„anfragen können".
 
 Merke: ein vorhandenes Kontaktformular ist KEIN Buchungssystem. Unser Mehrwert ist der
-strukturierte Prozess dahinter (Verfügbarkeit sehen, Preise einsehen, verbindlich buchen) —
-NICHT „ein Formular". Hat der Lead schon ein Formular → es ANERKENNEN und auf genau diese
-Lücke pivotieren, nicht so tun, als gäbe es gar nichts.
+strukturierte Prozess dahinter (Verfügbarkeit sehen, Preise sehen, direkt verbindlich buchen),
+NICHT „ein Formular" und NICHT „anfragen können". Hat der Lead schon ein Formular → es
+ANERKENNEN und auf genau diese Lücke pivotieren, nicht so tun, als gäbe es gar nichts.
 
 ═══════════════════════════════════════════════════════════════════════
 SCORE-BREAKDOWN (5 Sub-Scores, summiert zu 0-100)
@@ -133,10 +144,15 @@ Hook AUSSCHLIESSLICH die personalisierte Beobachtung enthalten — sonst NICHTS.
 
 AUFBAU — zwei kurze Absätze, zusammen ~3-4 Sätze, getrennt durch einen Zeilenumbruch (\\n):
 
-Absatz 1 — die erlebte Beobachtung (Ich = echter Interessent, der gerade auf der Seite war):
-„ich wollte [konkret X anfragen/buchen/reservieren], [der konkrete Engpass auf GENAU DIESER
-Seite, beiläufig erzählt]." Dann enden auf MEINEM eigenen Verhalten: „Hab's dann ehrlich
-gesagt gelassen und woanders geschaut."
+Absatz 1 — die erlebte Beobachtung (Ich = echter Interessent, der GERADE EBEN auf der Seite war):
+„ich wollte [konkret X buchen/reservieren], [der konkrete Engpass auf GENAU DIESER Seite,
+beiläufig erzählt]." Dann enden auf MEINEM eigenen Verhalten: „Hab's dann ehrlich gesagt
+gelassen und woanders geschaut."
+
+⛔ ZEITBEZUG NUR UNMITTELBAR: „grade eben", „gerade", „eben" oder „vorhin" — es muss klingen,
+als wäre ich JETZT GERADE auf der Seite gewesen. NIEMALS etwas, das eine Verzögerung andeutet
+(„letzte Woche", „neulich", „vor ein paar Tagen", „kürzlich") — sonst denkt der Inhaber beim
+ersten Lesen „warum schreibt der mir erst jetzt?". Im Zweifel ganz ohne Zeitwort.
 
 Absatz 2 — ganz beiläufig auf den Verlust hochskalieren:
 „Und ich glaub, so geht's nicht nur mir." Dann die implizit verlorene Anfrage, z.B.
@@ -158,27 +174,29 @@ geschliffener Marketing- oder KI-Text.
 - Keine Werbe-Wörter, keine perfekte Dramaturgie. Einfach echt und beiläufig.
 
 GUTES BEISPIEL A — Seite hat NUR Telefon (wirklich kein Formular):
-„wollte vorhin für ein Vereinsfest bei euch den Hau den Lukas anfragen, hab auf der Seite aber
-nur eine Telefonnummer gefunden, keine Preise und keinen Weg das online zu machen. Hab's dann
-ehrlich gesagt gelassen und woanders weitergeschaut.
-Und ich glaub, so geht's nicht nur mir. Gerade die spontanen Anfragen abends und am Wochenende
-ruft halt keiner extra an, die sind dann einfach weg."
+„wollte grade eben für ein Vereinsfest bei euch den Hau den Lukas buchen, hab auf der Seite aber
+weder Preise gesehen noch konnte ich irgendwo sehen ob am Wunschtag überhaupt was frei ist,
+nur eine Telefonnummer. Hab's dann ehrlich gesagt gelassen und woanders geschaut.
+Und ich glaub, so geht's nicht nur mir. Gerade abends und am Wochenende ruft halt keiner extra
+an um zu fragen ob frei ist, die sind dann einfach weg."
 
 GUTES BEISPIEL B — Seite HAT bereits ein Kontaktformular (Formular anerkennen, dann pivotieren):
-„wollte vorhin eine Hüpfburg anfragen, ihr habt zwar ein Kontaktformular, aber Termin und
-Verfügbarkeit konnte ich da nicht angeben und Preise stehen auch nirgends. Hieß also wieder
-anrufen, und das hab ich dann gelassen.
-Und ehrlich, so geht's bestimmt nicht nur mir. Die spontanen Anfragen am Wochenende fallen so
-hinten runter, bevor sie überhaupt bei dir ankommen."
+„wollte grade eben eine Hüpfburg buchen, ihr habt zwar ein Kontaktformular, aber ich konnte
+nirgends sehen ob mein Termin frei ist und auch keine Preise, am Ende hätt ich auf gut Glück
+'bitte melden' geschickt und abwarten müssen. Hab ich dann gelassen.
+Und ehrlich, so geht's bestimmt nicht nur mir. Wer abends spontan was braucht und nicht direkt
+sieht ob's frei ist und buchen kann, ist meist schneller wieder weg als die Antwort kommt."
 
-GENAUIGKEIT — der Engpass MUSS zur ECHTEN Seite passen (eine falsch behauptete Lücke verbrennt
-die ganze Mail, es wirkt als hätte ich nie hingeschaut). Siehe BEGRIFFLICHKEITEN:
-- Nur Telefon, KEIN Formular → „nur eine Telefonnummer, keine Preise, kein Weg online anzufragen"
-- HAT bereits ein Kontakt-/Anfrageformular → das Formular ausdrücklich ANERKENNEN und auf die
-  echte Lücke pivotieren: „ihr habt zwar ein Kontaktformular, aber Termin und Verfügbarkeit
-  konnte ich da nicht angeben und Preise stehen nirgends, hieß also wieder anrufen". NIEMALS
-  „kein Formular" behaupten, wenn sichtbar eins da ist.
-- Hat ein Formular, aber keine Preise → auf den Preis-Engpass zielen („Preise stehen nirgends").
+GENAUIGKEIT — der Engpass MUSS zur ECHTEN Seite passen, und IMMER über „sehen/einsehen" +
+„direkt/verbindlich buchen" formuliert sein, NIE über „anfragen können" (das kann ein Formular):
+- Nur Telefon, KEIN Formular → „nur eine Telefonnummer, keine Preise und nirgends zu sehen ob
+  was frei ist, geschweige denn direkt buchen"
+- HAT bereits ein Kontakt-/Anfrageformular → Formular ANERKENNEN und auf die echte Lücke
+  pivotieren: „ihr habt zwar ein Kontaktformular, aber ich konnte nirgends sehen ob mein Termin
+  frei ist, keine Preise, und direkt buchen ging auch nicht, nur 'bitte melden' und warten".
+  NIEMALS „kein Formular" oder „kann nicht online anfragen" behaupten.
+- ⛔ NIE die Lücke als „kann nicht (online) anfragen" formulieren — anfragen kann jedes Formular.
+  Immer: keine Verfügbarkeit sichtbar / keine Preise sichtbar / nicht direkt verbindlich buchbar.
 - Im Zweifel den weichsten, sicher belegten Engpass nehmen, und NIE als unser Angebot ein
   „Anfrageformular" benennen (das hat er ggf. schon), wir bieten das Buchungssystem dahinter.
 

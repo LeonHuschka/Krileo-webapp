@@ -1,9 +1,9 @@
 import "server-only";
 
 import { leadEngine } from "@/lib/lead-engine/supabase";
-import { scrapeMapsUrl } from "@/lib/lead-engine/apify";
+import { searchPlaces, type DfsMapsPlace } from "@/lib/lead-engine/dataforseo";
 import { appendLeadEvent } from "@/lib/lead-engine/events";
-import type { ApifyPlace, Lead } from "@/lib/lead-engine/types";
+import type { Lead } from "@/lib/lead-engine/types";
 
 /**
  * Where on the leads table D2D leads sit. They share the `leads`
@@ -44,8 +44,60 @@ export type D2DLeadInput = {
 };
 
 /**
- * Pre-fill data from a Google Maps URL by hitting Apify with
- * startUrls. Returns null if Apify gives nothing back.
+ * Resolve a Google-Maps share link to its canonical URL. The iPhone
+ * "Teilen → Link kopieren" gives a short maps.app.goo.gl link that
+ * redirects to the full /maps/place/... URL we can parse.
+ */
+async function resolveMapsUrl(url: string): Promise<string> {
+  if (/(maps\.app\.goo\.gl|goo\.gl\/maps)/i.test(url)) {
+    try {
+      const resp = await fetch(url, { redirect: "follow" });
+      return resp.url || url;
+    } catch {
+      return url;
+    }
+  }
+  return url;
+}
+
+/**
+ * Pull the business name + coordinates out of a Google-Maps URL so we can
+ * look the place up. Handles the common shapes:
+ *   /maps/place/<Name>/@<lat>,<lng>,<zoom>z/...
+ *   ?q=<Name>  /  ?query=<Name>
+ */
+function parseMapsUrl(url: string): { name?: string; coordinate?: string } {
+  let name: string | undefined;
+  let coordinate: string | undefined;
+
+  const place = url.match(/\/maps\/place\/([^/@?]+)/);
+  if (place) {
+    name = decodeURIComponent(place[1].replace(/\+/g, " ")).trim();
+  }
+  if (!name) {
+    const q = url.match(/[?&](?:q|query)=([^&]+)/);
+    if (q) name = decodeURIComponent(q[1].replace(/\+/g, " ")).trim();
+  }
+  // Strip a leading "place name" that is actually coordinates
+  if (name && /^-?\d+\.\d+,-?\d+\.\d+$/.test(name)) name = undefined;
+
+  const at = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)(?:,(\d+(?:\.\d+)?)z)?/);
+  if (at) {
+    const zoom = at[3] ? Math.round(Number(at[3])) : 16;
+    coordinate = `${at[1]},${at[2]},${zoom}`;
+  }
+
+  return { name, coordinate };
+}
+
+/**
+ * Pre-fill data from a Google Maps URL via DataForSEO (same source as the
+ * bulk lead-gen — no Apify). Parses the business name (+ coordinates) from
+ * the link, runs a Maps search and returns the best match. Returns
+ * { raw: null } when nothing matches.
+ *
+ * Note: DataForSEO Maps doesn't return e-mail addresses — owner_email is
+ * filled later by enrichment, or manually.
  */
 export async function previewMapsUrl(url: string): Promise<{
   businessName?: string;
@@ -55,18 +107,44 @@ export async function previewMapsUrl(url: string): Promise<{
   city?: string;
   address?: string;
   category?: string;
-  raw: ApifyPlace | null;
+  raw: DfsMapsPlace | null;
 }> {
-  const place = await scrapeMapsUrl(url);
+  const resolved = await resolveMapsUrl(url);
+  const { name, coordinate } = parseMapsUrl(resolved);
+
+  if (!name) {
+    throw new Error(
+      "Konnte aus dem Link keinen Firmennamen lesen — bitte den vollen Google-Maps-Link nutzen (Maps → Teilen → Link), oder Felder manuell ausfüllen.",
+    );
+  }
+
+  // First try name + coordinates (most accurate). If the coordinate format
+  // trips the API or yields nothing, retry name-only against Germany.
+  let places: DfsMapsPlace[] = [];
+  try {
+    places = (
+      await searchPlaces({ keyword: name, depth: 5, locationCoordinate: coordinate })
+    ).places;
+  } catch {
+    places = [];
+  }
+  if (places.length === 0) {
+    places = (
+      await searchPlaces({ keyword: name, depth: 5, locationCode: 2276 })
+    ).places;
+  }
+
+  const place = places[0];
   if (!place) return { raw: null };
+
   return {
     businessName: place.title,
-    phone: place.phoneUnformatted ?? place.phone,
-    websiteUrl: place.website,
-    ownerEmail: place.emails?.[0],
-    city: place.city,
-    address: place.address,
-    category: place.categoryName,
+    phone: place.phone,
+    websiteUrl: place.url,
+    ownerEmail: undefined,
+    city: place.address_info?.city,
+    address: place.address ?? place.address_info?.address,
+    category: place.category,
     raw: place,
   };
 }

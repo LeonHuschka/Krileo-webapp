@@ -125,6 +125,10 @@ type ExtractResult = {
   owner_name: string | null;
   owner_email: string | null;
   legal_form: string | null;
+  // false when the Impressum clearly belongs to a different entity than the
+  // searched business (a directory / portal / listing platform). When no
+  // business name is supplied for comparison, the model returns true.
+  belongs_to_business: boolean;
 };
 
 const EXTRACT_SCHEMA = {
@@ -133,8 +137,9 @@ const EXTRACT_SCHEMA = {
     owner_name: { type: ["string", "null"] },
     owner_email: { type: ["string", "null"] },
     legal_form: { type: ["string", "null"] },
+    belongs_to_business: { type: "boolean" },
   },
-  required: ["owner_name", "owner_email", "legal_form"],
+  required: ["owner_name", "owner_email", "legal_form", "belongs_to_business"],
   additionalProperties: false,
 } as const;
 
@@ -353,8 +358,14 @@ async function findKontaktUrl(baseUrl: string, homeHtml: string | null): Promise
   return resolveUrl(baseUrl, "/kontakt");
 }
 
-async function extractFromText(text: string): Promise<ExtractResult | null> {
+async function extractFromText(
+  text: string,
+  businessName?: string | null,
+): Promise<ExtractResult | null> {
   try {
+    const userContent = businessName?.trim()
+      ? `GESUCHTER BETRIEB: ${businessName.trim()}\n\n---- IMPRESSUM / SEITENTEXT ----\n${text}`
+      : text;
     const response = await claude().messages.create({
       model: "claude-haiku-4-5",
       max_tokens: 512,
@@ -371,7 +382,7 @@ async function extractFromText(text: string): Promise<ExtractResult | null> {
           cache_control: { type: "ephemeral" },
         },
       ],
-      messages: [{ role: "user", content: text }],
+      messages: [{ role: "user", content: userContent }],
     });
     const raw = firstTextBlock(response.content);
     if (!raw) return null;
@@ -401,7 +412,7 @@ export async function enrichLead(leadId: string): Promise<EnrichResult> {
   const { data: lead } = await db
     .from("leads")
     .select(
-      "id, website_url, owner_name, owner_email, phone, raw_data, instagram_url, facebook_url, owner_linkedin_url",
+      "id, business_name, website_url, owner_name, owner_email, phone, raw_data, instagram_url, facebook_url, owner_linkedin_url",
     )
     .eq("id", leadId)
     .single();
@@ -417,6 +428,7 @@ export async function enrichLead(leadId: string): Promise<EnrichResult> {
   }
 
   const existing = lead as {
+    business_name: string | null;
     owner_name: string | null;
     owner_email: string | null;
     website_url: string | null;
@@ -427,13 +439,19 @@ export async function enrichLead(leadId: string): Promise<EnrichResult> {
     owner_linkedin_url: string | null;
   };
 
-  const website = existing.website_url;
+  // Skip a website that is a directory/portal listing — its Impressum is the
+  // platform operator's, not the business's.
+  const website =
+    existing.website_url && !isDirectoryHost(existing.website_url)
+      ? existing.website_url
+      : null;
 
   // Collect up to 3 pages of raw HTML (homepage + impressum + kontakt)
   // — the impressum feeds the Haiku owner extraction, ALL pages feed
   // the contact-channel sweep (emails, phones, socials).
   let extracted: ExtractResult | null = null;
   let source: EnrichResult["source"] = "none";
+  let trustSite = true;
   const htmlPages: string[] = [];
 
   if (website) {
@@ -459,8 +477,13 @@ export async function enrichLead(leadId: string): Promise<EnrichResult> {
     if (ownerSourceHtml) {
       const text = stripHtml(ownerSourceHtml);
       if (text.length >= 50) {
-        extracted = await extractFromText(text);
-        if (extracted?.owner_name) {
+        extracted = await extractFromText(text, existing.business_name);
+        // Impressum belongs to a different company / portal → don't trust
+        // anything scraped off this site (owner, e-mails, channels).
+        if (extracted && extracted.belongs_to_business === false) {
+          extracted = null;
+          trustSite = false;
+        } else if (extracted?.owner_name) {
           source = impressumHtml ? "impressum" : "homepage";
         }
       }
@@ -475,6 +498,7 @@ export async function enrichLead(leadId: string): Promise<EnrichResult> {
         owner_name: candidate,
         owner_email: existing.owner_email,
         legal_form: extracted?.legal_form ?? null,
+        belongs_to_business: true,
       };
       if (source === "none") source = "email";
     }
@@ -488,6 +512,7 @@ export async function enrichLead(leadId: string): Promise<EnrichResult> {
         owner_name: candidate,
         owner_email: existing.owner_email,
         legal_form: extracted?.legal_form ?? null,
+        belongs_to_business: true,
       };
       if (source === "none") source = "raw_data";
     }
@@ -513,9 +538,10 @@ export async function enrichLead(leadId: string): Promise<EnrichResult> {
   // Deep contact sweep over everything we fetched.
   const ownerNameForRanking =
     (patch.owner_name as string | undefined) ?? existing.owner_name;
-  const channels = htmlPages.length
-    ? extractContactChannels(htmlPages, ownerNameForRanking ?? null, existing.phone)
-    : [];
+  const channels =
+    htmlPages.length && trustSite
+      ? extractContactChannels(htmlPages, ownerNameForRanking ?? null, existing.phone)
+      : [];
 
   if (channels.length > 0) {
     patch.contact_channels = channels;
@@ -588,15 +614,59 @@ export async function enrichLead(leadId: string): Promise<EnrichResult> {
  * WITHOUT touching the DB. Used by the D2D Maps import to pre-fill the form
  * (DataForSEO Maps doesn't return owner/e-mail; this fills that gap).
  */
+/**
+ * Aggregator / directory / listing hosts whose Impressum belongs to the
+ * platform operator, NOT to the listed business. If the "website" is one of
+ * these, we don't trust any owner/e-mail from it.
+ */
+const DIRECTORY_HOSTS = [
+  "dasoertliche.de",
+  "dasörtliche.de",
+  "gelbeseiten.de",
+  "11880.com",
+  "golocal.de",
+  "yelp.de",
+  "yelp.com",
+  "wlw.de",
+  "werliefertwas.de",
+  "meinestadt.de",
+  "cylex.de",
+  "branchenbuch",
+  "kennstdueinen.de",
+  "firmenwissen.de",
+  "northdata.de",
+  "marktplatz-mittelstand.de",
+  "facebook.com",
+  "instagram.com",
+  "google.com",
+  "linktr.ee",
+];
+
+function isDirectoryHost(website: string): boolean {
+  try {
+    const host = new URL(website).hostname.replace(/^www\./, "").toLowerCase();
+    return DIRECTORY_HOSTS.some((d) => host === d || host.endsWith(`.${d}`) || host.includes(d));
+  } catch {
+    return false;
+  }
+}
+
 export async function scanWebsiteContacts(
   website: string | null | undefined,
   knownPhone?: string | null,
+  businessName?: string | null,
 ): Promise<{
   ownerName: string | null;
   ownerEmail: string | null;
   legalForm: string | null;
 }> {
   if (!website) return { ownerName: null, ownerEmail: null, legalForm: null };
+
+  // The linked "website" is a directory/portal listing → its Impressum is
+  // the platform's, not the business's. Don't pull owner/e-mail from it.
+  if (isDirectoryHost(website)) {
+    return { ownerName: null, ownerEmail: null, legalForm: null };
+  }
 
   const htmlPages: string[] = [];
   const homeHtml = await fetchWithTimeout(website);
@@ -621,7 +691,13 @@ export async function scanWebsiteContacts(
   const ownerSourceHtml = impressumHtml ?? homeHtml;
   if (ownerSourceHtml) {
     const text = stripHtml(ownerSourceHtml);
-    if (text.length >= 50) extracted = await extractFromText(text);
+    if (text.length >= 50) extracted = await extractFromText(text, businessName);
+  }
+
+  // If the Impressum clearly isn't this business (different company / portal),
+  // leave owner + e-mail empty rather than serving a wrong contact.
+  if (extracted && extracted.belongs_to_business === false) {
+    return { ownerName: null, ownerEmail: null, legalForm: null };
   }
 
   const ownerName = extracted?.owner_name ?? null;

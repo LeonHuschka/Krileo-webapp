@@ -146,7 +146,7 @@ export async function previewMapsUrl(url: string): Promise<{
   let ownerEmail: string | null = null;
   if (place.url) {
     try {
-      const c = await scanWebsiteContacts(place.url, place.phone);
+      const c = await scanWebsiteContacts(place.url, place.phone, place.title);
       ownerName = c.ownerName;
       ownerEmail = c.ownerEmail;
     } catch {

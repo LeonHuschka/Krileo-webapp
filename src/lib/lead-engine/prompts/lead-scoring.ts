@@ -201,15 +201,32 @@ Süddeutsch-direkt, locker, kurz, KEIN Pitch, nur freundliche Anschluss-Frage.
 Verboten: "komplett kalt", "ehrlich", "darf ich", "hätten Sie 30 Sek", "im Auftrag von".
 
 ═══════════════════════════════════════════════════════════════════════
-fit_offer_pitch — EIN Satz, was wir KONKRET für DIESEN Lead bauen
+fit_offer_pitch — EIN VOLLSTÄNDIGER Satz, der 1:1 in die Mail eingesetzt wird
 ═══════════════════════════════════════════════════════════════════════
 
-EIN KURZER Satz (max ~16 Wörter, stichwortartig ok): WAS genau + WAS es bringt.
-Knapp, kein Schachtelsatz, KEINE Aufzählung. Beispiele:
-- "Neue mobile Website — schnell, modern, bringt mehr Anfragen rein."
-- "Online-Terminbuchung in die bestehende Seite — Patienten buchen 24/7 selbst."
-- "Online-Bestellung + Abholzeit — Gäste bestellen vorab, weniger Schlange."
-Wenn kein echter Bedarf: ehrlicher, kleiner Optimierungs-Satz.
+Dieser Satz steht in der Cold-Mail als EIGENER, vollständiger Satz direkt nach Leons
+Vorstellung. Er MUSS deshalb grammatisch sauber und für sich allein lesbar sein:
+
+- Ein echter Satz MIT VERB, DU-Form, ca. 12-22 Wörter. Beginn natürlich, z.B.
+  „Wir bauen dir …", „Wir integrieren …", „Wir setzen dir … auf".
+- ⛔ KEIN Stichwort-Fragment, KEIN Gedankenstrich-statt-Verb, KEINE Aufzählung, kein
+  Doppelpunkt-Telegramm. (Falsch: „Buchungssystem in die Seite — Kunden buchen online" →
+  kein Verb, liest sich wie eine Überschrift.)
+- WAS wir konkret bauen + WAS es dem Inhaber bringt, flüssig in EINEM Satz verbunden.
+- Begriffe gemäß BEGRIFFLICHKEITEN (Buchungssystem, online buchen/anfragen — NIE
+  „Anfrageformular" als unser Produkt).
+
+GUTE BEISPIELE (vollständige Sätze, genau dieser Stil):
+- „Wir bauen dir ein Buchungssystem direkt in deine bestehende Seite, sodass Interessenten
+  Termin und Gerät online anfragen statt bei dir anzurufen."
+- „Wir integrieren eine Online-Terminbuchung in deine Seite, damit Patienten rund um die Uhr
+  selbst buchen — ganz ohne Telefon."
+- „Wir bauen dir eine neue, mobil-optimierte Website, auf der Besucher sofort finden, was sie
+  suchen, und aus Klicks echte Anfragen werden."
+SCHLECHT (Fragment ohne Verb): „Buchungssystem in die bestehende Seite — Interessenten buchen
+Termin & Gerät direkt online."
+
+Wenn kein echter Bedarf: ein ehrlicher, kleiner Optimierungs-Satz im selben vollständigen Stil.
 
 ZUSÄTZLICH: offer_benefits — GENAU 3 kurze Keyfacts, was die Offer DIESEM Kunden
 konkret bringt (Kundennutzen, keine Feature-Liste; kleine Sätze erlaubt, je max ~12 Wörter).

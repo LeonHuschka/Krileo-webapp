@@ -18,21 +18,22 @@ export type SequenceMail = {
 };
 
 /**
- * Default 3-step sequence. Sie-Form, kurz, authentisch — der
+ * Default 3-step sequence. Du-Form, kurz, authentisch — der
  * personalisierte Teil kommt pro Lead aus {{hook}}, {{offer_pitch}},
- * {{pain_1}} und {{price_range}} (beim Scoring generiert).
+ * {{pain_1}} und {{price_range}} (beim Scoring generiert). {{offer_pitch}}
+ * ist ein VOLLSTÄNDIGER Satz, steht also als eigener Satz im Text.
  */
 export const DEFAULT_SEQUENCE: SequenceMail[] = [
   {
     subject: "kurze Frage zu {{company_name}}",
     delay_days: 0,
-    body: `Hallo {{first_name}},
+    body: `Servus {{first_name}},
 
 {{hook}}
 
-Ich bin Leon von Krileo, kleine Web-Agentur hier aus Stuttgart. Wir bauen genau sowas für lokale Betriebe — {{offer_pitch}}
+Ich bin Leon, Inhaber von Krileo aus Stuttgart (Automatisierungs-Agentur). {{offer_pitch}}
 
-Wäre das für {{company_name}} überhaupt ein Thema, oder läuft das bewusst so übers Telefon? Wenn's interessant ist, zeige ich Ihnen in 10 Minuten, wie das bei Ihnen konkret aussehen würde — ein kurzes „ja“ reicht.
+Wenn du magst, bau ich dir das einfach mal an eurer Seite nach — du schaust kurz drauf und siehst, ob's für dich was bringt. Kein Call, kein Termin nötig. Ein kurzes „ja“ reicht.
 
 Viele Grüße aus Stuttgart
 Leon Huschka · Krileo`,
@@ -40,15 +41,13 @@ Leon Huschka · Krileo`,
   {
     subject: "",
     delay_days: 3,
-    body: `Hallo {{first_name}},
+    body: `Servus {{first_name}},
 
-ich war nochmal auf Ihrer Seite: {{pain_1}}.
+ich war nochmal kurz auf eurer Seite — {{pain_1}}. Genau da springen die meisten ab: wer auf dem Handy nicht in 30 Sekunden zum Ziel kommt, ist weg.
 
-Genau an der Stelle springen heute Kunden ab — alles läuft übers Handy, und wer dort nicht in 30 Sekunden zum Ziel kommt, ist weg.
+Sowas haben wir meist in 1-2 Wochen stehen, bei euch läge das grob bei {{price_range | einem fairen Festpreis}}. Einmal gebaut, läuft's.
 
-Sowas lösen wir in der Regel in 1-2 Wochen, bei Ihnen läge das grob bei {{price_range | einem fairen Festpreis}}. Einmal gebaut, läuft.
-
-Soll ich Ihnen zeigen, wie das für {{company_name}} aussehen würde? Eine kurze Antwort genügt.
+Soll ich dir's einfach an eurer Seite zeigen? Kurze Antwort reicht.
 
 Viele Grüße
 Leon`,
@@ -56,17 +55,16 @@ Leon`,
   {
     subject: "",
     delay_days: 7,
-    body: `Hallo {{first_name}},
+    body: `Servus {{first_name}},
 
-das ist meine letzte Mail, versprochen.
+letzte Mail von mir, versprochen.
 
-Falls der Alltag gerade keinen Raum dafür lässt — völlig verständlich. Die Idee liegt hier bereit, falls es später passt: {{offer_pitch}}
+Falls gerade einfach kein Kopf dafür ist — total verständlich. Ich leg's hier ab, falls es später mal passt.
 
-Ein kurzes „später“ oder „kein Bedarf“ reicht mir als Antwort.
+Ein kurzes „später“ oder „kein Bedarf“ und ich bin raus aus deinem Postfach.
 
-Danke für Ihre Zeit & weiterhin viel Erfolg mit {{company_name}}!
-Leon Huschka
-Krileo`,
+Danke für deine Zeit und weiterhin viel Erfolg mit {{company_name}}!
+Leon Huschka · Krileo`,
   },
 ];
 
@@ -120,9 +118,9 @@ export const SAMPLE_VARS: Record<string, string> = {
   location: "Stuttgart",
   city: "Stuttgart",
   category: "Physiotherapie",
-  hook: "Wollte gerade online einen Termin bei Ihnen machen — geht nur telefonisch, und um die Zeit haben Sie zu. Hätte ich abends in 30 Sekunden vom Sofa erledigt.",
+  hook: "ich wollte vorhin online einen Termin bei euch machen — ging aber nur telefonisch, und um die Zeit habt ihr zu. Hab's dann erstmal gelassen.\nIch tippe, da bin ich nicht der Einzige — gerade abends gehen so einige Anfragen verloren, bevor sie bei dir ankommen.",
   offer_pitch:
-    "Online-Terminbuchung, nahtlos in Ihre bestehende Website integriert (Mobile-First).",
+    "Wir integrieren eine Online-Terminbuchung in deine bestehende Seite, damit Patienten rund um die Uhr selbst buchen — ganz ohne Telefon.",
   offer_type: "booking",
   pain: "keine Online-Terminbuchung · Website nicht mobil-optimiert",
   pain_1: "keine Online-Terminbuchung",

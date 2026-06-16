@@ -49,7 +49,9 @@ ENTSCHEIDUNG:
 - Etwas passt nicht → contradiction=true:
    · reason: kurz, was falsch war
    · fixed_fit_offer: der korrekte Archetyp (NIE einer der etwas Vorhandenes anbietet)
-   · fixed_fit_offer_pitch: korrigierter 1-Satz-Pitch, der zur Realität passt
+   · fixed_fit_offer_pitch: korrigierter Pitch als VOLLSTÄNDIGER Du-Satz mit Verb
+     (z.B. „Wir bauen dir …"), passend zur Realität — KEIN Stichwort-Fragment, kein
+     Gedankenstrich-statt-Verb (er steht so als eigener Satz in der Mail)
    · fixed_offer_deliverable: korrigierter konkreter "DAS BEKOMMEN SIE"-Satz (25-45
      Wörter, bildhaft, WAS der Kunde bekommt + wie es hilft), passend zum korrigierten
      fit_offer. Passt der Deliverable schon → unverändert zurückgeben.

@@ -249,13 +249,24 @@ Vorstellung. Er MUSS deshalb grammatisch sauber und für sich allein lesbar sein
 
 GUTE BEISPIELE (vollständige Sätze, genau dieser Stil):
 - „Wir bauen dir ein Buchungssystem direkt in deine bestehende Seite, sodass Interessenten
-  Termin und Gerät online anfragen statt bei dir anzurufen."
+  Termin und Gerät online buchen statt bei dir anzurufen."
 - „Wir integrieren eine Online-Terminbuchung in deine Seite, damit Patienten rund um die Uhr
-  selbst buchen — ganz ohne Telefon."
+  selbst buchen, ganz ohne Telefon."
 - „Wir bauen dir eine neue, mobil-optimierte Website, auf der Besucher sofort finden, was sie
   suchen, und aus Klicks echte Anfragen werden."
 SCHLECHT (Fragment ohne Verb): „Buchungssystem in die bestehende Seite — Interessenten buchen
 Termin & Gerät direkt online."
+
+⭐ REDESIGN-ZUSATZ (NUR wenn die Seite WIRKLICH alt wirkt):
+WENN website_assessment.design_quality = „dated" ODER „very_dated" UND die Haupt-Offer NICHT
+ohnehin schon ein kompletter Website-Neubau ist (fit_offer ≠ „website"):
+→ häng EINEN ganz kurzen, beiläufigen Nebensatz an, dass ihr die (sichtbar in die Jahre
+gekommene) Seite im gleichen Zug frisch + mobil-optimiert neu machen könnt, damit sie mehr
+Leute anspricht und besser konvertiert. KEIN zweiter Pitch, nur ein knapper Zusatz am Ende.
+Beispiel: „Wir bauen dir ein Buchungssystem direkt in deine Seite, und da die eh schon etwas
+in die Jahre gekommen ist, frischen wir sie im gleichen Zug mobil-optimiert auf, damit auf dem
+Handy mehr Besucher hängenbleiben."
+WENN design_quality „modern" oder „ok" → KEINE Redesign-Erwähnung (das wäre unglaubwürdig).
 
 Wenn kein echter Bedarf: ein ehrlicher, kleiner Optimierungs-Satz im selben vollständigen Stil.
 
@@ -295,6 +306,11 @@ WEITERE BEISPIELE:
 - Veraltete Website: "Eine komplett neue, mobil-optimierte Website mit klarer
   Struktur und schnellen Ladezeiten — damit Besucher auf dem Handy sofort finden,
   was sie suchen, und aus Klicks Anfragen werden."
+
+⭐ REDESIGN-ZUSATZ: Ist die Haupt-Offer Booking/Automation, ABER die Seite veraltet
+(design_quality = "dated"/"very_dated"), nimm das Redesign als ZWEITEN Baustein mit auf,
+z.B. "… plus ein frisches, mobil-optimiertes Redesign deiner Seite, damit sie mehr Besucher
+anspricht und besser konvertiert." Bei moderner/ok Seite NICHT erwähnen.
 
 Wenn close_scope/Gesprächsnotizen vorliegen: offer_deliverable MUSS genau das
 abbilden, was besprochen/vereinbart wurde — nicht das hypothetische Ideal-Paket.

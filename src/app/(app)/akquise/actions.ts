@@ -932,6 +932,9 @@ export async function rescoreAll(
     .select("id")
     .not("outreach_status", "in", "(won,lost,suppressed)")
     .not("lead_score", "is", null)
+    // D2D leads are scored from the in-person meeting notes, not the website,
+    // and re-scoring would reset their warm tier to cold — skip them.
+    .or("lead_source.is.null,lead_source.neq.d2d")
     .order("lead_score", { ascending: true, nullsFirst: false })
     .limit(limit);
   if (error) throw new Error(error.message);

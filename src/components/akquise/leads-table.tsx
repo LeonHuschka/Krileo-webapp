@@ -46,6 +46,7 @@ import {
 import { LeadRowActions } from "@/components/akquise/lead-row-actions";
 import { PickupBadge } from "@/components/akquise/pickup-badge";
 import { CleanupDialog } from "@/components/akquise/cleanup-dialog";
+import { ChannelSelect } from "@/components/akquise/channel-select";
 import type { Channel, Lead, LeadEvent } from "@/lib/lead-engine/types";
 
 const ALL = "__all__";
@@ -56,13 +57,6 @@ const TIER_COLORS: Record<string, string> = {
   cold: "border-sky-500/40 bg-sky-500/15 text-sky-300",
 };
 
-const CHANNEL_COLORS: Record<string, string> = {
-  email: "border-sky-500/40 bg-sky-500/15 text-sky-300",
-  call: "border-emerald-500/40 bg-emerald-500/15 text-emerald-300",
-  instagram: "border-fuchsia-500/40 bg-fuchsia-500/15 text-fuchsia-300",
-  linkedin: "border-blue-500/40 bg-blue-500/15 text-blue-300",
-  none: "border-zinc-500/40 bg-zinc-500/15 text-zinc-300",
-};
 
 function relativeTime(iso: string): string {
   const ms = Date.now() - new Date(iso).getTime();
@@ -489,19 +483,7 @@ export function LeadsTable({
                     )}
                   </TableCell>
                   <TableCell>
-                    {l.primary_channel ? (
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          "border text-[10px] uppercase",
-                          CHANNEL_COLORS[l.primary_channel] ?? "",
-                        )}
-                      >
-                        {l.primary_channel}
-                      </Badge>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">—</span>
-                    )}
+                    <ChannelSelect leadId={l.id} channel={l.primary_channel} />
                   </TableCell>
                   <TableCell>
                     <PickupBadge

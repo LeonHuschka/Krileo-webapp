@@ -148,9 +148,14 @@ STIL — gilt für {{hook}} UND {{offer_pitch}}
 - „Seite" statt „Website".
 - Klingt wie ein echter Mensch, der kurz was hinschreibt, NICHT wie polierter Verkaufstext.
   KEINE Marketing-Adjektive (maßgeschneidert, optimal, effizient, nahtlos, individuell,
-  Mehrwert, perfekt). KEINE symmetrischen Dreier-Aufzählungen. Em-Dash sparsam (max. 1 pro Block).
+  Mehrwert, perfekt). KEINE symmetrischen Dreier-Aufzählungen.
+- ⛔ GEDANKENSTRICHE möglichst VERMEIDEN. Verbinde mit Komma oder mach einen Punkt. Höchstens
+  EINER im ganzen Text, und nur wenn er sich wirklich natürlich anfühlt. Lieber gar keiner.
+- ⛔ ERFINDE KEINE persönlichen/familiären Details über mich (kein „meine Tochter", „meine
+  Hochzeit", „mein Sohn"). Halte das Szenario allgemein: „für ein Fest", „fürs Wochenende",
+  „für nächstes Wochenende", „für eine Feier".
 - ZEITBEZUG nur unmittelbar („grade", „gerade", „eben", „vorhin"), NIE eine Verzögerung
-  („letzte Woche", „neulich") — sonst denkt der Inhaber „warum schreibt der mir erst jetzt?".
+  („letzte Woche", „neulich"), sonst denkt der Inhaber „warum schreibt der mir erst jetzt?".
 
 ═══════════════════════════════════════════════════════════════════════
 HOOK — DIE KUNDEN-VERLUST-STORY (wichtigstes Text-Feld: personalized_hook)
@@ -164,15 +169,17 @@ AUFBAU — zwei kurze Absätze (getrennt durch \\n):
 1) Konkrete, erlebte Beobachtung, als wäre ICH grade ein echter Interessent auf eurer Seite
    gewesen: „Ich wollte gerade [X] bei euch reservieren. Auf eurer Seite [konkreter Engpass]."
    Muss zur ECHTEN Seite passen. Enden auf meinem Verhalten: „Hab's dann gelassen."
-2) Hochskalieren auf den Verlust: „Und ich glaub, so geht's nicht nur mir. …" → enden auf der
-   verlorenen Anfrage („die sind dann einfach weg").
+2) Hochskalieren auf den Verlust: „Und ich glaub, so geht's nicht nur mir. …" Klar machen, dass
+   das VERLORENE Kunden sind, die am Ende NICHTS bei dir buchen (online buchen zu können ist
+   heute quasi Pflicht). NICHT vage „die sind dann weg", sondern z.B. „Diese eigentlich sicheren
+   Kunden buchen am Ende einfach nichts bei dir." KEIN „woanders / zur Konkurrenz".
 
 GUTES BEISPIEL:
-„Ich wollte grade für ein Wochenende im Harz zwei E-Bikes bei euch reservieren. Auf eurer Seite
-konnte ich aber nirgends sehen, ob an meinem Termin überhaupt was frei ist. Und direkt buchen
-ging auch nicht — nur Telefonnummer und Mail. Hab's dann gelassen.
-Und ich glaub, so geht's nicht nur mir. Die Leute, die abends auf dem Sofa spontan ihren Ausflug
-planen, rufen nicht extra an. Die sind dann einfach weg."
+„Ich wollte grade fürs Wochenende zwei E-Bikes bei euch reservieren. Auf eurer Seite konnte ich
+aber nirgends sehen, ob an meinem Termin überhaupt was frei ist, und direkt buchen ging auch
+nicht, nur Telefonnummer und Mail. Hab's dann gelassen.
+Und ich glaub, so geht's nicht nur mir. Wer abends spontan einen Ausflug plant, ruft nicht extra
+an. Diese eigentlich sicheren Kunden buchen am Ende einfach nichts bei dir."
 
 GENAUIGKEIT (sonst verbrannt) — der Engpass MUSS zur ECHTEN Seite passen:
 - Nur Telefon/Mail, kein Online-Weg → „online buchen ging nicht, nur Telefonnummer und Mail"
@@ -185,9 +192,9 @@ nie gesehen → Lead weg. Und „anfragen" ist NICHT die Lücke (das kann ein Fo
 sie immer über „nicht sehen ob frei ist" + „nicht direkt buchen".
 
 VERLUST ZEIGEN, ABER NICHT GEMEIN: Die verlorene Buchung demonstrieren („Hab's dann gelassen"),
-aber NIE als Urteil über sein Geschäft. ⛔ KEIN „und woanders / zur Konkurrenz geschaut" — das
-triggert Ego-Abwehr. Der Verlust ergibt sich aus dem Verhalten + dem Skalierungs-Satz („die sind
-einfach weg"), nicht aus einem Seitenhieb.
+aber NIE als Urteil über sein Geschäft. ⛔ KEIN „und woanders / zur Konkurrenz geschaut", das
+triggert Ego-Abwehr. Der Inhaber soll selbst merken, dass das eigentlich sichere Kunden waren,
+die am Ende nichts bei ihm buchen, nicht durch einen Seitenhieb.
 
 KUNDENSTIMME: KEINE Fachbegriffe wie „Buchungssystem" im Hook — der Kunde sagt „konnte nirgends
 online buchen", nicht „kein Buchungssystem".
@@ -223,12 +230,15 @@ fit_offer_pitch — DIE LÖSUNG, 1:1 in die Mail (nach „…Automatisierungs-Ag
 
 GUTES BEISPIEL:
 „Wir bauen dir ein Online-Buchungssystem direkt in deine bestehende Seite. Besucher sehen
-sofort, ob ihr Wunschtermin frei ist, und buchen direkt — ohne dich anzurufen."
+sofort, ob ihr Wunschtermin frei ist, und buchen direkt, ohne dich anzurufen."
 
 ⭐ REDESIGN-ZUSATZ (NUR wenn die Seite WIRKLICH alt wirkt): Ist website_assessment.design_quality
 = „dated"/„very_dated" UND die Haupt-Offer nicht ohnehin ein kompletter Neubau (fit_offer ≠
-„website"), häng EINEN kurzen Satz an, dass ihr die in die Jahre gekommene Seite im gleichen
-Zug mobil neu macht, damit auf dem Handy mehr Besucher hängenbleiben. Bei moderner/ok Seite NICHT.
+„website"), häng EINE weiche, beiläufige BEOBACHTUNG an, dass die Seite nicht mehr ganz modern
+wirkt. ⛔ NICHT als zweite Leistung anbieten („wir machen die Seite auch gleich neu") — das
+setzt den Inhaber unter Druck („noch eine Sache, ohje, lass mal"). Stattdessen genau in diese
+Richtung: „Zusätzlich ist mir aufgefallen, dass deine Seite nicht mehr so modern aussieht, wie
+sie heute könnte." Nur die Beobachtung, kein Hard-Sell. Bei moderner/ok Seite GAR NICHT erwähnen.
 
 Wenn kein echter Bedarf: ein ehrlicher, kleiner Optimierungs-Satz im selben vollständigen Stil.
 

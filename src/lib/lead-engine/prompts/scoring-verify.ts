@@ -46,16 +46,16 @@ PRÜFE HART, in dieser Reihenfolge:
      eine SELBSTVORSTELLUNG („Ich bin Leon", „kleine Agentur"), eine Frage / einen CTA
      („passt das kurz?"), einen Gruß/Sign-off, einen Link, oder eine Lösung/Pitch.
    - Ist er in SIE-Form statt DU-Form, oder redet über den Inhaber in der 3. Person?
-   - Endet er auf einer Lösung statt auf der implizit verlorenen Anfrage?
-   - ⛔ Enthält er „und woanders / zur Konkurrenz geschaut" o.ä.? Das ist ein Seitenhieb und
-     triggert Ego-Abwehr → raus. Der Verlust läuft NUR über „Hab's dann gelassen" + „die sind
-     einfach weg", nie über einen Vergleich mit der Konkurrenz.
+   - Endet er sinnvoll? NICHT vage („die sind dann einfach weg"), sondern klar als VERLORENE
+     Kunden, die am Ende nichts beim Inhaber buchen (z.B. „buchen am Ende einfach nichts bei dir").
+   - ⛔ Enthält er „und woanders / zur Konkurrenz geschaut" o.ä.? Seitenhieb → raus.
+   - ⛔ Erfindet er persönliche/familiäre Details über den Absender („meine Tochter", „meine
+     Hochzeit")? → raus, Szenario allgemein halten („für ein Fest", „fürs Wochenende").
    - Spricht im Hook ein Vendor statt eines echten Interessenten? Fachbegriffe wie
      „Buchungssystem" gehören NICHT in den Hook (der Kunde sagt „konnte nirgends online buchen").
-   - KLINGT ER NACH KI statt nach „schnell vom Handy getippt"? Mehr als 1 Gedankenstrich pro
-     Absatz, Doppelpunkt-Dramatik, Schachtelsätze oder Marketing-Adjektive (maßgeschneidert,
-     optimal, nahtlos …)? Ein einzelner Em-Dash pro Block ist okay; mehrere/Doppelpunkt-Listen
-     korrigieren. Subjekt am Satzanfang ausschreiben („Ich wollte …", nicht „Wollte …").
+   - KLINGT ER NACH KI? Gedankenstriche möglichst vermeiden — höchstens EINER im ganzen Hook,
+     sonst durch Komma/Punkt ersetzen. Keine Doppelpunkt-Dramatik, keine Schachtelsätze, keine
+     Marketing-Adjektive. Subjekt am Satzanfang ausschreiben („Ich wollte …", nicht „Wollte …").
    - RECHTSCHREIBUNG korrekt? Lockerer Ton heißt NICHT alles klein. Normale deutsche
      Orthographie: Satzanfänge GROSS (auch das erste Wort: „Ich wollte …"), Nomen GROSS.
    All das muss korrigiert werden.
@@ -75,18 +75,17 @@ ENTSCHEIDUNG:
    · fixed_pain_points: korrigierte, datengedeckte Pain-Points (2-3)
    · fixed_hook: faktisch korrekte Kunden-Verlust-Story, zwei kurze Absätze, DU-Form, erste
      Person als echter Interessent, im Stil „schnell vom Handy getippt", korrekte
-     Groß-/Kleinschreibung, max. 1 Em-Dash pro Absatz:
-     Absatz 1 „Ich wollte gerade [X] bei euch reservieren. Auf eurer Seite [konkreter Engpass:
-     nichts zu sehen ob frei ist / keine Preise / nicht direkt buchbar]. Hab's dann gelassen."
-     Zeitbezug unmittelbar (grade/gerade/vorhin), nie „letzte Woche". Lücke über „sehen + direkt
-     buchen", NIE über „anfragen können". Hat der Lead ein Kontaktformular: dieses anerkennen
-     („ihr habt zwar ein Kontaktformular, aber ob mein Termin frei ist konnte ich nirgends
-     sehen, und Preise standen auch keine dabei").
-     Absatz 2 „Und ich glaub, so geht's nicht nur mir. [implizit verlorene Anfragen, enden auf
-     „die sind dann einfach weg"]."
-     KEIN „woanders/zur Konkurrenz geschaut". KEINE Anrede, Vorstellung, CTA/Frage, Gruß, Link,
-     Lösung. Endet auf der verlorenen Anfrage. Behauptet NUR Lücken, die die Website belegt.
-     Passt der Hook schon → unverändert zurückgeben.
+     Groß-/Kleinschreibung, höchstens 1 Gedankenstrich im ganzen Hook (lieber keiner), kein
+     erfundenes Personendetail:
+     Absatz 1 „Ich wollte gerade [X allgemein, z.B. fürs Wochenende] bei euch reservieren. Auf
+     eurer Seite [konkreter Engpass: nichts zu sehen ob frei ist, keine Preise, nicht direkt
+     buchbar]. Hab's dann gelassen." Zeitbezug unmittelbar (grade/gerade/vorhin). Lücke über
+     „sehen + direkt buchen", NIE „anfragen können". Hat der Lead ein Kontaktformular: anerkennen.
+     Absatz 2 „Und ich glaub, so geht's nicht nur mir. [klar: das sind verlorene Kunden, die am
+     Ende nichts bei dir buchen, z.B. „Diese eigentlich sicheren Kunden buchen am Ende einfach
+     nichts bei dir."]"
+     KEIN „woanders/zur Konkurrenz". KEINE Anrede, Vorstellung, CTA/Frage, Gruß, Link, Lösung.
+     Behauptet NUR Lücken, die die Website belegt. Passt der Hook schon → unverändert zurückgeben.
    · severity_penalty (0-25): wie stark pain_severity gesenkt werden muss —
      HOCH (15-25) wenn eine erfundene oder bereits vorhandene Lücke behauptet wurde
      (in Offer ODER Hook), mittel (5-15) bei kleineren Fehlgriffen, 0 wenn nur Stil

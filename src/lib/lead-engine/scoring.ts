@@ -17,24 +17,21 @@ import type {
 } from "@/lib/lead-engine/types";
 
 /**
- * Cap em/en-dashes at max 1 per block (= per \n-separated paragraph). A
- * single dash reads fine and is allowed; the model's tendency to chain
- * several ("AI feel") gets the extras replaced with a comma. Newlines and
- * regular hyphens in compound words are preserved.
+ * Cap em/en-dashes at max 1 in the WHOLE field (hook or pitch). Dashes read
+ * as "AI" when chained; keep at most the first, replace the rest with a
+ * comma. Newlines (paragraph break) and regular hyphens in compound words
+ * are preserved.
  */
 function capDashes(s: string | null | undefined): string {
-  const blocks = (s ?? "").split("\n").map((line) => {
-    let first = true;
-    return line.replace(/[^\S\n]*[—–][^\S\n]*/g, () => {
+  let first = true;
+  return (s ?? "")
+    .replace(/[^\S\n]*[—–][^\S\n]*/g, () => {
       if (first) {
         first = false;
         return " — ";
       }
       return ", ";
-    });
-  });
-  return blocks
-    .join("\n")
+    })
     .replace(/([.!?])\s*,\s*/g, "$1 ")
     .replace(/,\s*,/g, ", ")
     .replace(/ +,/g, ",")

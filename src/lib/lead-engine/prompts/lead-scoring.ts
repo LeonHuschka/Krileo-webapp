@@ -134,92 +134,70 @@ Differenziere bewusst — zwei Leads dürfen NIE den exakt gleichen Total-Score 
    9 = einige Signale · 3 = ruhig/eingeschlafen
 
 ═══════════════════════════════════════════════════════════════════════
+STIL — gilt für {{hook}} UND {{offer_pitch}}
+═══════════════════════════════════════════════════════════════════════
+
+- Kurze Sätze. KEINE Run-ons mit 3+ aneinandergereihten Teilen. Lieber drei kurze Sätze als
+  ein Schachtelsatz. Test: Erschlägt der erste Satz beim Lesen? Dann kürzen.
+- Subjekt am Satzanfang AUSSCHREIBEN: „Ich wollte …", nicht „Wollte …". Locker im Ton, aber
+  grammatisch vollständig und mit normaler Groß-/Kleinschreibung (Satzanfänge groß, Nomen groß),
+  sonst liest es sich wie ein Tippfehler.
+- Possessiv statt vage: „auf eurer Seite", nicht „auf der Seite".
+- Person konsistent: der Betrieb = „euch/eurer", die Person (Inhaber) = „du/dir". Nicht mitten
+  im Satz wechseln.
+- „Seite" statt „Website".
+- Klingt wie ein echter Mensch, der kurz was hinschreibt, NICHT wie polierter Verkaufstext.
+  KEINE Marketing-Adjektive (maßgeschneidert, optimal, effizient, nahtlos, individuell,
+  Mehrwert, perfekt). KEINE symmetrischen Dreier-Aufzählungen. Em-Dash sparsam (max. 1 pro Block).
+- ZEITBEZUG nur unmittelbar („grade", „gerade", „eben", „vorhin"), NIE eine Verzögerung
+  („letzte Woche", „neulich") — sonst denkt der Inhaber „warum schreibt der mir erst jetzt?".
+
+═══════════════════════════════════════════════════════════════════════
 HOOK — DIE KUNDEN-VERLUST-STORY (wichtigstes Text-Feld: personalized_hook)
 ═══════════════════════════════════════════════════════════════════════
 
-Der Hook ist der EINZIGE frei generierte Textblock der Cold-Mail. ALLES danach
-(Vorstellung „Ich bin Leon…", das Angebot, der CTA, der Gruß) ist STATISCH und wird
-automatisch angehängt. Was der Hook ausgibt, steht 1:1 in der Mail. Deshalb darf der
-Hook AUSSCHLIESSLICH die personalisierte Beobachtung enthalten — sonst NICHTS.
+Der Hook ist der EINZIGE frei generierte Textblock der Mail. Alles danach (Vorstellung
+„Ich bin Leon…", das Angebot, der CTA, der Gruß) ist STATISCH. Was der Hook ausgibt, steht
+1:1 in der Mail. Es spricht ein echter Interessent, KEIN Vendor.
 
-AUFBAU — zwei kurze Absätze, zusammen ~3-4 Sätze, getrennt durch einen Zeilenumbruch (\\n):
+AUFBAU — zwei kurze Absätze (getrennt durch \\n):
+1) Konkrete, erlebte Beobachtung, als wäre ICH grade ein echter Interessent auf eurer Seite
+   gewesen: „Ich wollte gerade [X] bei euch reservieren. Auf eurer Seite [konkreter Engpass]."
+   Muss zur ECHTEN Seite passen. Enden auf meinem Verhalten: „Hab's dann gelassen."
+2) Hochskalieren auf den Verlust: „Und ich glaub, so geht's nicht nur mir. …" → enden auf der
+   verlorenen Anfrage („die sind dann einfach weg").
 
-Absatz 1 — die erlebte Beobachtung (Ich = echter Interessent, der GERADE EBEN auf der Seite war):
-„ich wollte [konkret X buchen/reservieren], [der konkrete Engpass auf GENAU DIESER Seite,
-beiläufig erzählt]." Dann enden auf MEINEM eigenen Verhalten: „Hab's dann ehrlich gesagt
-gelassen und woanders geschaut."
+GUTES BEISPIEL:
+„Ich wollte grade für ein Wochenende im Harz zwei E-Bikes bei euch reservieren. Auf eurer Seite
+konnte ich aber nirgends sehen, ob an meinem Termin überhaupt was frei ist. Und direkt buchen
+ging auch nicht — nur Telefonnummer und Mail. Hab's dann gelassen.
+Und ich glaub, so geht's nicht nur mir. Die Leute, die abends auf dem Sofa spontan ihren Ausflug
+planen, rufen nicht extra an. Die sind dann einfach weg."
 
-⛔ ZEITBEZUG NUR UNMITTELBAR: „grade eben", „gerade", „eben" oder „vorhin" — es muss klingen,
-als wäre ich JETZT GERADE auf der Seite gewesen. NIEMALS etwas, das eine Verzögerung andeutet
-(„letzte Woche", „neulich", „vor ein paar Tagen", „kürzlich") — sonst denkt der Inhaber beim
-ersten Lesen „warum schreibt der mir erst jetzt?". Im Zweifel ganz ohne Zeitwort.
+GENAUIGKEIT (sonst verbrannt) — der Engpass MUSS zur ECHTEN Seite passen:
+- Nur Telefon/Mail, kein Online-Weg → „online buchen ging nicht, nur Telefonnummer und Mail"
+- Hat ein Kontaktformular, aber keinen echten Prozess → Formular ANERKENNEN, auf die Lücke
+  pivotieren: „ihr habt zwar ein Kontaktformular, aber ob mein Termin frei ist konnte ich
+  nirgends sehen, und Preise standen auch keine dabei"
+- Keine Preise → auf den Preis-Engpass zielen
+NIE „kein Formular" behaupten, wenn der Lead sichtbar eins hat — wirkt, als hätte ich die Seite
+nie gesehen → Lead weg. Und „anfragen" ist NICHT die Lücke (das kann ein Formular), formuliere
+sie immer über „nicht sehen ob frei ist" + „nicht direkt buchen".
 
-Absatz 2 — ganz beiläufig auf den Verlust hochskalieren:
-„Und ich glaub, so geht's nicht nur mir." Dann die implizit verlorene Anfrage, z.B.
-„Gerade die spontanen Sachen abends und am Wochenende ruft halt keiner extra an, die sind dann
-einfach weg." NICHT auf einer Lösung enden, kein Pitch. Verlust bleibt implizit.
+VERLUST ZEIGEN, ABER NICHT GEMEIN: Die verlorene Buchung demonstrieren („Hab's dann gelassen"),
+aber NIE als Urteil über sein Geschäft. ⛔ KEIN „und woanders / zur Konkurrenz geschaut" — das
+triggert Ego-Abwehr. Der Verlust ergibt sich aus dem Verhalten + dem Skalierungs-Satz („die sind
+einfach weg"), nicht aus einem Seitenhieb.
 
-⛔⛔ SCHREIBSTIL — MUSS KLINGEN WIE SCHNELL VOM HANDY GETIPPT (das ist das Wichtigste!):
-Es soll wirken, als hätte Leon die Zeilen eben locker vom Handy getippt, NICHT wie ein
-geschliffener Marketing- oder KI-Text.
-- ⛔ KEINE Gedankenstriche (— oder –). Das ist der größte „KI-Verräter". Verbinde mit Komma,
-  Punkt oder einem einfachen „und" / „aber".
-- ⛔ KEINE Doppelpunkt-Dramatik, KEINE Aufzählungs-Doppelpunkte, keine geschachtelten Sätze.
-- Kurze, einfache Sätze. Alltagssprache, ruhig mit „hab", „ne", „eben", „ehrlich gesagt",
-  „glaub", „halt", „dann". Lieber ein bisschen unperfekt als zu glatt.
-- ✅ ABER KORREKTE RECHTSCHREIBUNG inkl. Groß-/Kleinschreibung! Satzanfänge GROSS, Nomen GROSS,
-  ganz normale deutsche Orthographie. Lockerer Ton heißt NICHT alles klein. EINZIGE Ausnahme:
-  das allererste Wort des Hooks ist klein, weil es direkt an die Anrede („Servus {{first_name}},")
-  anschließt. Jeder folgende Satz beginnt normal mit Großbuchstaben.
-- Keine Werbe-Wörter, keine perfekte Dramaturgie. Einfach echt und beiläufig.
+KUNDENSTIMME: KEINE Fachbegriffe wie „Buchungssystem" im Hook — der Kunde sagt „konnte nirgends
+online buchen", nicht „kein Buchungssystem".
 
-GUTES BEISPIEL A — Seite hat NUR Telefon (wirklich kein Formular):
-„wollte grade eben für ein Vereinsfest bei euch den Hau den Lukas buchen, hab auf der Seite aber
-weder Preise gesehen noch konnte ich irgendwo sehen ob am Wunschtag überhaupt was frei ist,
-nur eine Telefonnummer. Hab's dann ehrlich gesagt gelassen und woanders geschaut.
-Und ich glaub, so geht's nicht nur mir. Gerade abends und am Wochenende ruft halt keiner extra
-an um zu fragen ob frei ist, die sind dann einfach weg."
+⛔ VERBOTEN im Hook: keine Anrede, keine Vorstellung („Ich bin Leon", „kleine Agentur"), keine
+Frage / kein CTA, kein Gruß / Sign-off, kein Link, keine Lösung / kein Pitch, nie über den
+Inhaber in dritter Person.
 
-GUTES BEISPIEL B — Seite HAT bereits ein Kontaktformular (Formular anerkennen, dann pivotieren):
-„wollte grade eben eine Hüpfburg buchen, ihr habt zwar ein Kontaktformular, aber ich konnte
-nirgends sehen ob mein Termin frei ist und auch keine Preise, am Ende hätt ich auf gut Glück
-'bitte melden' geschickt und abwarten müssen. Hab ich dann gelassen.
-Und ehrlich, so geht's bestimmt nicht nur mir. Wer abends spontan was braucht und nicht direkt
-sieht ob's frei ist und buchen kann, ist meist schneller wieder weg als die Antwort kommt."
-
-GENAUIGKEIT — der Engpass MUSS zur ECHTEN Seite passen, und IMMER über „sehen/einsehen" +
-„direkt/verbindlich buchen" formuliert sein, NIE über „anfragen können" (das kann ein Formular):
-- Nur Telefon, KEIN Formular → „nur eine Telefonnummer, keine Preise und nirgends zu sehen ob
-  was frei ist, geschweige denn direkt buchen"
-- HAT bereits ein Kontakt-/Anfrageformular → Formular ANERKENNEN und auf die echte Lücke
-  pivotieren: „ihr habt zwar ein Kontaktformular, aber ich konnte nirgends sehen ob mein Termin
-  frei ist, keine Preise, und direkt buchen ging auch nicht, nur 'bitte melden' und warten".
-  NIEMALS „kein Formular" oder „kann nicht online anfragen" behaupten.
-- ⛔ NIE die Lücke als „kann nicht (online) anfragen" formulieren — anfragen kann jedes Formular.
-  Immer: keine Verfügbarkeit sichtbar / keine Preise sichtbar / nicht direkt verbindlich buchbar.
-- Im Zweifel den weichsten, sicher belegten Engpass nehmen, und NIE als unser Angebot ein
-  „Anfrageformular" benennen (das hat er ggf. schon), wir bieten das Buchungssystem dahinter.
-
-TON: deutsch, locker, erste Person (ich als Interessent), durchgängig DU-FORM zum Lead
-(du/dir/euch, NIEMALS Sie). Nie über den Inhaber in der 3. Person („damit Sven nicht…"), immer
-direkt „du". Der Hook endet so, dass danach nahtlos „Ich bin Leon, Inhaber von Krileo …"
-anschließt.
-
-⛔ VERBOTEN im Hook (steht danach eh schon im statischen Teil → Doppelung + unsinnige Mail):
-- KEINE Anrede („Hallo…", „Hi…")
-- KEINE Vorstellung („Ich bin Leon", „kleine Agentur", „wir von Krileo")
-- KEINE Frage / kein CTA an den Lead („passt das kurz?", „wäre das interessant?")
-- KEIN Gruß / Sign-off
-- KEIN Link
-- KEINE Lösung / kein Pitch / kein Angebot (kommt im statischen Teil danach)
-- KEINE Gedankenstriche (—/–) und keine Doppelpunkt-Dramatik (klingt sofort nach KI)
-SCHLECHT (zu glatt / KI): „ich wollte buchen — fand aber keinen Weg: nur Telefon. So verlieren
-Sie Anfragen." → Gedankenstrich, Doppelpunkt-Liste, Sie-Form, Urteil. Stattdessen beiläufig vom
-Handy getippt, Du-Form, ohne Gedankenstriche.
-
-WENN KEINE LÜCKE SICHER BELEGT IST (gute, vollständige Seite): keine erfundene Lücke.
-Dann der weichste echte Reibungspunkt im selben Aufbau — oder ehrlich neugierig statt
-behauptet. Lieber zurückhaltend als falsch.
+WENN KEINE LÜCKE SICHER BELEGT IST (gute, vollständige Seite): keine erfundene Lücke. Dann der
+weichste echte Reibungspunkt im selben Aufbau, oder ehrlich neugierig statt behauptet.
 
 ═══════════════════════════════════════════════════════════════════════
 PICKUP-LINES — MENSCHLICH (für den Call-Kanal, trotzdem ausfüllen)
@@ -232,41 +210,25 @@ Süddeutsch-direkt, locker, kurz, KEIN Pitch, nur freundliche Anschluss-Frage.
 Verboten: "komplett kalt", "ehrlich", "darf ich", "hätten Sie 30 Sek", "im Auftrag von".
 
 ═══════════════════════════════════════════════════════════════════════
-fit_offer_pitch — EIN VOLLSTÄNDIGER Satz, der 1:1 in die Mail eingesetzt wird
+fit_offer_pitch — DIE LÖSUNG, 1:1 in die Mail (nach „…Automatisierungs-Agentur).")
 ═══════════════════════════════════════════════════════════════════════
 
-Dieser Satz steht in der Cold-Mail als EIGENER, vollständiger Satz direkt nach Leons
-Vorstellung. Er MUSS deshalb grammatisch sauber und für sich allein lesbar sein:
+- 1–2 kurze, VOLLSTÄNDIGE Sätze (Subjekt + Verb), die nahtlos nach „…Automatisierungs-Agentur)."
+  weiterlaufen. Beginnt meist mit „Wir bauen …". Stil wie oben (STIL gilt auch hier).
+- ⛔ NIEMALS ein Fragment ohne Verb (FALSCH: „Buchungssystem in die Seite — direkt online buchen.").
+- Benennt die Lösung GENAU zum im Hook genannten Engpass, mit richtiger Begrifflichkeit
+  (siehe BEGRIFFLICHKEITEN: „Online-Buchungssystem", „Verfügbarkeit/Termin direkt sehen",
+  „verbindlich buchen", „Preise direkt einsehen" — NIE „Anfrageformular" als unser Produkt).
+- Zweite Person (du/dir), nie Inhaber-Name in dritter Person. Kein Link, kein CTA.
 
-- Ein echter Satz MIT VERB, DU-Form, ca. 12-22 Wörter. Beginn natürlich, z.B.
-  „Wir bauen dir …", „Wir integrieren …", „Wir setzen dir … auf".
-- ⛔ KEIN Stichwort-Fragment, KEIN Gedankenstrich-statt-Verb, KEINE Aufzählung, kein
-  Doppelpunkt-Telegramm. (Falsch: „Buchungssystem in die Seite — Kunden buchen online" →
-  kein Verb, liest sich wie eine Überschrift.)
-- WAS wir konkret bauen + WAS es dem Inhaber bringt, flüssig in EINEM Satz verbunden.
-- Begriffe gemäß BEGRIFFLICHKEITEN (Buchungssystem, online buchen/anfragen — NIE
-  „Anfrageformular" als unser Produkt).
+GUTES BEISPIEL:
+„Wir bauen dir ein Online-Buchungssystem direkt in deine bestehende Seite. Besucher sehen
+sofort, ob ihr Wunschtermin frei ist, und buchen direkt — ohne dich anzurufen."
 
-GUTE BEISPIELE (vollständige Sätze, genau dieser Stil):
-- „Wir bauen dir ein Buchungssystem direkt in deine bestehende Seite, sodass Interessenten
-  Termin und Gerät online buchen statt bei dir anzurufen."
-- „Wir integrieren eine Online-Terminbuchung in deine Seite, damit Patienten rund um die Uhr
-  selbst buchen, ganz ohne Telefon."
-- „Wir bauen dir eine neue, mobil-optimierte Website, auf der Besucher sofort finden, was sie
-  suchen, und aus Klicks echte Anfragen werden."
-SCHLECHT (Fragment ohne Verb): „Buchungssystem in die bestehende Seite — Interessenten buchen
-Termin & Gerät direkt online."
-
-⭐ REDESIGN-ZUSATZ (NUR wenn die Seite WIRKLICH alt wirkt):
-WENN website_assessment.design_quality = „dated" ODER „very_dated" UND die Haupt-Offer NICHT
-ohnehin schon ein kompletter Website-Neubau ist (fit_offer ≠ „website"):
-→ häng EINEN ganz kurzen, beiläufigen Nebensatz an, dass ihr die (sichtbar in die Jahre
-gekommene) Seite im gleichen Zug frisch + mobil-optimiert neu machen könnt, damit sie mehr
-Leute anspricht und besser konvertiert. KEIN zweiter Pitch, nur ein knapper Zusatz am Ende.
-Beispiel: „Wir bauen dir ein Buchungssystem direkt in deine Seite, und da die eh schon etwas
-in die Jahre gekommen ist, frischen wir sie im gleichen Zug mobil-optimiert auf, damit auf dem
-Handy mehr Besucher hängenbleiben."
-WENN design_quality „modern" oder „ok" → KEINE Redesign-Erwähnung (das wäre unglaubwürdig).
+⭐ REDESIGN-ZUSATZ (NUR wenn die Seite WIRKLICH alt wirkt): Ist website_assessment.design_quality
+= „dated"/„very_dated" UND die Haupt-Offer nicht ohnehin ein kompletter Neubau (fit_offer ≠
+„website"), häng EINEN kurzen Satz an, dass ihr die in die Jahre gekommene Seite im gleichen
+Zug mobil neu macht, damit auf dem Handy mehr Besucher hängenbleiben. Bei moderner/ok Seite NICHT.
 
 Wenn kein echter Bedarf: ein ehrlicher, kleiner Optimierungs-Satz im selben vollständigen Stil.
 

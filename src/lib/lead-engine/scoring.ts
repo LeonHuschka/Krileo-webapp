@@ -17,14 +17,24 @@ import type {
 } from "@/lib/lead-engine/types";
 
 /**
- * Strip em/en-dashes (— –) used as connectors — they read as "AI-written"
- * and the model keeps slipping them into the hook/pitch despite the prompt.
- * Replaced with a comma, then punctuation tidied. Newlines (paragraph break)
- * and regular hyphens in compound words are preserved.
+ * Cap em/en-dashes at max 1 per block (= per \n-separated paragraph). A
+ * single dash reads fine and is allowed; the model's tendency to chain
+ * several ("AI feel") gets the extras replaced with a comma. Newlines and
+ * regular hyphens in compound words are preserved.
  */
-function deDash(s: string | null | undefined): string {
-  return (s ?? "")
-    .replace(/[^\S\n]*[—–][^\S\n]*/g, ", ")
+function capDashes(s: string | null | undefined): string {
+  const blocks = (s ?? "").split("\n").map((line) => {
+    let first = true;
+    return line.replace(/[^\S\n]*[—–][^\S\n]*/g, () => {
+      if (first) {
+        first = false;
+        return " — ";
+      }
+      return ", ";
+    });
+  });
+  return blocks
+    .join("\n")
     .replace(/([.!?])\s*,\s*/g, "$1 ")
     .replace(/,\s*,/g, ", ")
     .replace(/ +,/g, ",")
@@ -434,13 +444,12 @@ export async function scoreLead(leadId: string): Promise<ScoringResult> {
       pain_points: parsed.pain_points,
       offer_benefits: (parsed.offer_benefits ?? []).slice(0, 3),
       sales_points: (parsed.sales_points ?? []).slice(0, 3),
-      // Guarantee no em/en-dashes survive into the cold-mail text — the
-      // model keeps slipping them in despite the prompt, and they read as
-      // "AI". deDash is deterministic so it can't be ignored.
-      personalized_hook: deDash(parsed.personalized_hook),
+      // Cap em/en-dashes at 1 per block deterministically — a single dash is
+      // fine, but the model tends to chain several (reads as "AI").
+      personalized_hook: capDashes(parsed.personalized_hook),
       pickup_line: parsed.pickup_line,
       gatekeeper_line: parsed.gatekeeper_line,
-      fit_offer_pitch: deDash(parsed.fit_offer_pitch),
+      fit_offer_pitch: capDashes(parsed.fit_offer_pitch),
       offer_deliverable: parsed.offer_deliverable,
       outreach_status: "scored",
     })

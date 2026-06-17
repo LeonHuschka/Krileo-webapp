@@ -120,9 +120,9 @@ export function leadToSmartleadPayload(lead: Lead): SmartleadLeadPayload | null 
   });
 
   // Never let a sequence-critical merge tag come up empty.
-  custom.hook ??= `ich bin auf ${lead.business_name} gestoßen und hab mir euren Online-Auftritt mal aus Kundensicht angeschaut, da ist noch einiges drin.`;
+  custom.hook ??= `Ich bin grade auf ${lead.business_name} gestoßen und hab mir euren Online-Auftritt mal aus Kundensicht angeschaut. Da ist noch einiges drin.`;
   custom.offer_pitch ??=
-    "Wir bauen dir eine moderne, mobil-optimierte Seite, die Anfragen automatisch reinholt statt sie am Telefon versanden zu lassen.";
+    "Wir bauen dir ein Online-Buchungssystem direkt in deine bestehende Seite, damit Besucher direkt sehen ob frei ist und verbindlich buchen können, ohne dich anzurufen.";
   custom.pain_1 ??= "vieles läuft noch über Telefon statt online";
   custom.price_range ??= "einem fairen Festpreis";
 

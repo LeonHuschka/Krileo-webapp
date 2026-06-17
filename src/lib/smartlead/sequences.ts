@@ -33,9 +33,11 @@ export const DEFAULT_SEQUENCE: SequenceMail[] = [
 
 Ich bin Leon, Inhaber von Krileo aus Stuttgart (Automatisierungs-Agentur). {{offer_pitch}}
 
-Wenn du magst, bau ich dir das einfach mal an eurer Seite nach — du schaust kurz drauf und siehst, ob's für dich was bringt. Kein Call, kein Termin nötig. Ein kurzes „ja“ reicht.
+Für eine Rollervermietung (SickMotos) haben wir das kürzlich so gebaut, dass der Inhaber Anfragen einfach per WhatsApp von der Couch annimmt. Den Rest macht die Automation.
 
-Viele Grüße aus Stuttgart
+Soll ich dir das mal zeigen? Sag einfach kurz Bescheid, dann bau ich dir eine Demo und du kannst sie dir in Ruhe anschauen.
+
+Viele Grüße
 Leon Huschka · Krileo`,
   },
   {
@@ -118,9 +120,9 @@ export const SAMPLE_VARS: Record<string, string> = {
   location: "Stuttgart",
   city: "Stuttgart",
   category: "Physiotherapie",
-  hook: "ich wollte vorhin online einen Termin bei euch machen, ging aber nur telefonisch, und um die Zeit habt ihr zu. Hab's dann erstmal gelassen.\nUnd ich glaub, so geht's nicht nur mir, gerade abends gehen so einige Anfragen verloren, bevor sie bei dir ankommen.",
+  hook: "Ich wollte gerade online einen Termin bei euch machen. Auf eurer Seite ging das aber nur telefonisch, und um die Zeit habt ihr zu. Hab's dann gelassen.\nUnd ich glaub, so geht's nicht nur mir. Die Leute, die abends spontan was buchen wollen, rufen nicht extra an. Die sind dann einfach weg.",
   offer_pitch:
-    "Wir integrieren eine Online-Terminbuchung in deine bestehende Seite, damit Patienten rund um die Uhr selbst buchen — ganz ohne Telefon.",
+    "Wir bauen dir ein Online-Buchungssystem direkt in deine bestehende Seite. Besucher sehen sofort, ob ihr Wunschtermin frei ist, und buchen direkt — ohne dich anzurufen.",
   offer_type: "booking",
   pain: "keine Online-Terminbuchung · Website nicht mobil-optimiert",
   pain_1: "keine Online-Terminbuchung",

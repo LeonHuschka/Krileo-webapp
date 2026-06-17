@@ -47,13 +47,17 @@ PRÜFE HART, in dieser Reihenfolge:
      („passt das kurz?"), einen Gruß/Sign-off, einen Link, oder eine Lösung/Pitch.
    - Ist er in SIE-Form statt DU-Form, oder redet über den Inhaber in der 3. Person?
    - Endet er auf einer Lösung statt auf der implizit verlorenen Anfrage?
-   - KLINGT ER NACH KI statt nach „schnell vom Handy getippt"? Enthält er Gedankenstriche
-     (—/–) oder Doppelpunkt-Dramatik/Aufzählungen? Das ist der häufigste Fehler. Der Hook
-     muss locker und beiläufig klingen, mit Komma/Punkt/„und"/„aber" verbunden, KEINE
-     Gedankenstriche, keine geschliffene Dramaturgie.
-   - RECHTSCHREIBUNG korrekt? Lockerer Ton heißt NICHT alles klein. Satzanfänge GROSS, Nomen
-     GROSS (normale deutsche Orthographie). Nur das allererste Wort darf klein sein (schließt
-     an die Anrede an). Ist mitten im Text alles kleingeschrieben → korrigieren.
+   - ⛔ Enthält er „und woanders / zur Konkurrenz geschaut" o.ä.? Das ist ein Seitenhieb und
+     triggert Ego-Abwehr → raus. Der Verlust läuft NUR über „Hab's dann gelassen" + „die sind
+     einfach weg", nie über einen Vergleich mit der Konkurrenz.
+   - Spricht im Hook ein Vendor statt eines echten Interessenten? Fachbegriffe wie
+     „Buchungssystem" gehören NICHT in den Hook (der Kunde sagt „konnte nirgends online buchen").
+   - KLINGT ER NACH KI statt nach „schnell vom Handy getippt"? Mehr als 1 Gedankenstrich pro
+     Absatz, Doppelpunkt-Dramatik, Schachtelsätze oder Marketing-Adjektive (maßgeschneidert,
+     optimal, nahtlos …)? Ein einzelner Em-Dash pro Block ist okay; mehrere/Doppelpunkt-Listen
+     korrigieren. Subjekt am Satzanfang ausschreiben („Ich wollte …", nicht „Wollte …").
+   - RECHTSCHREIBUNG korrekt? Lockerer Ton heißt NICHT alles klein. Normale deutsche
+     Orthographie: Satzanfänge GROSS (auch das erste Wort: „Ich wollte …"), Nomen GROSS.
    All das muss korrigiert werden.
 
 ENTSCHEIDUNG:
@@ -69,22 +73,20 @@ ENTSCHEIDUNG:
      Wörter, bildhaft, WAS der Kunde bekommt + wie es hilft), passend zum korrigierten
      fit_offer. Passt der Deliverable schon → unverändert zurückgeben.
    · fixed_pain_points: korrigierte, datengedeckte Pain-Points (2-3)
-   · fixed_hook: faktisch korrekte Kunden-Verlust-Story, zwei kurze Absätze (~3-4 Sätze),
-     DU-Form, erste Person als Interessent, im Stil „schnell vom Handy getippt" — locker,
-     beiläufig, OHNE Gedankenstriche, ohne Doppelpunkt-Dramatik (mit Komma/Punkt/„und"
-     verbunden):
-     Absatz 1 „wollte grade eben [X buchen], [konkreter Engpass: keine Verfügbarkeit sichtbar /
-     keine Preise / nicht direkt buchbar]. Hab's dann ehrlich gesagt gelassen und woanders
-     geschaut." Zeitbezug unmittelbar (grade eben/vorhin), nie „letzte Woche". Lücke über
-     „sehen + direkt buchen", NIE über „anfragen können". Hat der Lead ein
-     Kontaktformular: dieses anerkennen und pivotieren („ihr habt zwar ein Kontaktformular,
-     aber ich konnte nirgends sehen ob mein Termin frei ist und auch keine Preise,
-     hieß also wieder anrufen"). Korrekte Groß-/Kleinschreibung, nur das erste Wort klein.
-     Absatz 2 „Ich tippe, da bin ich nicht der Einzige. [implizit verlorene Anfragen,
-     z.B. spontane Anfragen abends/am Wochenende gehen verloren]."
-     KEINE Anrede, KEINE Vorstellung, KEIN CTA/Frage, KEIN Gruß, KEIN Link, KEINE Lösung.
-     Endet auf der verlorenen Anfrage, NICHT auf einer Lösung. Behauptet NUR Lücken, die die
-     Website belegt. Passt der Hook schon → unverändert zurückgeben.
+   · fixed_hook: faktisch korrekte Kunden-Verlust-Story, zwei kurze Absätze, DU-Form, erste
+     Person als echter Interessent, im Stil „schnell vom Handy getippt", korrekte
+     Groß-/Kleinschreibung, max. 1 Em-Dash pro Absatz:
+     Absatz 1 „Ich wollte gerade [X] bei euch reservieren. Auf eurer Seite [konkreter Engpass:
+     nichts zu sehen ob frei ist / keine Preise / nicht direkt buchbar]. Hab's dann gelassen."
+     Zeitbezug unmittelbar (grade/gerade/vorhin), nie „letzte Woche". Lücke über „sehen + direkt
+     buchen", NIE über „anfragen können". Hat der Lead ein Kontaktformular: dieses anerkennen
+     („ihr habt zwar ein Kontaktformular, aber ob mein Termin frei ist konnte ich nirgends
+     sehen, und Preise standen auch keine dabei").
+     Absatz 2 „Und ich glaub, so geht's nicht nur mir. [implizit verlorene Anfragen, enden auf
+     „die sind dann einfach weg"]."
+     KEIN „woanders/zur Konkurrenz geschaut". KEINE Anrede, Vorstellung, CTA/Frage, Gruß, Link,
+     Lösung. Endet auf der verlorenen Anfrage. Behauptet NUR Lücken, die die Website belegt.
+     Passt der Hook schon → unverändert zurückgeben.
    · severity_penalty (0-25): wie stark pain_severity gesenkt werden muss —
      HOCH (15-25) wenn eine erfundene oder bereits vorhandene Lücke behauptet wurde
      (in Offer ODER Hook), mittel (5-15) bei kleineren Fehlgriffen, 0 wenn nur Stil

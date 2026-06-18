@@ -370,23 +370,15 @@ export async function scoreLead(leadId: string): Promise<ScoringResult> {
     throw new Error(`Campaign join missing for lead ${leadId}`);
   }
 
-  // Obvious overregional chain by name → suppress immediately, skip the LLM
-  // (no point spending tokens or generating outreach copy for a branch that
-  // can't buy from us).
+  // Obvious overregional chain by name → DELETE immediately, skip the LLM.
+  // We never sell to a chain branch, so don't keep it cluttering the browser
+  // (same treatment as a no-contact lead).
   const businessName = (lead as unknown as Lead).business_name;
   if (isBigPlayerName(businessName)) {
-    const reason = "⛔ Überregionale Kette/Konzern — kein lokales Outreach.";
-    await db
-      .from("leads")
-      .update({
-        outreach_status: "suppressed",
-        qualification_tier: "cold",
-        business_size: "large",
-        lead_score: 0,
-        score_breakdown: emptyBreakdown(reason),
-      })
-      .eq("id", leadId);
-    return suppressedScoringResult(reason);
+    await db.from("leads").delete().eq("id", leadId);
+    return suppressedScoringResult(
+      "⛔ Überregionale Kette/Konzern — gelöscht (kein lokales Outreach).",
+    );
   }
 
   // Read the ACTUAL website so the offer is grounded in what they
@@ -481,13 +473,13 @@ export async function scoreLead(leadId: string): Promise<ScoringResult> {
     clamp(b.reachability, 15) +
     clamp(b.buying_signals, 15);
 
-  // The model itself flagged this as an overregional chain → suppress it from
-  // the outreach pool, same as the name-based filter above.
-  const isChain = parsed.is_national_chain === true;
-  if (isChain) {
-    parsed.score_breakdown.rationale =
-      "⛔ Überregionale Kette/Konzern — kein lokales Outreach. " +
-      parsed.score_breakdown.rationale;
+  // The model itself flagged this as an overregional chain → DELETE it, same
+  // as the name-based filter above. We don't keep chains around at all.
+  if (parsed.is_national_chain === true) {
+    await db.from("leads").delete().eq("id", leadId);
+    return { ...parsed, lead_score: 0 } as ScoringResult & {
+      lead_score: number;
+    };
   }
 
   const { error: updateErr } = await db
@@ -514,7 +506,7 @@ export async function scoreLead(leadId: string): Promise<ScoringResult> {
       gatekeeper_line: stripDashes(parsed.gatekeeper_line),
       fit_offer_pitch: stripDashes(parsed.fit_offer_pitch),
       offer_deliverable: stripDashes(parsed.offer_deliverable),
-      outreach_status: isChain ? "suppressed" : "scored",
+      outreach_status: "scored",
     })
     .eq("id", leadId);
 

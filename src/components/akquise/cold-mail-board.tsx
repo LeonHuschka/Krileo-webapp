@@ -941,14 +941,14 @@ function CampaignCard({
               <MapPin className="h-3 w-3" />
               Gebiet ({auto.bundeslaender.length + auto.cities.length})
             </button>
-            {automation.enabled && !dirty && (
+            {!dirty && (
               <Button
                 size="sm"
                 variant="outline"
                 className="h-6 gap-1 border-emerald-500/40 px-2 text-[11px] text-emerald-300"
                 disabled={pending}
                 onClick={() => onRunNow(c.id, c.name)}
-                title="Heutiges Kontingent jetzt holen + pushen"
+                title="Heutiges Kontingent jetzt holen + pushen (Test-Lauf, auch ohne Auto-Pilot)"
               >
                 <Play className="h-3 w-3" /> Jetzt
               </Button>

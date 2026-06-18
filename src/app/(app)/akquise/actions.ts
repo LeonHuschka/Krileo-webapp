@@ -78,6 +78,9 @@ function revalidateAll() {
   revalidatePath("/akquise/leads");
   revalidatePath("/akquise/termine");
   revalidatePath("/akquise/d2d");
+  // Cold-mail board reads the email pool — keep its available-count fresh
+  // after a manual channel change / push.
+  revalidatePath("/akquise/mail");
   // Invalidate every lead detail page so freshly booked appointments /
   // status changes show up without a manual reload.
   revalidatePath("/akquise/leads/[id]", "page");

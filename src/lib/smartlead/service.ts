@@ -380,10 +380,13 @@ export async function runColdMailAutomation(opts?: {
   const maxNewPerDay = Math.max(1, Math.floor(capacity / FOLLOWUP_FACTOR));
 
   const active = Object.entries(cfg.campaign_automation)
-    .filter(([id, a]) => a.enabled && cfg.campaign_niche[id])
-    .filter(([id]) =>
-      opts?.campaignId != null ? Number(id) === opts.campaignId : true,
-    )
+    .filter(([id, a]) => {
+      if (!cfg.campaign_niche[id]) return false;
+      // Manual single-campaign run ("Jetzt"): run regardless of the daily
+      // auto-pilot toggle. Cron run (no campaignId): only enabled campaigns.
+      if (opts?.campaignId != null) return Number(id) === opts.campaignId;
+      return a.enabled;
+    })
     .map(([id, a]) => ({
       campaignId: Number(id),
       niche: cfg.campaign_niche[id],
@@ -398,7 +401,6 @@ export async function runColdMailAutomation(opts?: {
   const { runAutoGeneration } = await import("@/lib/akquise/auto-generation");
   const { enrichAllPending } = await import("@/lib/lead-engine/enrichment");
   const { scoreAllPending } = await import("@/lib/lead-engine/scoring");
-  const { routePendingLeads } = await import("@/lib/lead-engine/channel-router");
   const db = leadEngine();
 
   for (const c of active) {
@@ -457,31 +459,47 @@ export async function runColdMailAutomation(opts?: {
             await scoreAllPending({ limit: gen.newLeads + 20, concurrency: 8 });
           } catch { /* */ }
 
-          // Auto-pilot contract: EVERY generated lead of this niche
-          // that has an email goes to the mail channel — the campaign
-          // owns them. Only the email-less rest goes through the
-          // normal channel router (call queue etc.).
+          // Auto-pilot channel routing for this niche's fresh leads:
+          //  - has email        → email  (push as many as possible to mail)
+          //  - no email, phone  → call   (cold-call queue)
+          //  - no contact data  → delete (useless lead, don't keep it around)
           try {
             const { data: fresh } = await db
               .from("leads")
-              .select("id, campaigns!inner(industry)")
+              .select("id, owner_email, phone, campaigns!inner(industry)")
               .eq("campaigns.industry", c.niche)
               .is("primary_channel", null)
-              .not("owner_email", "is", null)
               .not("outreach_status", "in", TERMINAL);
-            const ids = ((fresh ?? []) as { id: string }[]).map((r) => r.id);
-            if (ids.length > 0) {
+            const rows = (fresh ?? []) as {
+              id: string;
+              owner_email: string | null;
+              phone: string | null;
+            }[];
+            const emailIds = rows.filter((r) => r.owner_email).map((r) => r.id);
+            const callIds = rows
+              .filter((r) => !r.owner_email && r.phone)
+              .map((r) => r.id);
+            const deadIds = rows
+              .filter((r) => !r.owner_email && !r.phone)
+              .map((r) => r.id);
+            const nowIso = new Date().toISOString();
+            if (emailIds.length > 0) {
               await db
                 .from("leads")
-                .update({
-                  primary_channel: "email",
-                  channel_assigned_at: new Date().toISOString(),
-                })
-                .in("id", ids);
+                .update({ primary_channel: "email", channel_assigned_at: nowIso })
+                .in("id", emailIds);
             }
-          } catch { /* */ }
-          try {
-            await routePendingLeads({ limit: 500 });
+            if (callIds.length > 0) {
+              await db
+                .from("leads")
+                .update({ primary_channel: "call", channel_assigned_at: nowIso })
+                .in("id", callIds);
+            }
+            // No e-mail and no phone after enrichment → nothing to reach them
+            // with. Delete so the browser/pool stays clean.
+            if (deadIds.length > 0) {
+              await db.from("leads").delete().in("id", deadIds);
+            }
           } catch { /* */ }
         }
         pool = await getEmailPoolForNiche(c.niche, remaining);

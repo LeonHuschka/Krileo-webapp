@@ -46,8 +46,15 @@ import {
 import { LeadRowActions } from "@/components/akquise/lead-row-actions";
 import { PickupBadge } from "@/components/akquise/pickup-badge";
 import { CleanupDialog } from "@/components/akquise/cleanup-dialog";
-import { ChannelSelect } from "@/components/akquise/channel-select";
 import type { Channel, Lead, LeadEvent } from "@/lib/lead-engine/types";
+
+const CHANNEL_COLORS: Record<string, string> = {
+  email: "border-sky-500/40 bg-sky-500/15 text-sky-300",
+  call: "border-emerald-500/40 bg-emerald-500/15 text-emerald-300",
+  instagram: "border-fuchsia-500/40 bg-fuchsia-500/15 text-fuchsia-300",
+  linkedin: "border-blue-500/40 bg-blue-500/15 text-blue-300",
+  none: "border-zinc-500/40 bg-zinc-500/15 text-zinc-300",
+};
 
 const ALL = "__all__";
 
@@ -483,7 +490,19 @@ export function LeadsTable({
                     )}
                   </TableCell>
                   <TableCell>
-                    <ChannelSelect leadId={l.id} channel={l.primary_channel} />
+                    {l.primary_channel ? (
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "border text-[10px] uppercase",
+                          CHANNEL_COLORS[l.primary_channel] ?? "",
+                        )}
+                      >
+                        {l.primary_channel}
+                      </Badge>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
                   </TableCell>
                   <TableCell>
                     <PickupBadge
@@ -500,11 +519,7 @@ export function LeadsTable({
                         size="sm"
                         variant="outline"
                         title="Auf Call setzen"
-                        disabled={
-                          pending ||
-                          l.primary_channel === "call" ||
-                          !l.phone
-                        }
+                        disabled={pending || l.primary_channel === "call"}
                         onClick={() => assign(l.id, "call")}
                         className={cn(
                           "h-7 w-7 p-0",
@@ -523,11 +538,7 @@ export function LeadsTable({
                         size="sm"
                         variant="outline"
                         title="Auf Mail setzen"
-                        disabled={
-                          pending ||
-                          l.primary_channel === "email" ||
-                          !l.owner_email
-                        }
+                        disabled={pending || l.primary_channel === "email"}
                         onClick={() => assign(l.id, "email")}
                         className={cn(
                           "h-7 w-7 p-0",

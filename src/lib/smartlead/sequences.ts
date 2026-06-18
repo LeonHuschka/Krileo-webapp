@@ -45,7 +45,7 @@ Leon Huschka · Krileo`,
     delay_days: 3,
     body: `Servus {{first_name}},
 
-ich war nochmal kurz auf eurer Seite — {{pain_1}}. Genau da springen die meisten ab: wer auf dem Handy nicht in 30 Sekunden zum Ziel kommt, ist weg.
+ich war nochmal kurz auf eurer Seite, {{pain_1}}. Genau da springen die meisten ab: wer auf dem Handy nicht in 30 Sekunden zum Ziel kommt, ist weg.
 
 Sowas haben wir meist in 1-2 Wochen stehen, bei euch läge das grob bei {{price_range | einem fairen Festpreis}}. Einmal gebaut, läuft's.
 
@@ -61,7 +61,7 @@ Leon`,
 
 letzte Mail von mir, versprochen.
 
-Falls gerade einfach kein Kopf dafür ist — total verständlich. Ich leg's hier ab, falls es später mal passt.
+Falls gerade einfach kein Kopf dafür ist, total verständlich. Ich leg's hier ab, falls es später mal passt.
 
 Ein kurzes „später“ oder „kein Bedarf“ und ich bin raus aus deinem Postfach.
 
@@ -122,12 +122,12 @@ export const SAMPLE_VARS: Record<string, string> = {
   category: "Physiotherapie",
   hook: "Ich wollte gerade online einen Termin bei euch machen. Auf eurer Seite ging das aber nur telefonisch, und um die Zeit habt ihr zu. Hab's dann gelassen.\nUnd ich glaub, so geht's nicht nur mir. Wer abends spontan einen Termin sucht, ruft nicht extra an. Diese eigentlich sicheren Kunden buchen am Ende einfach nichts bei dir.",
   offer_pitch:
-    "Wir bauen dir ein Online-Buchungssystem direkt in deine bestehende Seite. Besucher sehen sofort, ob ihr Wunschtermin frei ist, und buchen direkt — ohne dich anzurufen.",
+    "Wir bauen dir ein Online-Buchungssystem direkt in deine bestehende Seite. Besucher sehen sofort, ob ihr Wunschtermin frei ist, und buchen direkt, ohne dich anzurufen.",
   offer_type: "booking",
   pain: "keine Online-Terminbuchung · Website nicht mobil-optimiert",
   pain_1: "keine Online-Terminbuchung",
   pain_2: "Website nicht mobil-optimiert",
-  price_range: "2.000–3.500 €",
+  price_range: "2.000-3.500 €",
   price_min: "2000",
   price_max: "3500",
   rating: "4.8",

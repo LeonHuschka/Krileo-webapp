@@ -1,5 +1,6 @@
 import type { Lead } from "@/lib/lead-engine/types";
 import type { SmartleadLeadPayload } from "@/lib/smartlead/client";
+import { stripDashes } from "@/lib/lead-engine/text";
 
 /**
  * The bridge that makes cold mail feel hand-written.
@@ -65,17 +66,21 @@ function splitName(full: string | null): { first: string; last: string } {
 
 function priceRange(min: number | null, max: number | null): string {
   const fmt = (n: number) => n.toLocaleString("de-DE");
-  if (min && max) return `${fmt(min)}–${fmt(max)} €`;
+  if (min && max) return `${fmt(min)}-${fmt(max)} €`;
   if (min) return `ab ${fmt(min)} €`;
   if (max) return `bis ${fmt(max)} €`;
   return "";
 }
 
-/** Drop empty / null values so Smartlead merge tags don't render "null". */
+/**
+ * Drop empty / null values so Smartlead merge tags don't render "null", and
+ * hard-strip every em/en-dash — the last guard so no AI-slop dash reaches a
+ * real mail, even from a lead scored before that rule existed.
+ */
 function clean(obj: Record<string, string | undefined | null>): Record<string, string> {
   const out: Record<string, string> = {};
   for (const [k, v] of Object.entries(obj)) {
-    if (v != null && String(v).trim() !== "") out[k] = String(v).trim();
+    if (v != null && String(v).trim() !== "") out[k] = stripDashes(String(v));
   }
   return out;
 }

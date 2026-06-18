@@ -40,6 +40,7 @@ import {
   type CampaignAutomation,
 } from "@/lib/smartlead/storage";
 import { bodyToHtml, type SequenceMail } from "@/lib/smartlead/sequences";
+import { stripDashes } from "@/lib/lead-engine/text";
 import { SEQUENCE_EDIT_SYSTEM } from "@/lib/smartlead/prompts/sequence-edit";
 import { MEETING_PREP_SYSTEM } from "@/lib/lead-engine/prompts/meeting-prep";
 import { claude, firstTextBlock } from "@/lib/lead-engine/claude";
@@ -1656,7 +1657,12 @@ export async function aiEditSequenceAction(input: {
   if (!text) throw new Error("Claude hat keine Antwort geliefert");
   const parsed = JSON.parse(text) as { mails: SequenceMail[] };
   if (!parsed.mails?.length) throw new Error("Leere Sequenz zurückgekommen");
-  return parsed.mails.slice(0, 5);
+  // Hard-strip AI-slop em/en-dashes from the generated mail copy.
+  return parsed.mails.slice(0, 5).map((m) => ({
+    ...m,
+    subject: stripDashes(m.subject),
+    body: stripDashes(m.body),
+  }));
 }
 
 /**

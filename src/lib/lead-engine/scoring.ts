@@ -2,6 +2,7 @@ import "server-only";
 
 import { claude, firstTextBlock } from "@/lib/lead-engine/claude";
 import { leadEngine } from "@/lib/lead-engine/supabase";
+import { stripDashes } from "@/lib/lead-engine/text";
 import { LEAD_SCORING_SYSTEM } from "@/lib/lead-engine/prompts/lead-scoring";
 import { SCORING_VERIFY_SYSTEM } from "@/lib/lead-engine/prompts/scoring-verify";
 import {
@@ -15,30 +16,6 @@ import type {
   Lead,
   PickupProfile,
 } from "@/lib/lead-engine/types";
-
-/**
- * Cap em/en-dashes at max 1 in the WHOLE field (hook or pitch). Dashes read
- * as "AI" when chained; keep at most the first, replace the rest with a
- * comma. Newlines (paragraph break) and regular hyphens in compound words
- * are preserved.
- */
-function capDashes(s: string | null | undefined): string {
-  let first = true;
-  return (s ?? "")
-    .replace(/[^\S\n]*[—–][^\S\n]*/g, () => {
-      if (first) {
-        first = false;
-        return " — ";
-      }
-      return ", ";
-    })
-    .replace(/([.!?])\s*,\s*/g, "$1 ")
-    .replace(/,\s*,/g, ", ")
-    .replace(/ +,/g, ",")
-    .replace(/,(?=\S)/g, ", ")
-    .replace(/[^\S\n]{2,}/g, " ")
-    .trim();
-}
 
 // Tier is intentionally NOT in the LLM output anymore — every fresh
 // scored lead defaults to `cold` (= never contacted). Tier only moves
@@ -527,16 +504,16 @@ export async function scoreLead(leadId: string): Promise<ScoringResult> {
       pickup_profile: parsed.pickup_profile,
       suggested_price_min_eur: parsed.suggested_price_min_eur,
       suggested_price_max_eur: parsed.suggested_price_max_eur,
-      pain_points: parsed.pain_points,
-      offer_benefits: (parsed.offer_benefits ?? []).slice(0, 3),
-      sales_points: (parsed.sales_points ?? []).slice(0, 3),
-      // Cap em/en-dashes at 1 per block deterministically — a single dash is
-      // fine, but the model tends to chain several (reads as "AI").
-      personalized_hook: capDashes(parsed.personalized_hook),
-      pickup_line: parsed.pickup_line,
-      gatekeeper_line: parsed.gatekeeper_line,
-      fit_offer_pitch: capDashes(parsed.fit_offer_pitch),
-      offer_deliverable: parsed.offer_deliverable,
+      pain_points: (parsed.pain_points ?? []).map(stripDashes),
+      offer_benefits: (parsed.offer_benefits ?? []).slice(0, 3).map(stripDashes),
+      sales_points: (parsed.sales_points ?? []).slice(0, 3).map(stripDashes),
+      // Hard-strip every em/en-dash from all generated copy — these AI-slop
+      // dashes must never appear in any text the customer could see.
+      personalized_hook: stripDashes(parsed.personalized_hook),
+      pickup_line: stripDashes(parsed.pickup_line),
+      gatekeeper_line: stripDashes(parsed.gatekeeper_line),
+      fit_offer_pitch: stripDashes(parsed.fit_offer_pitch),
+      offer_deliverable: stripDashes(parsed.offer_deliverable),
       outreach_status: isChain ? "suppressed" : "scored",
     })
     .eq("id", leadId);

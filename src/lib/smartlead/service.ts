@@ -356,6 +356,52 @@ export type AutomationRunResult = {
 };
 
 /**
+ * Auto-pilot channel routing for freshly-generated leads of a niche:
+ *   - has email        → email  (mail pool)
+ *   - no email, phone  → call   (cold-call queue)
+ *   - no contact data  → delete (unreachable — keep the pool clean)
+ * Runs over every still-unassigned, non-terminal lead in the niche, so it's
+ * safe to call once per scrape round.
+ */
+async function routeUnassignedNicheLeads(niche: string): Promise<void> {
+  const db = leadEngine();
+  const { data: fresh } = await db
+    .from("leads")
+    .select("id, owner_email, phone, campaigns!inner(industry)")
+    .eq("campaigns.industry", niche)
+    .is("primary_channel", null)
+    .not("outreach_status", "in", TERMINAL);
+  const rows = (fresh ?? []) as {
+    id: string;
+    owner_email: string | null;
+    phone: string | null;
+  }[];
+  const emailIds = rows.filter((r) => r.owner_email).map((r) => r.id);
+  const callIds = rows
+    .filter((r) => !r.owner_email && r.phone)
+    .map((r) => r.id);
+  const deadIds = rows
+    .filter((r) => !r.owner_email && !r.phone)
+    .map((r) => r.id);
+  const nowIso = new Date().toISOString();
+  if (emailIds.length > 0) {
+    await db
+      .from("leads")
+      .update({ primary_channel: "email", channel_assigned_at: nowIso })
+      .in("id", emailIds);
+  }
+  if (callIds.length > 0) {
+    await db
+      .from("leads")
+      .update({ primary_channel: "call", channel_assigned_at: nowIso })
+      .in("id", callIds);
+  }
+  if (deadIds.length > 0) {
+    await db.from("leads").delete().in("id", deadIds);
+  }
+}
+
+/**
  * The daily cold-mail engine. For every campaign with auto-pilot on:
  *   1. work out today's quota (scaled down if the sum of all campaign
  *      targets exceeds capacity/3 — follow-ups need the rest)
@@ -420,7 +466,6 @@ export async function runColdMailAutomation(opts?: {
   const { runAutoGeneration } = await import("@/lib/akquise/auto-generation");
   const { enrichAllPending } = await import("@/lib/lead-engine/enrichment");
   const { scoreAllPending } = await import("@/lib/lead-engine/scoring");
-  const db = leadEngine();
 
   for (const c of active) {
     if (Date.now() - t0 > timeBudget) {
@@ -456,94 +501,77 @@ export async function runColdMailAutomation(opts?: {
     let pool = await getEmailPoolForNiche(c.niche, remaining);
     let generated = 0;
 
-    // 2. Top up: generate fresh niche leads in the configured area.
-    //    Scrape exactly the shortfall — no over-generation buffer. "10
-    //    holen" must scrape 10, never 15. (Trade-off: leads whose e-mail
-    //    can't be found after enrichment get routed to call/deleted, so
-    //    fewer than `remaining` may end up pushed to mail.)
-    if (pool.length < remaining) {
+    // 2. Top up in ROUNDS until the niche has `remaining` e-mail-ready leads.
+    //    Each round scrapes only the still-missing amount of NEW businesses —
+    //    runAutoGeneration dedups against everything already scraped, so
+    //    places we've seen before never count again, only genuinely new ones
+    //    are added. Since not every business yields an e-mail (the rest get
+    //    routed to call/deleted), we simply scrape again until the mail pool
+    //    is full instead of guessing an over-scrape multiplier.
+    //    Stops when: pool full · a round finds no new leads (area exhausted)
+    //    · round cap hit · time budget spent.
+    const MAX_ROUNDS = 12;
+    let round = 0;
+    while (
+      pool.length < remaining &&
+      round < MAX_ROUNDS &&
+      Date.now() - t0 < timeBudget
+    ) {
+      round += 1;
       const shortfall = remaining - pool.length;
+      let gen;
       try {
         await setColdMailProgress({
           campaignId: c.campaignId,
           phase: "scrape",
-          label: `Frische ${c.niche}-Leads generieren …`,
+          label:
+            round === 1
+              ? `Frische ${c.niche}-Leads generieren …`
+              : `Nachscrapen (Runde ${round}) — noch ${shortfall} Mail-Leads fehlen …`,
           quota: remaining,
+          generated,
         });
-        const gen = await runAutoGeneration({
+        gen = await runAutoGeneration({
           target: shortfall,
           niches: [c.niche],
           cities: c.automation.cities,
           bundeslaender: c.automation.bundeslaender,
           batchSize: 20,
         });
-        generated = gen.newLeads;
-        if (gen.newLeads > 0) {
-          try {
-            await setColdMailProgress({
-              phase: "enrich",
-              label: `Kontaktdaten anreichern (${gen.newLeads} Leads) …`,
-              generated,
-            });
-            await enrichAllPending({ limit: gen.newLeads + 20, concurrency: 8 });
-          } catch { /* */ }
-          try {
-            await setColdMailProgress({
-              phase: "score",
-              label: `Qualifizieren & Texte generieren (${gen.newLeads}) …`,
-            });
-            await scoreAllPending({ limit: gen.newLeads + 20, concurrency: 8 });
-          } catch { /* */ }
-          await setColdMailProgress({
-            phase: "route",
-            label: "Channels zuweisen (Mail/Call) …",
-          });
+      } catch {
+        break; // generation failed — push what we already have
+      }
 
-          // Auto-pilot channel routing for this niche's fresh leads:
-          //  - has email        → email  (push as many as possible to mail)
-          //  - no email, phone  → call   (cold-call queue)
-          //  - no contact data  → delete (useless lead, don't keep it around)
-          try {
-            const { data: fresh } = await db
-              .from("leads")
-              .select("id, owner_email, phone, campaigns!inner(industry)")
-              .eq("campaigns.industry", c.niche)
-              .is("primary_channel", null)
-              .not("outreach_status", "in", TERMINAL);
-            const rows = (fresh ?? []) as {
-              id: string;
-              owner_email: string | null;
-              phone: string | null;
-            }[];
-            const emailIds = rows.filter((r) => r.owner_email).map((r) => r.id);
-            const callIds = rows
-              .filter((r) => !r.owner_email && r.phone)
-              .map((r) => r.id);
-            const deadIds = rows
-              .filter((r) => !r.owner_email && !r.phone)
-              .map((r) => r.id);
-            const nowIso = new Date().toISOString();
-            if (emailIds.length > 0) {
-              await db
-                .from("leads")
-                .update({ primary_channel: "email", channel_assigned_at: nowIso })
-                .in("id", emailIds);
-            }
-            if (callIds.length > 0) {
-              await db
-                .from("leads")
-                .update({ primary_channel: "call", channel_assigned_at: nowIso })
-                .in("id", callIds);
-            }
-            // No e-mail and no phone after enrichment → nothing to reach them
-            // with. Delete so the browser/pool stays clean.
-            if (deadIds.length > 0) {
-              await db.from("leads").delete().in("id", deadIds);
-            }
-          } catch { /* */ }
-        }
-        pool = await getEmailPoolForNiche(c.niche, remaining);
-      } catch { /* generation is best-effort, push what we have */ }
+      // A full scrape round produced no NEW businesses → the configured area
+      // is exhausted; stop, otherwise we'd loop re-pulling only duplicates.
+      if (gen.newLeads === 0) break;
+      generated += gen.newLeads;
+
+      try {
+        await setColdMailProgress({
+          phase: "enrich",
+          label: `Kontaktdaten anreichern (${gen.newLeads} neue Leads) …`,
+          generated,
+        });
+        await enrichAllPending({ limit: gen.newLeads + 20, concurrency: 8 });
+      } catch { /* */ }
+      try {
+        await setColdMailProgress({
+          phase: "score",
+          label: `Qualifizieren & Texte generieren (${gen.newLeads}) …`,
+        });
+        await scoreAllPending({ limit: gen.newLeads + 20, concurrency: 8 });
+      } catch { /* */ }
+
+      await setColdMailProgress({
+        phase: "route",
+        label: "Channels zuweisen (Mail/Call) …",
+      });
+      try {
+        await routeUnassignedNicheLeads(c.niche);
+      } catch { /* */ }
+
+      pool = await getEmailPoolForNiche(c.niche, remaining);
     }
 
     // 3. Push the freshest top-scored leads straight into Smartlead.

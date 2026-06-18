@@ -263,16 +263,26 @@ export function ColdMailBoard({
     });
   }
 
-  function handleSaveAutomation(campaignId: number, a: CampaignAutomation) {
+  function handleSaveAutomation(
+    campaignId: number,
+    a: CampaignAutomation,
+    justEnabled = false,
+  ) {
     startTransition(async () => {
       try {
         await setCampaignAutomationAction(campaignId, a);
         toast.success(
           a.enabled
-            ? `Auto-Pilot an — ${a.daily_new_leads} neue Leads/Tag`
+            ? `Auto-Pilot an — ${a.daily_new_leads} neue Leads/Tag${
+                justEnabled ? " · starte Lauf …" : ""
+              }`
             : "Auto-Pilot aus",
         );
         router.refresh();
+        // Turning the pilot ON kicks off an immediate run so the user
+        // doesn't have to wait for the next 05:00 cron — it tops up to
+        // the quota now (and is a no-op if nothing's missing).
+        if (justEnabled) runWithProgress(campaignId);
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Speichern fehlgeschlagen");
       }
@@ -286,7 +296,12 @@ export function ColdMailBoard({
       )
     )
       return;
+    runWithProgress(campaignId);
+  }
 
+  // Runs the automation for one campaign with the live progress strip.
+  // Shared by the manual "Jetzt" button and the enable-autopilot trigger.
+  function runWithProgress(campaignId: number) {
     setProgress({
       running: true,
       phase: "check",
@@ -922,7 +937,11 @@ function CampaignCard({
   ) => void;
   onStatus: (id: number, status: "START" | "PAUSED") => void;
   onWebhook: (id: number) => void;
-  onSaveAutomation: (id: number, a: CampaignAutomation) => void;
+  onSaveAutomation: (
+    id: number,
+    a: CampaignAutomation,
+    justEnabled?: boolean,
+  ) => void;
   onRunNow: (id: number, name: string) => void;
 }) {
   const available = nicheLeads.length;
@@ -1069,7 +1088,9 @@ function CampaignCard({
                 size="sm"
                 className="h-6 px-2 text-[11px]"
                 disabled={pending || (auto.enabled && !hasScope)}
-                onClick={() => onSaveAutomation(c.id, auto)}
+                onClick={() =>
+                  onSaveAutomation(c.id, auto, !automation.enabled && auto.enabled)
+                }
               >
                 <Save className="h-3 w-3" /> Speichern
               </Button>

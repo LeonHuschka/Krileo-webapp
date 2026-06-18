@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import { runColdMailAutomation } from "@/lib/smartlead/service";
 
 /**
- * Daily cold-mail engine (Vercel Cron, 05:00 Berlin — vercel.json).
+ * Daily cold-mail engine (Vercel Cron, 04:00 UTC = earliest 05:00 Berlin —
+ * vercel.json; Vercel crons run in UTC so 04:00 UTC = 05:00 CET / 06:00 CEST,
+ * i.e. never before 05:00 Berlin). Enabling auto-pilot in the UI also fires
+ * an immediate run so you don't have to wait for the next cron tick.
  *
  * For every Smartlead campaign with auto-pilot enabled:
  *   generate fresh niche leads (saturation-aware, scoped to the

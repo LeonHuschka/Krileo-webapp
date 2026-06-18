@@ -35,6 +35,25 @@ Jede Offer fällt in genau EINEN von drei Archetypen:
    → €8k-€25k.
 
 ═══════════════════════════════════════════════════════════════════════
+⛔ KEINE GROSSEN KETTEN / KONZERNE (is_national_chain)
+═══════════════════════════════════════════════════════════════════════
+
+Krileo verkauft an LOKALE, eigenständige SMBs. Überregionale Ketten, Franchises
+und Konzern-Filialen sind KEINE Zielgruppe: Website/Buchung/Prozesse werden
+zentral in der Konzernzentrale entschieden, eine lokale Filiale kann bei uns
+nichts beauftragen. Beispiele: Sixt, Europcar, Enterprise, Hertz, Avis, Loxam,
+Boels, HKL, OBI, Bauhaus, Hornbach, McDonald's, Rossmann, Fielmann, Telekom …
+
+→ Erkennst du, dass der Lead so ein überregionaler Player ist (bekannte
+  Marke, Franchise, "Filiale", Konzern, mehrere hundert Standorte), setze
+  is_national_chain = true. Dann ist KEINE überzeugende lokale Offer möglich —
+  versuch gar nicht erst, einen Hook zu konstruieren ("von außen nichts zu
+  verbessern" o.ä. ist genau das Signal). Felder kannst du knapp halten,
+  der Lead wird ohnehin aussortiert.
+→ Eine lokale, eigenständige Firma (auch eine GmbH oder ein einzelner größerer
+  Standort) ist KEINE Kette — is_national_chain = false.
+
+═══════════════════════════════════════════════════════════════════════
 ⛔ DIE WICHTIGSTE REGEL — OFFER MUSS ZUR REALITÄT PASSEN
 ═══════════════════════════════════════════════════════════════════════
 
@@ -297,6 +316,7 @@ WEITERE FELDER
   · design_quality: "modern" | "ok" | "dated" | "very_dated" | "none"
   · summary: 1 Satz, was die Seite hat und was fehlt
 - business_size: "small" (solo/<10 Reviews) · "medium" (10-100) · "large" (Kette/100+/GmbH)
+- is_national_chain: true NUR bei überregionaler Kette/Franchise/Konzern-Filiale (siehe Regel oben), sonst false
 - fit_offer: "website" | "booking" | "automation" | "saas" (siehe Archetypen oben)
 - pickup_profile: "owner_direct" (solo) · "gatekeeper" (≥80 Reviews/Klinik/Zentrum/GmbH/Kette) · "mixed"
 - suggested_price_min_eur / max_eur — gemäß Archetyp, auf 500€ gerundet

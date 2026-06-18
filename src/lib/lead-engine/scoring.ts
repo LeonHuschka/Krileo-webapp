@@ -80,6 +80,8 @@ export type ScoringResult = {
   gatekeeper_line: string;
   fit_offer_pitch: string;
   offer_deliverable: string;
+  /** True if this is an overregional chain/franchise/corporate — not a target. */
+  is_national_chain: boolean;
 };
 
 const SCORING_SCHEMA = {
@@ -159,6 +161,7 @@ const SCORING_SCHEMA = {
     gatekeeper_line: { type: "string" },
     fit_offer_pitch: { type: "string" },
     offer_deliverable: { type: "string" },
+    is_national_chain: { type: "boolean" },
   },
   required: [
     "score_breakdown",
@@ -176,9 +179,64 @@ const SCORING_SCHEMA = {
     "gatekeeper_line",
     "fit_offer_pitch",
     "offer_deliverable",
+    "is_national_chain",
   ],
   additionalProperties: false,
 } as const;
+
+// ── Big-player exclusion ──────────────────────────────────────────────
+// Overregional chains / franchises / corporate branches are NOT our target:
+// decisions sit at HQ, a local branch can't buy a website from us. We detect
+// them two ways — a deterministic name blocklist (the obvious brands, lets us
+// skip the LLM entirely) and the model's own `is_national_chain` flag (catches
+// the rest) — and suppress so they never enter the outreach pool.
+const BIG_PLAYER_RE =
+  /\b(sixt|europcar|enterprise|hertz|avis|buchbinder|starcar|megamobil|loxam|boels|hkl|zeppelin\s+rental|cramo|kiloutou|klarx|obi|bauhaus|hornbach|toom|hagebau|mcdonald'?s?|burger\s+king|subway|kfc|starbucks|rossmann|dm[- ]drogerie|fielmann|apollo[- ]optik|telekom|vodafone|fitnessstudio\s+(mcfit|clever\s*fit))\b/i;
+
+export function isBigPlayerName(name: string | null | undefined): boolean {
+  if (!name) return false;
+  return BIG_PLAYER_RE.test(name);
+}
+
+function emptyBreakdown(rationale: string): ScoringResult["score_breakdown"] {
+  return {
+    pain_severity: 0,
+    fit_confidence: 0,
+    deal_size_potential: 0,
+    reachability: 0,
+    buying_signals: 0,
+    rationale,
+  };
+}
+
+/** Minimal result for a suppressed chain — no outreach copy is generated. */
+function suppressedScoringResult(reason: string): ScoringResult {
+  return {
+    score_breakdown: emptyBreakdown(reason),
+    website_assessment: {
+      has_website: false,
+      reachable: false,
+      already_has_online_ordering: false,
+      already_has_online_booking: false,
+      design_quality: "none",
+      summary: reason,
+    },
+    business_size: "large",
+    fit_offer: "saas",
+    pickup_profile: "gatekeeper",
+    suggested_price_min_eur: 0,
+    suggested_price_max_eur: 0,
+    pain_points: [],
+    offer_benefits: [],
+    sales_points: [],
+    personalized_hook: "",
+    pickup_line: "",
+    gatekeeper_line: "",
+    fit_offer_pitch: "",
+    offer_deliverable: "",
+    is_national_chain: true,
+  };
+}
 
 function buildUserPrompt(
   lead: Lead,
@@ -335,6 +393,25 @@ export async function scoreLead(leadId: string): Promise<ScoringResult> {
     throw new Error(`Campaign join missing for lead ${leadId}`);
   }
 
+  // Obvious overregional chain by name → suppress immediately, skip the LLM
+  // (no point spending tokens or generating outreach copy for a branch that
+  // can't buy from us).
+  const businessName = (lead as unknown as Lead).business_name;
+  if (isBigPlayerName(businessName)) {
+    const reason = "⛔ Überregionale Kette/Konzern — kein lokales Outreach.";
+    await db
+      .from("leads")
+      .update({
+        outreach_status: "suppressed",
+        qualification_tier: "cold",
+        business_size: "large",
+        lead_score: 0,
+        score_breakdown: emptyBreakdown(reason),
+      })
+      .eq("id", leadId);
+    return suppressedScoringResult(reason);
+  }
+
   // Read the ACTUAL website so the offer is grounded in what they
   // already have — not guessed from the category.
   const websiteCtx = await fetchWebsiteContext(
@@ -380,8 +457,11 @@ export async function scoreLead(leadId: string): Promise<ScoringResult> {
   // Independent verification pass — auto-corrects an offer that
   // contradicts the real website (the "copy shop already has ordering"
   // class of bug) and penalizes invented pain. Best-effort: a failed
-  // check leaves the original scoring untouched.
-  const verdict = await verifyOffer(websiteCtx, parsed);
+  // check leaves the original scoring untouched. Skipped for chains —
+  // they're suppressed anyway, no point verifying copy nobody will send.
+  const verdict = parsed.is_national_chain
+    ? null
+    : await verifyOffer(websiteCtx, parsed);
   if (verdict?.contradiction) {
     parsed.fit_offer = verdict.fixed_fit_offer;
     if (verdict.fixed_fit_offer_pitch?.trim()) {
@@ -424,6 +504,15 @@ export async function scoreLead(leadId: string): Promise<ScoringResult> {
     clamp(b.reachability, 15) +
     clamp(b.buying_signals, 15);
 
+  // The model itself flagged this as an overregional chain → suppress it from
+  // the outreach pool, same as the name-based filter above.
+  const isChain = parsed.is_national_chain === true;
+  if (isChain) {
+    parsed.score_breakdown.rationale =
+      "⛔ Überregionale Kette/Konzern — kein lokales Outreach. " +
+      parsed.score_breakdown.rationale;
+  }
+
   const { error: updateErr } = await db
     .from("leads")
     .update({
@@ -448,7 +537,7 @@ export async function scoreLead(leadId: string): Promise<ScoringResult> {
       gatekeeper_line: parsed.gatekeeper_line,
       fit_offer_pitch: capDashes(parsed.fit_offer_pitch),
       offer_deliverable: parsed.offer_deliverable,
-      outreach_status: "scored",
+      outreach_status: isChain ? "suppressed" : "scored",
     })
     .eq("id", leadId);
 

@@ -34,6 +34,7 @@ import {
   clearCampaignNiche,
   setCampaignNiche,
   setCampaignAutomation,
+  setCampaignSendPercent,
   setCampaignSequence,
   loadSmartleadConfig,
   type CampaignAutomation,
@@ -1515,6 +1516,37 @@ export async function setCampaignAutomationAction(
     }
   }
   revalidatePath("/akquise/mail");
+}
+
+/**
+ * Sets how many of the daily-pushed leads Smartlead may actually mail per
+ * day, as a percentage of `daily_new_leads`. Persists the slider position
+ * and pushes the resulting absolute cap to Smartlead's "New Leads/Day" —
+ * applied live, even on a running campaign. Returns the resulting numbers
+ * so the card can confirm without a reload.
+ */
+export async function setCampaignSendRateAction(
+  campaignId: number,
+  percent: number,
+): Promise<{ ok: boolean; percent: number; maxNewLeads: number; error?: string }> {
+  const pct = Math.max(0, Math.min(100, Math.round(percent)));
+  const cfg = await loadSmartleadConfig();
+  const daily = cfg.campaign_automation[String(campaignId)]?.daily_new_leads ?? 0;
+  const maxNewLeads = Math.round((pct / 100) * daily);
+  try {
+    await setCampaignSendPercent(campaignId, pct);
+    const { setCampaignMaxNewLeads } = await import("@/lib/smartlead/client");
+    await setCampaignMaxNewLeads(campaignId, maxNewLeads);
+    revalidatePath("/akquise/mail");
+    return { ok: true, percent: pct, maxNewLeads };
+  } catch (e) {
+    return {
+      ok: false,
+      percent: pct,
+      maxNewLeads,
+      error: e instanceof Error ? e.message : "Smartlead-Fehler",
+    };
+  }
 }
 
 export async function saveCampaignSequenceAction(

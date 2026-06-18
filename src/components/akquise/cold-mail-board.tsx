@@ -62,6 +62,7 @@ import {
   runColdMailAutomationNow,
   saveCampaignSequenceAction,
   setCampaignAutomationAction,
+  setCampaignSendRateAction,
   setSmartleadCampaignStatus,
 } from "@/app/(app)/akquise/actions";
 import type { PoolLead, ReplyLead } from "@/app/(app)/akquise/mail/page";
@@ -97,6 +98,7 @@ const EMPTY_AUTOMATION: CampaignAutomation = {
   daily_new_leads: 10,
   bundeslaender: [],
   cities: [],
+  send_percent: 100,
 };
 
 export function ColdMailBoard({
@@ -933,6 +935,26 @@ function CampaignCard({
   const [auto, setAuto] = useState<CampaignAutomation>({ ...automation });
   const [showRegion, setShowRegion] = useState(false);
   const [draftCity, setDraftCity] = useState("");
+
+  // Send-rate slider: % of the daily pushed leads Smartlead may mail/day.
+  const [sendPct, setSendPct] = useState<number>(automation.send_percent ?? 100);
+  const [sendSaving, setSendSaving] = useState(false);
+  // Base on the *saved* daily count — that's what the server action uses.
+  const sendBase = automation.daily_new_leads || 0;
+  const sendCap = Math.round((sendPct / 100) * sendBase);
+  async function commitSendRate(pct: number) {
+    setSendSaving(true);
+    try {
+      const r = await setCampaignSendRateAction(c.id, pct);
+      if (r.ok) {
+        toast.success(`Send-Rate: ${r.maxNewLeads} Leads/Tag (${r.percent}%)`);
+      } else {
+        toast.error(r.error ?? "Send-Rate fehlgeschlagen");
+      }
+    } finally {
+      setSendSaving(false);
+    }
+  }
   const dirty =
     auto.enabled !== automation.enabled ||
     auto.daily_new_leads !== automation.daily_new_leads ||
@@ -1052,6 +1074,43 @@ function CampaignCard({
                 <Save className="h-3 w-3" /> Speichern
               </Button>
             )}
+          </div>
+
+          {/* Send-rate: how many of the daily pushed leads Smartlead mails */}
+          <div className="space-y-1 border-t border-border/40 pt-2">
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="flex items-center gap-1 text-muted-foreground">
+                <Send className="h-3 w-3" />
+                Versand-Rate
+                {sendSaving && (
+                  <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                )}
+              </span>
+              <span className="font-medium text-foreground">
+                {sendPct}% ·{" "}
+                <span className="text-emerald-300">{sendCap}</span>
+                <span className="text-muted-foreground">
+                  /{sendBase} Mails/Tag
+                </span>
+              </span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              step={5}
+              value={sendPct}
+              disabled={sendSaving}
+              onChange={(e) => setSendPct(Number(e.target.value))}
+              onMouseUp={(e) => commitSendRate(Number(e.currentTarget.value))}
+              onTouchEnd={(e) => commitSendRate(Number(e.currentTarget.value))}
+              onKeyUp={(e) => commitSendRate(Number(e.currentTarget.value))}
+              className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-border accent-emerald-500"
+            />
+            <p className="text-[10px] text-muted-foreground">
+              Wie viel der täglich gepushten Leads Smartlead wirklich
+              rausschickt. Wird live übernommen, auch bei laufender Kampagne.
+            </p>
           </div>
 
           {auto.enabled && !hasScope && (

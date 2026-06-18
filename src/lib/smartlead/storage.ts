@@ -21,6 +21,12 @@ export type CampaignAutomation = {
   daily_new_leads: number;
   bundeslaender: string[];
   cities: string[];
+  /**
+   * Share of the daily pushed leads Smartlead is allowed to actually mail
+   * out per day, 0–100. Maps to Smartlead's "New Leads/Day" cap as
+   * round(send_percent/100 * daily_new_leads). Default 100 (send all).
+   */
+  send_percent: number;
 };
 
 export type SmartleadConfig = {
@@ -81,11 +87,35 @@ export async function setCampaignAutomation(
   automation: CampaignAutomation,
 ): Promise<void> {
   const cfg = await loadSmartleadConfig();
+  const prev = cfg.campaign_automation[String(campaignId)];
   cfg.campaign_automation[String(campaignId)] = {
     enabled: automation.enabled,
     daily_new_leads: Math.max(0, Math.min(200, Math.round(automation.daily_new_leads))),
     bundeslaender: automation.bundeslaender.map((b) => b.trim()).filter(Boolean),
     cities: automation.cities.map((c) => c.trim()).filter(Boolean),
+    send_percent: clampPercent(automation.send_percent ?? prev?.send_percent ?? 100),
+  };
+  await saveConfig(cfg);
+}
+
+function clampPercent(p: number): number {
+  if (!Number.isFinite(p)) return 100;
+  return Math.max(0, Math.min(100, Math.round(p)));
+}
+
+/** Persists only the send-rate slider position for a campaign. */
+export async function setCampaignSendPercent(
+  campaignId: number,
+  percent: number,
+): Promise<void> {
+  const cfg = await loadSmartleadConfig();
+  const prev = cfg.campaign_automation[String(campaignId)];
+  cfg.campaign_automation[String(campaignId)] = {
+    enabled: prev?.enabled ?? false,
+    daily_new_leads: prev?.daily_new_leads ?? 0,
+    bundeslaender: prev?.bundeslaender ?? [],
+    cities: prev?.cities ?? [],
+    send_percent: clampPercent(percent),
   };
   await saveConfig(cfg);
 }

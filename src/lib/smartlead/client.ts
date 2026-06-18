@@ -201,6 +201,91 @@ export async function saveCampaignSequences(
 }
 
 // ─────────────────────────────────────────────────────────────────────
+// Schedule / send rate
+// ─────────────────────────────────────────────────────────────────────
+
+export type CampaignSchedule = {
+  timezone: string;
+  /** Smartlead day codes — 1=Mon … 5=Fri, 6=Sat, 0/7=Sun. */
+  days_of_the_week: number[];
+  start_hour: string; // "HH:MM"
+  end_hour: string; // "HH:MM"
+  min_time_btw_emails: number; // minutes
+  max_new_leads_per_day: number;
+  schedule_start_time: string | null;
+};
+
+const DEFAULT_SCHEDULE: CampaignSchedule = {
+  timezone: "Europe/Berlin",
+  days_of_the_week: [1, 2, 3, 4, 5],
+  start_hour: "08:00",
+  end_hour: "17:00",
+  min_time_btw_emails: 20,
+  max_new_leads_per_day: 100,
+  schedule_start_time: null,
+};
+
+/**
+ * Reads the campaign's current schedule. Smartlead stores the window in
+ * `scheduler_cron_value` ({tz, days, startHour, endHour}) and the cap in
+ * the flat `max_leads_per_day` field — we normalise both into the shape
+ * the POST /schedule endpoint expects, falling back to sane defaults when
+ * no schedule has been saved yet (scheduler_cron_value === null).
+ */
+export async function getCampaignSchedule(
+  campaignId: number,
+): Promise<CampaignSchedule> {
+  const d = await request<Record<string, unknown>>(
+    "GET",
+    `/campaigns/${campaignId}`,
+  );
+  const cron = (d.scheduler_cron_value ?? null) as {
+    tz?: string;
+    days?: number[];
+    startHour?: string;
+    endHour?: string;
+  } | null;
+  const maxLeads = Number(d.max_leads_per_day);
+  const minTime = Number(d.min_time_btwn_emails);
+  return {
+    timezone: cron?.tz || DEFAULT_SCHEDULE.timezone,
+    days_of_the_week:
+      Array.isArray(cron?.days) && cron!.days!.length > 0
+        ? cron!.days!
+        : DEFAULT_SCHEDULE.days_of_the_week,
+    start_hour: cron?.startHour || DEFAULT_SCHEDULE.start_hour,
+    end_hour: cron?.endHour || DEFAULT_SCHEDULE.end_hour,
+    min_time_btw_emails: Number.isFinite(minTime)
+      ? minTime
+      : DEFAULT_SCHEDULE.min_time_btw_emails,
+    max_new_leads_per_day: Number.isFinite(maxLeads)
+      ? maxLeads
+      : DEFAULT_SCHEDULE.max_new_leads_per_day,
+    schedule_start_time:
+      (d.schedule_start_time as string | null) ??
+      DEFAULT_SCHEDULE.schedule_start_time,
+  };
+}
+
+/**
+ * Sets the campaign's "New Leads/Day" cap, preserving the rest of the
+ * schedule (timezone, active days, sending window, min gap). Works while
+ * the campaign is running — Smartlead applies it live.
+ */
+export async function setCampaignMaxNewLeads(
+  campaignId: number,
+  maxNewLeadsPerDay: number,
+): Promise<CampaignSchedule> {
+  const current = await getCampaignSchedule(campaignId);
+  const next: CampaignSchedule = {
+    ...current,
+    max_new_leads_per_day: Math.max(0, Math.round(maxNewLeadsPerDay)),
+  };
+  await request("POST", `/campaigns/${campaignId}/schedule`, { body: next });
+  return next;
+}
+
+// ─────────────────────────────────────────────────────────────────────
 // Email / sender accounts
 // ─────────────────────────────────────────────────────────────────────
 

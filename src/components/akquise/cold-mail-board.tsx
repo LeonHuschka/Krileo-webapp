@@ -60,7 +60,6 @@ import {
   pushSequenceToSmartleadAction,
   registerSmartleadWebhook,
   runColdMailAutomationNow,
-  getColdMailProgressAction,
   saveCampaignSequenceAction,
   setCampaignAutomationAction,
   setSmartleadCampaignStatus,
@@ -297,7 +296,13 @@ export function ColdMailBoard({
     stopPolling();
     pollRef.current = setInterval(async () => {
       try {
-        const p = await getColdMailProgressAction();
+        // Plain GET (not a server action) so it isn't queued behind the
+        // long-running run action and can report live progress.
+        const res = await fetch("/api/cold-mail/progress", {
+          cache: "no-store",
+        });
+        if (!res.ok) return;
+        const p = await res.json();
         setProgress({
           running: p.running,
           phase: p.phase,

@@ -457,8 +457,10 @@ export async function runColdMailAutomation(opts?: {
     let generated = 0;
 
     // 2. Top up: generate fresh niche leads in the configured area.
-    //    Slightly over-generate (×1.5) since not every business yields
-    //    an email even after deep enrichment.
+    //    Scrape exactly the shortfall — no over-generation buffer. "10
+    //    holen" must scrape 10, never 15. (Trade-off: leads whose e-mail
+    //    can't be found after enrichment get routed to call/deleted, so
+    //    fewer than `remaining` may end up pushed to mail.)
     if (pool.length < remaining) {
       const shortfall = remaining - pool.length;
       try {
@@ -469,7 +471,7 @@ export async function runColdMailAutomation(opts?: {
           quota: remaining,
         });
         const gen = await runAutoGeneration({
-          target: Math.ceil(shortfall * 1.5),
+          target: shortfall,
           niches: [c.niche],
           cities: c.automation.cities,
           bundeslaender: c.automation.bundeslaender,

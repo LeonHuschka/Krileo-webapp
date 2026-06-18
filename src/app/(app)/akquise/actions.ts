@@ -1696,9 +1696,10 @@ export async function getColdMailProgressAction() {
 /**
  * Keeps a lead's next-step in sync with a calendar appointment, so a DATED
  * next-step (e.g. a Rückruf) actually shows up under /akquise/termine.
- * Cancels any prior next-step appointment first, then creates a fresh
- * callback appointment when a date is set. `created_by_task='next_step'`
- * marks ours so demo/sale appointments are never touched.
+ * A lead has at most one active next-step, mirrored as a `callback`
+ * appointment (same type On-Hold uses) — so we cancel the lead's existing
+ * scheduled callback(s) first, then create a fresh one when a date is set.
+ * Demo/sale appointments (other types) are never touched.
  */
 async function syncNextStepAppointment(
   leadId: string,
@@ -1710,7 +1711,7 @@ async function syncNextStepAppointment(
     .from("appointments")
     .select("id")
     .eq("lead_id", leadId)
-    .eq("created_by_task", "next_step")
+    .eq("type", "callback")
     .in("status", ["scheduled", "rescheduled"]);
   for (const a of (existing ?? []) as { id: string }[]) {
     try {
@@ -1726,7 +1727,6 @@ async function syncNextStepAppointment(
         type: "callback",
         scheduledFor: nextStepAt,
         notes: nextStep,
-        createdByTask: "next_step",
       });
     } catch {
       /* best-effort */

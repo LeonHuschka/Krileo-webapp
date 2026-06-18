@@ -187,7 +187,10 @@ export default async function LeadDetailPage({
                     </span>
                   )}
                 </div>
-                <LeadFeatureLabels assessment={lead.website_assessment} />
+                <LeadFeatureLabels
+                  assessment={lead.website_assessment}
+                  hasWebsite={!!lead.website_url}
+                />
               </div>
               <div className="flex flex-col items-end gap-2">
                 <div className="flex items-center gap-2">

@@ -182,3 +182,49 @@ export async function searchPlaces(
     keyword: result?.keyword ?? input.keyword,
   };
 }
+
+export type OrganicResult = { url: string; domain: string; title: string };
+
+/**
+ * Google organic search (live advanced). Used to discover a business's own
+ * website when Google Maps didn't link one. Returns the organic result URLs
+ * in rank order — the caller must verify which (if any) actually belongs to
+ * the business (a name+city query also surfaces competitors & directories).
+ */
+export async function searchOrganic(input: {
+  keyword: string;
+  locationCode?: number;
+  languageCode?: string;
+  depth?: number;
+}): Promise<OrganicResult[]> {
+  const task: Record<string, unknown> = {
+    keyword: input.keyword,
+    language_code: input.languageCode ?? "de",
+    location_code: input.locationCode ?? 2276,
+    depth: Math.max(1, Math.min(20, input.depth ?? 10)),
+  };
+  const resp = await fetch(`${DFS_BASE}/serp/google/organic/live/advanced`, {
+    method: "POST",
+    headers: { Authorization: authHeader(), "Content-Type": "application/json" },
+    body: JSON.stringify([task]),
+  });
+  if (!resp.ok) {
+    const body = await resp.text().catch(() => "");
+    throw new Error(`DataForSEO organic ${resp.status}: ${body.slice(0, 300)}`);
+  }
+  const data = (await resp.json()) as {
+    tasks?: Array<{
+      result?: Array<{
+        items?: Array<{ type?: string; url?: string; domain?: string; title?: string }>;
+      }>;
+    }>;
+  };
+  const items = data.tasks?.[0]?.result?.[0]?.items ?? [];
+  return items
+    .filter((i) => i.type === "organic" && !!i.url)
+    .map((i) => ({
+      url: i.url as string,
+      domain: i.domain ?? "",
+      title: i.title ?? "",
+    }));
+}

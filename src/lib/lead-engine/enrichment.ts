@@ -4,6 +4,7 @@ import { claude, firstTextBlock } from "@/lib/lead-engine/claude";
 import { leadEngine } from "@/lib/lead-engine/supabase";
 import { IMPRESSUM_EXTRACT_SYSTEM } from "@/lib/lead-engine/prompts/impressum-extract";
 import { isPlaceholderEmail } from "@/lib/lead-engine/text";
+import { searchOrganic } from "@/lib/lead-engine/dataforseo";
 import type { ContactChannel } from "@/lib/lead-engine/types";
 
 const FETCH_TIMEOUT_MS = 10_000;
@@ -402,6 +403,74 @@ export type EnrichResult = {
   source: "impressum" | "homepage" | "email" | "raw_data" | "none";
 };
 
+/** Does the page text contain the lead's phone number (any common format)? */
+function pageHasPhone(html: string, phoneNorm: string): boolean {
+  const text = stripHtml(html);
+  for (const m of Array.from(text.matchAll(PHONE_RE))) {
+    if (normalizePhone(m[0]) === phoneNorm) return true;
+  }
+  return false;
+}
+
+/**
+ * Discover a business's OWN website when Google Maps didn't link one. Runs a
+ * Google search for "<name> <city>", then accepts a candidate ONLY if the
+ * lead's phone number appears on that site — a name+city query also surfaces
+ * competitors and directories, so phone-match is the safeguard against ever
+ * assigning the wrong site. Sets website_url on a verified hit and returns it.
+ *
+ * Skipped silently when the lead has no phone (can't verify) — better no
+ * website than a wrong one.
+ */
+export async function discoverWebsite(leadId: string): Promise<string | null> {
+  const db = leadEngine();
+  const { data } = await db
+    .from("leads")
+    .select("business_name, city, phone, website_url")
+    .eq("id", leadId)
+    .maybeSingle();
+  const lead = data as {
+    business_name: string | null;
+    city: string | null;
+    phone: string | null;
+    website_url: string | null;
+  } | null;
+  if (!lead) return null;
+  if (lead.website_url) return lead.website_url; // already has one
+  const phoneNorm = lead.phone ? normalizePhone(lead.phone) : null;
+  if (!phoneNorm || !lead.business_name) return null; // can't verify → skip
+
+  let results;
+  try {
+    results = await searchOrganic({
+      keyword: `${lead.business_name} ${lead.city ?? ""}`.trim(),
+    });
+  } catch {
+    return null;
+  }
+
+  const candidates = results
+    .filter((r) => r.url && !isDirectoryHost(r.url))
+    .slice(0, 5);
+  for (const c of candidates) {
+    const home = await fetchWithTimeout(c.url);
+    let matched = home ? pageHasPhone(home, phoneNorm) : false;
+    if (!matched) {
+      // The phone often lives on the Impressum/Kontakt page, not the homepage.
+      const imp = await findImpressumUrl(c.url);
+      if (imp) {
+        const impHtml = await fetchWithTimeout(imp);
+        if (impHtml) matched = pageHasPhone(impHtml, phoneNorm);
+      }
+    }
+    if (matched) {
+      await db.from("leads").update({ website_url: c.url }).eq("id", leadId);
+      return c.url;
+    }
+  }
+  return null;
+}
+
 /**
  * Best-effort Impressum scrape for a single lead. Writes owner_name (and
  * owner_email / legal_form when found) onto the lead and bumps the
@@ -443,10 +512,17 @@ export async function enrichLead(leadId: string): Promise<EnrichResult> {
 
   // Skip a website that is a directory/portal listing — its Impressum is the
   // platform operator's, not the business's.
-  const website =
+  let website =
     existing.website_url && !isDirectoryHost(existing.website_url)
       ? existing.website_url
       : null;
+
+  // No website from Maps → try to discover one (phone-verified). Lets us
+  // enrich businesses whose real site just wasn't linked in Google Maps.
+  if (!website && !existing.website_url) {
+    const found = await discoverWebsite(leadId);
+    if (found && !isDirectoryHost(found)) website = found;
+  }
 
   // Collect up to 3 pages of raw HTML (homepage + impressum + kontakt)
   // — the impressum feeds the Haiku owner extraction, ALL pages feed
@@ -648,6 +724,26 @@ const DIRECTORY_HOSTS = [
   "instagram.com",
   "google.com",
   "linktr.ee",
+  "kleinanzeigen.de",
+  "ebay-kleinanzeigen.de",
+  "creditreform.de",
+  "eventbrite.com",
+  "eventbrite.de",
+  "dastelefonbuch.de",
+  "telefonbuch.de",
+  "11880.com",
+  "autovermietungen.com.de",
+  "youtube.com",
+  "tiktok.com",
+  "xing.com",
+  "linkedin.com",
+  "pinterest.de",
+  "pinterest.com",
+  "wikipedia.org",
+  "tripadvisor.de",
+  "tripadvisor.com",
+  "yellowmap.de",
+  "openstreetmap.org",
 ];
 
 function isDirectoryHost(website: string): boolean {

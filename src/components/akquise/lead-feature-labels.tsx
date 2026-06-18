@@ -1,13 +1,14 @@
-import { Globe, CalendarCheck2, ShoppingCart } from "lucide-react";
+import { Globe, CalendarCheck2, ShoppingCart, HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { WebsiteAssessment } from "@/lib/lead-engine/types";
 
-type ChipState = "good" | "warn" | "bad";
+type ChipState = "good" | "warn" | "bad" | "unknown";
 
 const CHIP_STYLE: Record<ChipState, string> = {
   good: "border-emerald-500/40 bg-emerald-500/10 text-emerald-300",
   warn: "border-amber-500/40 bg-amber-500/10 text-amber-300",
   bad: "border-rose-500/40 bg-rose-500/10 text-rose-300",
+  unknown: "border-zinc-500/40 bg-zinc-500/10 text-zinc-400",
 };
 
 function Chip({
@@ -39,19 +40,31 @@ function Chip({
  */
 export function LeadFeatureLabels({
   assessment,
+  hasWebsite,
   className,
 }: {
   assessment: WebsiteAssessment | null | undefined;
+  /** Whether the lead actually has a website_url (from Maps or discovery). */
+  hasWebsite: boolean;
   className?: string;
 }) {
+  // No website link at all → we don't KNOW (Maps just didn't list one).
+  // Show neutral "unklar" instead of falsely claiming "Keine Website".
+  if (!hasWebsite) {
+    return (
+      <div className={cn("flex flex-wrap items-center gap-1", className)}>
+        <Chip state="unknown" label="Website unklar" Icon={HelpCircle} />
+      </div>
+    );
+  }
   if (!assessment) return null;
-  const dq = assessment.design_quality;
-  const noSite = !assessment.has_website || dq === "none";
-  const dated = dq === "dated" || dq === "very_dated";
 
+  const dq = assessment.design_quality;
+  const noSite = dq === "none";
+  const dated = dq === "dated" || dq === "very_dated";
   const websiteState: ChipState = noSite ? "bad" : dated ? "warn" : "good";
   const websiteLabel = noSite
-    ? "Keine Website"
+    ? "Website nicht erreichbar"
     : dq === "very_dated"
       ? "Website sehr alt"
       : dq === "dated"

@@ -208,6 +208,7 @@ export function CallCard({
           {/* What the lead has / lacks — where to start the pitch */}
           <LeadFeatureLabels
             assessment={lead.website_assessment}
+            hasWebsite={!!lead.website_url}
             className="mt-2"
           />
         </div>

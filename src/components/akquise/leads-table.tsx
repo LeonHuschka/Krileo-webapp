@@ -44,7 +44,6 @@ import {
   setLeadChannel,
 } from "@/app/(app)/akquise/actions";
 import { LeadRowActions } from "@/components/akquise/lead-row-actions";
-import { PickupBadge } from "@/components/akquise/pickup-badge";
 import { CleanupDialog } from "@/components/akquise/cleanup-dialog";
 import { TierSelect } from "@/components/akquise/tier-select";
 import type { Channel, Lead, LeadEvent } from "@/lib/lead-engine/types";
@@ -389,7 +388,6 @@ export function LeadsTable({
               <TableHead>Stadt</TableHead>
               <TableHead className="text-right">Score</TableHead>
               <TableHead>Tier</TableHead>
-              <TableHead className="w-[110px]">Pickup</TableHead>
               <TableHead className="w-[140px] text-center">Assign</TableHead>
               <TableHead className="w-[160px]">Letztes Event</TableHead>
               <TableHead>Phone</TableHead>
@@ -461,14 +459,6 @@ export function LeadsTable({
                   </TableCell>
                   <TableCell>
                     <TierSelect leadId={l.id} tier={l.qualification_tier} />
-                  </TableCell>
-                  <TableCell>
-                    <PickupBadge
-                      leadId={l.id}
-                      profile={l.pickup_profile ?? null}
-                      ownerName={l.owner_name}
-                      variant="compact"
-                    />
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center justify-center gap-1">

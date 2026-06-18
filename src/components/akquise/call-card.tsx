@@ -18,7 +18,6 @@ import {
   Flame,
   Sun,
   Snowflake,
-  User,
   UserX,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -40,7 +39,8 @@ import { AppointmentDialog } from "@/components/akquise/appointment-dialog";
 import { CallbackDialog } from "@/components/akquise/callback-dialog";
 import { LeadHistoryStrip } from "@/components/akquise/lead-history-strip";
 import { PhoneManager } from "@/components/akquise/phone-manager";
-import { PickupBadge } from "@/components/akquise/pickup-badge";
+import { LeadFeatureLabels } from "@/components/akquise/lead-feature-labels";
+import { OwnerEditable } from "@/components/akquise/owner-editable";
 import { cn } from "@/lib/utils";
 import type {
   Lead,
@@ -182,21 +182,14 @@ export function CallCard({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <Link
-            href={`/akquise/leads/${lead.id}`}
+            href={`/akquise/leads/${lead.id}?from=calls`}
             className="block break-words text-sm text-muted-foreground hover:underline"
           >
             {lead.business_name}
           </Link>
-          {lead.owner_name ? (
-            <div className="mt-0.5 flex items-center gap-1.5 text-lg font-bold leading-tight text-primary">
-              <User className="h-4 w-4 shrink-0" />
-              <span className="break-words">{lead.owner_name}</span>
-            </div>
-          ) : (
-            <div className="mt-0.5 text-base font-semibold leading-tight text-muted-foreground/60">
-              (Inhaber unbekannt)
-            </div>
-          )}
+          <div className="mt-0.5">
+            <OwnerEditable leadId={lead.id} ownerName={lead.owner_name} />
+          </div>
           <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             {lead.city && (
               <span className="flex items-center gap-1">
@@ -212,14 +205,11 @@ export function CallCard({
               </span>
             )}
           </div>
-          <div className="mt-2">
-            <PickupBadge
-              leadId={lead.id}
-              profile={lead.pickup_profile ?? null}
-              ownerName={lead.owner_name}
-              variant="full"
-            />
-          </div>
+          {/* What the lead has / lacks — where to start the pitch */}
+          <LeadFeatureLabels
+            assessment={lead.website_assessment}
+            className="mt-2"
+          />
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
           <Badge
@@ -338,113 +328,42 @@ export function CallCard({
         })}
       </div>
 
-      {/* Pickup Lines — sprechbar, mit Owner-Name */}
-      {(lead.pickup_line || lead.gatekeeper_line) && (
-        <div className="space-y-1.5">
-          {/* Gatekeeper-Line first if needed */}
-          {lead.gatekeeper_line && lead.pickup_profile !== "owner_direct" && (
-            <div className="rounded-lg border border-rose-500/30 bg-rose-500/[0.04] p-2.5">
-              <div className="mb-0.5 text-[10px] uppercase tracking-wider text-rose-300/80">
-                Wenn Empfangskraft rangeht
-              </div>
-              <p className="text-[13px] leading-snug text-foreground">
-                «{lead.gatekeeper_line}»
-              </p>
-            </div>
-          )}
-          {/* Owner direct pickup line */}
-          {lead.pickup_line && (
-            <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/[0.05] p-2.5">
-              <div className="mb-0.5 text-[10px] uppercase tracking-wider text-emerald-300/80">
-                {lead.pickup_profile === "owner_direct"
-                  ? "Direkt zum Inhaber"
-                  : "Wenn Inhaber rangeht"}
-              </div>
-              <p className="text-[13px] leading-snug text-foreground">
-                «{lead.pickup_line}»
-              </p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Hook — Customer-Perspektive Story */}
-      {lead.personalized_hook && (
-        <div className="rounded-lg border border-primary/30 bg-primary/[0.05] p-3 text-sm leading-snug">
-          <div className="mb-1 text-[10px] uppercase tracking-wider text-primary/80">
-            Hook (wenn durchgekommen)
-          </div>
-          {lead.personalized_hook}
-        </div>
-      )}
-
-      {/* Pain points */}
+      {/* Pain points — the reason to call (what to lead with) */}
       {lead.pain_points && lead.pain_points.length > 0 && (
-        <ul className="space-y-1 text-xs text-muted-foreground">
-          {lead.pain_points.slice(0, 3).map((p, i) => (
-            <li key={i} className="flex gap-1.5">
-              <span className="text-primary">·</span>
-              <span>{p}</span>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {/* Offer block — what we'd build + what it buys the customer */}
-      {(priceRange || lead.fit_offer || lead.fit_offer_pitch) && (
-        <div className="space-y-1.5 rounded-lg border border-emerald-500/25 bg-emerald-500/[0.05] p-2.5">
-          <div className="flex flex-wrap items-center gap-2 text-xs">
-            <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-300">
-              Offer
-            </span>
-            {lead.fit_offer && (
-              <Badge
-                variant="outline"
-                className="border-border/60 bg-card text-[10px]"
-              >
-                {lead.fit_offer}
-              </Badge>
-            )}
-            {priceRange && (
-              <span className="font-semibold tabular-nums text-emerald-300">
-                {priceRange}
-              </span>
-            )}
-            {lead.business_size && (
-              <span className="text-muted-foreground">
-                · {lead.business_size}
-              </span>
-            )}
+        <div className="space-y-1">
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+            Ansatzpunkte
           </div>
-          {lead.fit_offer_pitch && (
-            <p className="text-[11px] leading-snug text-foreground">
-              {lead.fit_offer_pitch}
-            </p>
-          )}
-          {lead.offer_benefits && lead.offer_benefits.length > 0 && (
-            <ul className="space-y-0.5 text-[11px] text-muted-foreground">
-              {lead.offer_benefits.slice(0, 3).map((b, i) => (
-                <li key={i} className="flex gap-1.5">
-                  <span className="text-emerald-400">✓</span>
-                  <span>{b}</span>
-                </li>
-              ))}
-            </ul>
-          )}
+          <ul className="space-y-1 text-[13px] text-foreground">
+            {lead.pain_points.slice(0, 3).map((p, i) => (
+              <li key={i} className="flex gap-1.5">
+                <span className="text-primary">·</span>
+                <span className="leading-snug">{p}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
-      {/* Gatekeeper pickup-line — only when reception is expected */}
-      {lead.pickup_profile === "gatekeeper" && (
-        <div className="rounded-lg border border-rose-500/30 bg-rose-500/[0.06] p-2.5 text-xs leading-snug">
-          <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-rose-300">
-            Pickup-Line
-          </div>
-          <span className="text-foreground">
-            {lead.owner_name
-              ? `»${lead.owner_name} persönlich, bitte — sie/er weiß Bescheid.«`
-              : "»Den/die Geschäftsführer/in persönlich, bitte — es geht um die Website.«"}
+      {/* Offer — minimal: what + price */}
+      {(lead.fit_offer || priceRange) && (
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-300">
+            Offer
           </span>
+          {lead.fit_offer && (
+            <Badge
+              variant="outline"
+              className="border-border/60 bg-card text-[10px]"
+            >
+              {lead.fit_offer}
+            </Badge>
+          )}
+          {priceRange && (
+            <span className="font-semibold tabular-nums text-emerald-300">
+              {priceRange}
+            </span>
+          )}
         </div>
       )}
 

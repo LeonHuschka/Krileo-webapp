@@ -22,6 +22,8 @@ import { AppointmentDialog } from "@/components/akquise/appointment-dialog";
 import { AppointmentRow } from "@/components/akquise/appointment-row";
 import { DayCalendar, type ExternalEvent } from "@/components/akquise/day-calendar";
 import { LeadNotes } from "@/components/akquise/lead-notes";
+import { LeadFeatureLabels } from "@/components/akquise/lead-feature-labels";
+import { OwnerEditable } from "@/components/akquise/owner-editable";
 import { NextStepSection } from "@/components/akquise/next-step-section";
 import { DemoLinkButton } from "@/components/akquise/demo-link-button";
 import { OfferPdfButton } from "@/components/akquise/offer-pdf-button";
@@ -62,8 +64,10 @@ type ApptWithLead = Appointment & {
 
 export default async function LeadDetailPage({
   params,
+  searchParams,
 }: {
   params: { id: string };
+  searchParams?: { from?: string };
 }) {
   const db = leadEngine();
   const { data, error } = await db
@@ -77,6 +81,9 @@ export default async function LeadDetailPage({
   const lead = data as unknown as Lead & {
     campaigns?: { industry: string; city: string };
   };
+
+  // Back-link target: came from the call queue → return there, not the browser.
+  const fromCalls = searchParams?.from === "calls";
 
   // This lead's own appointments (shown as a list below)
   let leadAppointments: ApptWithLead[] = [];
@@ -148,10 +155,10 @@ export default async function LeadDetailPage({
   return (
     <div className="space-y-4 p-4 md:p-6">
       <Link
-        href="/akquise/leads"
+        href={fromCalls ? "/akquise/tasks" : "/akquise/leads"}
         className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
       >
-        <ArrowLeft className="h-3 w-3" /> Lead-Browser
+        <ArrowLeft className="h-3 w-3" /> {fromCalls ? "Call-Queue" : "Lead-Browser"}
       </Link>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
@@ -160,11 +167,7 @@ export default async function LeadDetailPage({
           <Card>
             <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
               <div className="flex-1 space-y-2">
-                {lead.owner_name && (
-                  <div className="text-sm font-medium text-primary">
-                    {lead.owner_name}
-                  </div>
-                )}
+                <OwnerEditable leadId={lead.id} ownerName={lead.owner_name} />
                 <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
                   {lead.business_name}
                 </h1>
@@ -184,6 +187,7 @@ export default async function LeadDetailPage({
                     </span>
                   )}
                 </div>
+                <LeadFeatureLabels assessment={lead.website_assessment} />
               </div>
               <div className="flex flex-col items-end gap-2">
                 <div className="flex items-center gap-2">
@@ -228,18 +232,6 @@ export default async function LeadDetailPage({
               </div>
             </CardHeader>
             <CardContent className="space-y-5">
-              {/* Hook */}
-              {lead.personalized_hook && (
-                <div className="rounded-lg border border-primary/30 bg-primary/5 p-4">
-                  <div className="mb-1 text-xs font-medium uppercase tracking-wider text-primary">
-                    Hook
-                  </div>
-                  <p className="text-base leading-snug">
-                    {lead.personalized_hook}
-                  </p>
-                </div>
-              )}
-
               {/* Pain points */}
               {lead.pain_points && lead.pain_points.length > 0 && (
                 <div>
@@ -259,36 +251,24 @@ export default async function LeadDetailPage({
                 </div>
               )}
 
-              {/* Offer block */}
-              {(lead.fit_offer || lead.fit_offer_pitch || lead.offer_deliverable || priceRange) && (
-                <div className="space-y-2 rounded-lg border border-emerald-500/25 bg-emerald-500/[0.05] p-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-emerald-300">
-                      <Target className="h-3.5 w-3.5" /> Offer
+              {/* Offer — minimal: what + price */}
+              {(lead.fit_offer || priceRange) && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-emerald-300">
+                    <Target className="h-3.5 w-3.5" /> Offer
+                  </span>
+                  {lead.fit_offer && (
+                    <Badge
+                      variant="outline"
+                      className="border-border/60 bg-card text-[10px] uppercase"
+                    >
+                      {lead.fit_offer}
+                    </Badge>
+                  )}
+                  {priceRange && (
+                    <span className="font-semibold tabular-nums text-emerald-300">
+                      {priceRange}
                     </span>
-                    {lead.fit_offer && (
-                      <Badge
-                        variant="outline"
-                        className="border-border/60 bg-card text-[10px] uppercase"
-                      >
-                        {lead.fit_offer}
-                      </Badge>
-                    )}
-                    {priceRange && (
-                      <span className="font-semibold tabular-nums text-emerald-300">
-                        {priceRange}
-                      </span>
-                    )}
-                    {lead.business_size && (
-                      <span className="text-xs text-muted-foreground">
-                        · {lead.business_size}
-                      </span>
-                    )}
-                  </div>
-                  {(lead.offer_deliverable || lead.fit_offer_pitch) && (
-                    <p className="text-sm leading-snug text-foreground">
-                      {lead.offer_deliverable ?? lead.fit_offer_pitch}
-                    </p>
                   )}
                 </div>
               )}

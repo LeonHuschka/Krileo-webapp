@@ -454,19 +454,29 @@ export async function discoverWebsite(leadId: string): Promise<string | null> {
     .slice(0, 5);
   for (const c of candidates) {
     const home = await fetchWithTimeout(c.url);
-    let matched = home ? pageHasPhone(home, phoneNorm) : false;
-    if (!matched) {
-      // The phone often lives on the Impressum/Kontakt page, not the homepage.
-      const imp = await findImpressumUrl(c.url);
-      if (imp) {
-        const impHtml = await fetchWithTimeout(imp);
-        if (impHtml) matched = pageHasPhone(impHtml, phoneNorm);
-      }
+    const pages: string[] = home ? [home] : [];
+    const imp = await findImpressumUrl(c.url);
+    if (imp) {
+      const impHtml = await fetchWithTimeout(imp);
+      if (impHtml) pages.push(impHtml);
     }
-    if (matched) {
-      await db.from("leads").update({ website_url: c.url }).eq("id", leadId);
-      return c.url;
-    }
+    if (pages.length === 0) continue;
+    const blob = pages.join(" ");
+
+    // Guard 1: the lead's phone must appear on the site.
+    if (!pageHasPhone(blob, phoneNorm)) continue;
+
+    // Guard 2: the site must actually BELONG to this business. A phone alone
+    // also matches directories (bikeshops.de) and landlord sites (a sports
+    // club hosting the restaurant's number) — the Impressum check rejects
+    // those (their Impressum names a different company).
+    const text = stripHtml(blob).slice(0, 6000);
+    const extracted =
+      text.length >= 50 ? await extractFromText(text, lead.business_name) : null;
+    if (extracted && extracted.belongs_to_business === false) continue;
+
+    await db.from("leads").update({ website_url: c.url }).eq("id", leadId);
+    return c.url;
   }
   return null;
 }
@@ -726,6 +736,8 @@ const DIRECTORY_HOSTS = [
   "linktr.ee",
   "kleinanzeigen.de",
   "ebay-kleinanzeigen.de",
+  "bikeshops.de",
+  "fahrrad.de",
   "creditreform.de",
   "eventbrite.com",
   "eventbrite.de",

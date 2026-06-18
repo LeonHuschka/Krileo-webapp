@@ -422,7 +422,10 @@ function pageHasPhone(html: string, phoneNorm: string): boolean {
  * Skipped silently when the lead has no phone (can't verify) — better no
  * website than a wrong one.
  */
-export async function discoverWebsite(leadId: string): Promise<string | null> {
+export async function discoverWebsite(
+  leadId: string,
+  opts: { force?: boolean } = {},
+): Promise<string | null> {
   const db = leadEngine();
   const { data } = await db
     .from("leads")
@@ -436,7 +439,9 @@ export async function discoverWebsite(leadId: string): Promise<string | null> {
     website_url: string | null;
   } | null;
   if (!lead) return null;
-  if (lead.website_url) return lead.website_url; // already has one
+  // Already has a website and we're not forcing a re-search (force is used
+  // when the linked URL turned out dead).
+  if (lead.website_url && !opts.force) return lead.website_url;
   const phoneNorm = lead.phone ? normalizePhone(lead.phone) : null;
   if (!phoneNorm || !lead.business_name) return null; // can't verify → skip
 
@@ -527,11 +532,25 @@ export async function enrichLead(leadId: string): Promise<EnrichResult> {
       ? existing.website_url
       : null;
 
-  // No website from Maps → try to discover one (phone-verified). Lets us
-  // enrich businesses whose real site just wasn't linked in Google Maps.
-  if (!website && !existing.website_url) {
-    const found = await discoverWebsite(leadId);
-    if (found && !isDirectoryHost(found)) website = found;
+  // Fetch the linked site to verify it's actually reachable.
+  let homeHtml = website ? await fetchWithTimeout(website) : null;
+
+  // No website in Maps, OR the linked URL is dead (old / 404) → discover a
+  // LIVE one (phone + Impressum verified, never a wrong/competitor site).
+  // force=true so a dead linked URL gets replaced too.
+  if (!homeHtml) {
+    const found = await discoverWebsite(leadId, { force: true });
+    if (found && !isDirectoryHost(found) && found !== website) {
+      website = found;
+      homeHtml = await fetchWithTimeout(found);
+    }
+  }
+
+  // Linked URL is dead and no live replacement found → drop the broken link
+  // so the card shows an honest "Website unklar" instead of a 404 button.
+  if (!homeHtml && existing.website_url) {
+    await db.from("leads").update({ website_url: null }).eq("id", leadId);
+    website = null;
   }
 
   // Collect up to 3 pages of raw HTML (homepage + impressum + kontakt)
@@ -542,9 +561,8 @@ export async function enrichLead(leadId: string): Promise<EnrichResult> {
   let trustSite = true;
   const htmlPages: string[] = [];
 
-  if (website) {
-    const homeHtml = await fetchWithTimeout(website);
-    if (homeHtml) htmlPages.push(homeHtml);
+  if (website && homeHtml) {
+    htmlPages.push(homeHtml);
 
     let impressumHtml: string | null = null;
     const impressumUrl = await findImpressumUrl(website);

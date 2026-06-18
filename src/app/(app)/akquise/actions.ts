@@ -1671,7 +1671,11 @@ export async function aiEditSequenceAction(input: {
  */
 export async function runColdMailAutomationNow(campaignId?: number) {
   const { runColdMailAutomation } = await import("@/lib/smartlead/service");
-  const r = await runColdMailAutomation({ campaignId });
+  // Interactive path ("Jetzt" / enable trigger): cap well under the page's
+  // maxDuration (300s) so the run always returns gracefully with a partial
+  // result instead of being killed by the platform. Big quotas finish across
+  // repeated runs + the daily cron (which gets the full 270s budget).
+  const r = await runColdMailAutomation({ campaignId, timeBudgetMs: 230_000 });
   revalidateAll();
   revalidatePath("/akquise/mail");
   return r;

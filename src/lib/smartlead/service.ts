@@ -502,15 +502,17 @@ export async function runColdMailAutomation(opts?: {
     let generated = 0;
 
     // 2. Top up in ROUNDS until the niche has `remaining` e-mail-ready leads.
-    //    Each round scrapes only the still-missing amount of NEW businesses —
-    //    runAutoGeneration dedups against everything already scraped, so
-    //    places we've seen before never count again, only genuinely new ones
-    //    are added. Since not every business yields an e-mail (the rest get
-    //    routed to call/deleted), we simply scrape again until the mail pool
-    //    is full instead of guessing an over-scrape multiplier.
+    //    Each round scrapes a SMALL chunk of new businesses (not the whole
+    //    shortfall at once) so a single round can never run for minutes —
+    //    that keeps the per-round enrich+score short and lets the time-budget
+    //    check between rounds actually bite (otherwise one giant round blows
+    //    past the budget and the serverless function gets killed mid-run).
+    //    runAutoGeneration dedups against everything already scraped, so seen
+    //    places never count twice; only genuinely new leads are added.
     //    Stops when: pool full · a round finds no new leads (area exhausted)
-    //    · round cap hit · time budget spent.
-    const MAX_ROUNDS = 12;
+    //    · round cap hit · time budget spent (then pushes what it has).
+    const ROUND_CHUNK = 10;
+    const MAX_ROUNDS = 40;
     let round = 0;
     while (
       pool.length < remaining &&
@@ -519,6 +521,7 @@ export async function runColdMailAutomation(opts?: {
     ) {
       round += 1;
       const shortfall = remaining - pool.length;
+      const target = Math.min(shortfall, ROUND_CHUNK);
       let gen;
       try {
         await setColdMailProgress({
@@ -532,7 +535,7 @@ export async function runColdMailAutomation(opts?: {
           generated,
         });
         gen = await runAutoGeneration({
-          target: shortfall,
+          target,
           niches: [c.niche],
           cities: c.automation.cities,
           bundeslaender: c.automation.bundeslaender,

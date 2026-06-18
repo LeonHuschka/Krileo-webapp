@@ -19,6 +19,16 @@ export async function GET() {
     return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
   }
   const progress = await getColdMailProgress();
+  // Staleness guard: a run killed by a serverless timeout leaves
+  // running=true forever. If the row hasn't been touched in >2 min, treat it
+  // as finished so the UI never spins indefinitely.
+  if (progress.running && progress.updatedAt) {
+    const age = Date.now() - new Date(progress.updatedAt).getTime();
+    if (Number.isFinite(age) && age > 120_000) {
+      progress.running = false;
+      progress.phase = "done";
+    }
+  }
   return NextResponse.json(progress, {
     headers: { "Cache-Control": "no-store" },
   });

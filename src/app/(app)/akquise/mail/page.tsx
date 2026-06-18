@@ -17,6 +17,9 @@ import { buildVarsForLead } from "@/lib/smartlead/mapping";
 import { formatLeadEngineError } from "@/lib/lead-engine/format-error";
 
 export const dynamic = "force-dynamic";
+// Server actions invoked from this page (cold-mail "Jetzt" / enable trigger)
+// inherit this — the run needs minutes, not the default ~15s.
+export const maxDuration = 300;
 
 export type PoolLead = {
   id: string;

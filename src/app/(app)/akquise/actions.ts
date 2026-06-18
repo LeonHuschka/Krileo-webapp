@@ -1382,6 +1382,8 @@ export async function completeNextStep(leadId: string) {
   if (outcome === "on_hold") patch.last_contact_outcome = null;
   const { error } = await db.from("leads").update(patch).eq("id", leadId);
   if (error) throw new Error(error.message);
+  // Take the matching callback out of the calendar too.
+  await syncNextStepAppointment(leadId, null, null);
   await appendLeadEvent({
     leadId,
     type: "note",
@@ -1691,22 +1693,63 @@ export async function getColdMailProgressAction() {
 // Lead-detail: next step + AI meeting prep
 // ─────────────────────────────────────────────────────────────────────
 
+/**
+ * Keeps a lead's next-step in sync with a calendar appointment, so a DATED
+ * next-step (e.g. a Rückruf) actually shows up under /akquise/termine.
+ * Cancels any prior next-step appointment first, then creates a fresh
+ * callback appointment when a date is set. `created_by_task='next_step'`
+ * marks ours so demo/sale appointments are never touched.
+ */
+async function syncNextStepAppointment(
+  leadId: string,
+  nextStep: string | null,
+  nextStepAt: string | null,
+) {
+  const db = leadEngine();
+  const { data: existing } = await db
+    .from("appointments")
+    .select("id")
+    .eq("lead_id", leadId)
+    .eq("created_by_task", "next_step")
+    .in("status", ["scheduled", "rescheduled"]);
+  for (const a of (existing ?? []) as { id: string }[]) {
+    try {
+      await updateAppointmentStatus(a.id, "cancelled");
+    } catch {
+      /* best-effort — don't block the next-step save on calendar sync */
+    }
+  }
+  if (nextStepAt) {
+    try {
+      await createAppointment({
+        leadId,
+        type: "callback",
+        scheduledFor: nextStepAt,
+        notes: nextStep,
+        createdByTask: "next_step",
+      });
+    } catch {
+      /* best-effort */
+    }
+  }
+}
+
 export async function setLeadNextStep(input: {
   leadId: string;
   nextStep: string | null;
   nextStepAt: string | null;
 }) {
   const db = leadEngine();
+  const nextStep = input.nextStep?.trim() || null;
+  const nextStepAt = input.nextStepAt || null;
   const { error } = await db
     .from("leads")
-    .update({
-      next_step: input.nextStep?.trim() || null,
-      next_step_at: input.nextStepAt || null,
-    })
+    .update({ next_step: nextStep, next_step_at: nextStepAt })
     .eq("id", input.leadId);
   if (error) throw new Error(error.message);
-  revalidatePath(`/akquise/leads/${input.leadId}`);
-  revalidatePath("/akquise/d2d");
+  // Mirror a dated next-step into the calendar (and clear it when undated).
+  await syncNextStepAppointment(input.leadId, nextStep, nextStepAt);
+  revalidateAll();
 }
 
 const PREP_SCHEMA = {

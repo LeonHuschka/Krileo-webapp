@@ -46,24 +46,10 @@ import {
 import { LeadRowActions } from "@/components/akquise/lead-row-actions";
 import { PickupBadge } from "@/components/akquise/pickup-badge";
 import { CleanupDialog } from "@/components/akquise/cleanup-dialog";
+import { TierSelect } from "@/components/akquise/tier-select";
 import type { Channel, Lead, LeadEvent } from "@/lib/lead-engine/types";
 
-const CHANNEL_COLORS: Record<string, string> = {
-  email: "border-sky-500/40 bg-sky-500/15 text-sky-300",
-  call: "border-emerald-500/40 bg-emerald-500/15 text-emerald-300",
-  instagram: "border-fuchsia-500/40 bg-fuchsia-500/15 text-fuchsia-300",
-  linkedin: "border-blue-500/40 bg-blue-500/15 text-blue-300",
-  none: "border-zinc-500/40 bg-zinc-500/15 text-zinc-300",
-};
-
 const ALL = "__all__";
-
-const TIER_COLORS: Record<string, string> = {
-  hot: "border-rose-500/40 bg-rose-500/15 text-rose-300",
-  warm: "border-amber-500/40 bg-amber-500/15 text-amber-300",
-  cold: "border-sky-500/40 bg-sky-500/15 text-sky-300",
-};
-
 
 function relativeTime(iso: string): string {
   const ms = Date.now() - new Date(iso).getTime();
@@ -403,7 +389,6 @@ export function LeadsTable({
               <TableHead>Stadt</TableHead>
               <TableHead className="text-right">Score</TableHead>
               <TableHead>Tier</TableHead>
-              <TableHead>Channel</TableHead>
               <TableHead className="w-[110px]">Pickup</TableHead>
               <TableHead className="w-[140px] text-center">Assign</TableHead>
               <TableHead className="w-[160px]">Letztes Event</TableHead>
@@ -475,34 +460,7 @@ export function LeadsTable({
                     </span>
                   </TableCell>
                   <TableCell>
-                    {l.qualification_tier ? (
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          "border text-[10px] uppercase",
-                          TIER_COLORS[l.qualification_tier] ?? "",
-                        )}
-                      >
-                        {l.qualification_tier}
-                      </Badge>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {l.primary_channel ? (
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          "border text-[10px] uppercase",
-                          CHANNEL_COLORS[l.primary_channel] ?? "",
-                        )}
-                      >
-                        {l.primary_channel}
-                      </Badge>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">—</span>
-                    )}
+                    <TierSelect leadId={l.id} tier={l.qualification_tier} />
                   </TableCell>
                   <TableCell>
                     <PickupBadge

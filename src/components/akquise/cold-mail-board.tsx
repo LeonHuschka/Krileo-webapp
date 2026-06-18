@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -60,11 +60,13 @@ import {
   pushSequenceToSmartleadAction,
   registerSmartleadWebhook,
   runColdMailAutomationNow,
+  getColdMailProgressAction,
   saveCampaignSequenceAction,
   setCampaignAutomationAction,
   setSmartleadCampaignStatus,
 } from "@/app/(app)/akquise/actions";
 import type { PoolLead, ReplyLead } from "@/app/(app)/akquise/mail/page";
+import { cn } from "@/lib/utils";
 
 type Analytics = {
   sent: number;
@@ -119,6 +121,21 @@ export function ColdMailBoard({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [progress, setProgress] = useState<{
+    running: boolean;
+    phase: string;
+    label: string;
+    generated: number;
+    pushed: number;
+  } | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  function stopPolling() {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  }
 
   const poolByNiche = useMemo(() => {
     const m: Record<string, PoolLead[]> = {};
@@ -268,6 +285,32 @@ export function ColdMailBoard({
       )
     )
       return;
+
+    setProgress({
+      running: true,
+      phase: "check",
+      label: "Starte …",
+      generated: 0,
+      pushed: 0,
+    });
+    // Poll the live progress while the (long) action runs.
+    stopPolling();
+    pollRef.current = setInterval(async () => {
+      try {
+        const p = await getColdMailProgressAction();
+        setProgress({
+          running: p.running,
+          phase: p.phase,
+          label: p.label,
+          generated: p.generated,
+          pushed: p.pushed,
+        });
+        if (!p.running) stopPolling();
+      } catch {
+        /* keep polling */
+      }
+    }, 2500);
+
     startTransition(async () => {
       try {
         const r = await runColdMailAutomationNow(campaignId);
@@ -275,20 +318,61 @@ export function ColdMailBoard({
         toast.success(
           c
             ? `${c.pushed} gepusht (${c.generated} generiert, heute ${c.pushedBefore + c.pushed}/${c.quota}, ${c.reason})`
-            : "Auto-Pilot ist für diese Kampagne nicht aktiv",
+            : "Nichts gepusht — Kampagne ohne gespeicherte Einstellungen/Gebiet?",
           { duration: 12_000 },
         );
         router.refresh();
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Automation fehlgeschlagen");
+      } finally {
+        stopPolling();
+        setProgress((p) => (p ? { ...p, running: false } : p));
       }
     });
   }
 
   const poolCount = poolLeads.length;
 
+  const PHASE_STEPS = ["check", "scrape", "enrich", "score", "route", "push"];
+
   return (
     <Tabs defaultValue="push" className="space-y-4">
+      {progress && (
+        <div
+          className={cn(
+            "flex items-center gap-3 rounded-lg border p-3 text-sm",
+            progress.running
+              ? "border-primary/40 bg-primary/10"
+              : progress.phase === "error"
+                ? "border-rose-500/40 bg-rose-500/10"
+                : "border-emerald-500/40 bg-emerald-500/10",
+          )}
+        >
+          {progress.running ? (
+            <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" />
+          ) : (
+            <span className="text-emerald-300">✓</span>
+          )}
+          <div className="min-w-0 flex-1">
+            <div className="truncate font-medium">{progress.label || "Läuft …"}</div>
+            <div className="mt-0.5 text-xs text-muted-foreground">
+              {progress.generated} generiert · {progress.pushed} gepusht
+              {progress.running &&
+                PHASE_STEPS.includes(progress.phase) &&
+                ` · Schritt ${PHASE_STEPS.indexOf(progress.phase) + 1}/${PHASE_STEPS.length}`}
+            </div>
+          </div>
+          {!progress.running && (
+            <button
+              type="button"
+              onClick={() => setProgress(null)}
+              className="text-xs text-muted-foreground hover:text-foreground"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+      )}
       <TabsList>
         <TabsTrigger value="push">Kampagnen</TabsTrigger>
         <TabsTrigger value="sequence" className="gap-1.5">

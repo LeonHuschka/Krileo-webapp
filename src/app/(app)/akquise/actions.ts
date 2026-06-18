@@ -1639,6 +1639,12 @@ export async function runColdMailAutomationNow(campaignId?: number) {
   return r;
 }
 
+/** Live progress of a running cold-mail automation (polled by the board). */
+export async function getColdMailProgressAction() {
+  const { getColdMailProgress } = await import("@/lib/smartlead/progress");
+  return getColdMailProgress();
+}
+
 // ─────────────────────────────────────────────────────────────────────
 // Lead-detail: next step + AI meeting prep
 // ─────────────────────────────────────────────────────────────────────

@@ -14,6 +14,7 @@ import {
 } from "@/lib/smartlead/client";
 import { leadToSmartleadPayload } from "@/lib/smartlead/mapping";
 import { loadSmartleadConfig } from "@/lib/smartlead/storage";
+import { setColdMailProgress } from "@/lib/smartlead/progress";
 
 const TERMINAL = "(won,lost,suppressed)";
 const PUSH_CHUNK = 100; // Smartlead bulk add — safe legacy cap.
@@ -371,6 +372,18 @@ export async function runColdMailAutomation(opts?: {
   const t0 = Date.now();
   const timeBudget = opts?.timeBudgetMs ?? 250_000;
 
+  await setColdMailProgress({
+    running: true,
+    campaignId: opts?.campaignId ?? null,
+    phase: "check",
+    label: "Pool & Kontingent prüfen",
+    generated: 0,
+    pushed: 0,
+    quota: 0,
+    startedAt: new Date().toISOString(),
+    error: null,
+  });
+
   const [cfg, status, pushedToday] = await Promise.all([
     loadSmartleadConfig(),
     getConnectionStatus(),
@@ -395,6 +408,12 @@ export async function runColdMailAutomation(opts?: {
 
   const results: AutomationCampaignResult[] = [];
   if (active.length === 0) {
+    await setColdMailProgress({
+      running: false,
+      phase: "done",
+      label:
+        "Nichts zu tun — Kampagne nicht gefunden, ohne Niche-Bindung oder ohne gespeicherte Einstellungen.",
+    });
     return { capacity, maxNewPerDay, campaigns: results, elapsedMs: Date.now() - t0 };
   }
 
@@ -443,6 +462,12 @@ export async function runColdMailAutomation(opts?: {
     if (pool.length < remaining) {
       const shortfall = remaining - pool.length;
       try {
+        await setColdMailProgress({
+          campaignId: c.campaignId,
+          phase: "scrape",
+          label: `Frische ${c.niche}-Leads generieren …`,
+          quota: remaining,
+        });
         const gen = await runAutoGeneration({
           target: Math.ceil(shortfall * 1.5),
           niches: [c.niche],
@@ -453,11 +478,24 @@ export async function runColdMailAutomation(opts?: {
         generated = gen.newLeads;
         if (gen.newLeads > 0) {
           try {
+            await setColdMailProgress({
+              phase: "enrich",
+              label: `Kontaktdaten anreichern (${gen.newLeads} Leads) …`,
+              generated,
+            });
             await enrichAllPending({ limit: gen.newLeads + 20, concurrency: 8 });
           } catch { /* */ }
           try {
+            await setColdMailProgress({
+              phase: "score",
+              label: `Qualifizieren & Texte generieren (${gen.newLeads}) …`,
+            });
             await scoreAllPending({ limit: gen.newLeads + 20, concurrency: 8 });
           } catch { /* */ }
+          await setColdMailProgress({
+            phase: "route",
+            label: "Channels zuweisen (Mail/Call) …",
+          });
 
           // Auto-pilot channel routing for this niche's fresh leads:
           //  - has email        → email  (push as many as possible to mail)
@@ -509,12 +547,18 @@ export async function runColdMailAutomation(opts?: {
     // 3. Push the freshest top-scored leads straight into Smartlead.
     let pushed = 0;
     if (pool.length > 0) {
+      await setColdMailProgress({
+        phase: "push",
+        label: `In Smartlead pushen (${Math.min(pool.length, remaining)}) …`,
+        generated,
+      });
       const ids = pool.slice(0, remaining).map((l) => l.id);
       const res = await pushLeadsToCampaign({
         campaignId: c.campaignId,
         leadIds: ids,
       });
       pushed = res.uploaded;
+      await setColdMailProgress({ pushed });
     }
 
     results.push({
@@ -532,6 +576,16 @@ export async function runColdMailAutomation(opts?: {
             : "partial",
     });
   }
+
+  const totalGenerated = results.reduce((s, r) => s + r.generated, 0);
+  const totalPushed = results.reduce((s, r) => s + r.pushed, 0);
+  await setColdMailProgress({
+    running: false,
+    phase: "done",
+    label: `Fertig — ${totalGenerated} generiert, ${totalPushed} in Smartlead gepusht.`,
+    generated: totalGenerated,
+    pushed: totalPushed,
+  });
 
   return { capacity, maxNewPerDay, campaigns: results, elapsedMs: Date.now() - t0 };
 }

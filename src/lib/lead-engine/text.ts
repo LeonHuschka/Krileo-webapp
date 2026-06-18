@@ -10,6 +10,19 @@
  * push boundary, so even legacy/already-scored leads can't carry a dash into
  * a real mail.
  */
+// Template/placeholder addresses left in website boilerplate (Max Mustermann =
+// German "John Doe"). These are NOT real and must never become a lead's email
+// or get pushed to a campaign. High-precision tokens that essentially never
+// appear in a real business address.
+const PLACEHOLDER_EMAIL =
+  /mustermann|musterfrau|maxmuster|vorname\.?nachname|deine?[._-]?mail|ihre?[._-]?mail|deinename|@(example|beispiel|muster|musterfirma|mustermann|domain|adresse|ihredomain|deinedomain|ihre-domain|deine-domain|deinewebsite|deineseite|firma)\.[a-z]{2,}/i;
+
+/** True for obvious template/placeholder emails (max@mustermann.de etc.). */
+export function isPlaceholderEmail(email: string | null | undefined): boolean {
+  if (!email) return false;
+  return PLACEHOLDER_EMAIL.test(email);
+}
+
 export function stripDashes(s: string | null | undefined): string {
   return (s ?? "")
     .replace(/(\d)\s*[—–]\s*(\d)/g, "$1-$2") // ranges: "2 – 5" → "2-5"

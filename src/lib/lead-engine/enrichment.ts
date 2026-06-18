@@ -3,6 +3,7 @@ import "server-only";
 import { claude, firstTextBlock } from "@/lib/lead-engine/claude";
 import { leadEngine } from "@/lib/lead-engine/supabase";
 import { IMPRESSUM_EXTRACT_SYSTEM } from "@/lib/lead-engine/prompts/impressum-extract";
+import { isPlaceholderEmail } from "@/lib/lead-engine/text";
 import type { ContactChannel } from "@/lib/lead-engine/types";
 
 const FETCH_TIMEOUT_MS = 10_000;
@@ -267,7 +268,8 @@ function extractContactChannels(
   const emails = new Set<string>();
   for (const m of Array.from(html.matchAll(EMAIL_RE))) {
     const e = m[0].toLowerCase().replace(/^mailto:/, "");
-    if (!NOISE_EMAIL.test(e) && e.length < 80) emails.add(e);
+    if (!NOISE_EMAIL.test(e) && !isPlaceholderEmail(e) && e.length < 80)
+      emails.add(e);
   }
   for (const e of Array.from(emails)) {
     const likelihood = classifyEmail(e, ownerName);
@@ -551,7 +553,9 @@ export async function enrichLead(leadId: string): Promise<EnrichResult> {
     // email at all. Upgrade an existing generic one only when we found
     // a name-based (high) address.
     const bestEmail = channels.find((c) => c.type === "email");
-    const haikuEmail = extracted?.owner_email?.toLowerCase() ?? null;
+    const haikuEmail = isPlaceholderEmail(extracted?.owner_email)
+      ? null
+      : (extracted?.owner_email?.toLowerCase() ?? null);
     const candidate = bestEmail?.value ?? haikuEmail;
     if (candidate) {
       if (!existing.owner_email) {
@@ -582,7 +586,11 @@ export async function enrichLead(leadId: string): Promise<EnrichResult> {
     if (li && !existing.owner_linkedin_url) {
       patch.owner_linkedin_url = li.value;
     }
-  } else if (extracted?.owner_email && !existing.owner_email) {
+  } else if (
+    extracted?.owner_email &&
+    !existing.owner_email &&
+    !isPlaceholderEmail(extracted.owner_email)
+  ) {
     patch.owner_email = extracted.owner_email;
   }
 

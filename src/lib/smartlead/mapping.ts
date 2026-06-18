@@ -1,6 +1,6 @@
 import type { Lead } from "@/lib/lead-engine/types";
 import type { SmartleadLeadPayload } from "@/lib/smartlead/client";
-import { stripDashes } from "@/lib/lead-engine/text";
+import { isPlaceholderEmail, stripDashes } from "@/lib/lead-engine/text";
 
 /**
  * The bridge that makes cold mail feel hand-written.
@@ -96,6 +96,8 @@ function clean(obj: Record<string, string | undefined | null>): Record<string, s
 export function leadToSmartleadPayload(lead: Lead): SmartleadLeadPayload | null {
   const email = lead.owner_email?.trim();
   if (!email) return null;
+  // Last guard: never push a template/placeholder address (max@mustermann.de).
+  if (isPlaceholderEmail(email)) return null;
 
   const { first, last } = splitName(lead.owner_name);
   const pains = (lead.pain_points ?? []).filter(Boolean);

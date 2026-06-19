@@ -412,17 +412,31 @@ function foldDe(s: string): string {
     .replace(/ß/g, "ss");
 }
 
+// Generic/legal words + niche terms (Verleih/Event) that are NOT distinctive
+// brand tokens — a competitor's domain could contain them, so they must not
+// count as a name↔domain match on their own.
 const NAME_STOP = new Set([
   "und", "der", "die", "das", "gmbh", "co", "kg", "ohg", "ug", "mbh", "ev",
-  "inh", "and", "the", "fuer", "von", "am", "im", "by", "service", "gbr",
+  "inh", "and", "the", "fuer", "von", "am", "im", "by", "gbr",
+  "service", "services", "verleih", "vermietung", "miete", "mietservice",
+  "event", "events", "eventservice", "veranstaltung", "veranstaltungen",
+  "veranstaltungs", "veranstaltungstechnik", "technik", "deko", "dekoration",
+  "autovermietung", "baumaschinen", "baumaschinenverleih", "huepfburg",
+  "huepfburgverleih", "sup", "verleihservice", "mietbox", "rental", "rent",
 ]);
 
 /**
- * Does the candidate domain reflect the business name? e.g. "lichtundton-hn.de"
- * ↔ "Licht und Ton Heilbronn" (matches) but "englert.de" (a competitor) does
- * not. Guards against accepting a same-niche competitor's site.
+ * Does the candidate domain reflect the business name? Accepts a single
+ * DISTINCTIVE brand token (≥4 chars, not a generic/niche word, not the city)
+ * appearing in the domain: "lichtundton-hn.de" ↔ "Licht und Ton Heilbronn",
+ * "elch-service.de" ↔ "ELCH Eventservice", "heiuki.com" ↔ "Heiuki …".
+ * A competitor's domain (englert.de) carries none of the brand tokens.
  */
-function domainMatchesBusiness(url: string, name: string | null): boolean {
+function domainMatchesBusiness(
+  url: string,
+  name: string | null,
+  city: string | null,
+): boolean {
   if (!name) return false;
   let host: string;
   try {
@@ -433,15 +447,15 @@ function domainMatchesBusiness(url: string, name: string | null): boolean {
   const core = foldDe(host.replace(/^www\./, "").split(".").slice(0, -1).join(""))
     .replace(/[^a-z0-9]/g, "");
   if (!core) return false;
+  const cityTokens = new Set(
+    city ? foldDe(city).split(/[^a-z0-9]+/).filter(Boolean) : [],
+  );
   const tokens = foldDe(name)
     .split(/[^a-z0-9]+/)
-    .filter((t) => t.length >= 3 && !NAME_STOP.has(t));
-  if (tokens.length === 0) return false;
-  const hits = tokens.filter((t) => core.includes(t));
-  return (
-    hits.length >= 2 ||
-    (tokens.length <= 2 && hits.some((t) => t.length >= 5))
-  );
+    .filter(
+      (t) => t.length >= 4 && !NAME_STOP.has(t) && !cityTokens.has(t),
+    );
+  return tokens.some((t) => core.includes(t));
 }
 
 /** Does the page text contain the lead's phone number (any common format)? */
@@ -521,7 +535,7 @@ export async function discoverWebsite(
     // phone is on the site. The LLM belongs-check alone is too lenient — it
     // wrongly accepts a same-niche competitor — so it's used only to REJECT,
     // never as the sole reason to accept.
-    const domainOk = domainMatchesBusiness(c.url, lead.business_name);
+    const domainOk = domainMatchesBusiness(c.url, lead.business_name, lead.city);
     const phoneOk = phoneNorm ? pageHasPhone(blob, phoneNorm) : false;
     if (!domainOk && !phoneOk) continue;
 

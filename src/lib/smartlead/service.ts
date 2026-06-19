@@ -497,31 +497,53 @@ export async function runColdMailAutomation(opts?: {
       continue;
     }
 
-    // 1. Is the email pool for this niche already deep enough?
-    let pool = await getEmailPoolForNiche(c.niche, remaining);
     let generated = 0;
+    let pushed = 0;
 
-    // 2. Top up in ROUNDS until the niche has `remaining` e-mail-ready leads.
-    //    Each round scrapes a SMALL chunk of new businesses (not the whole
-    //    shortfall at once) so a single round can never run for minutes —
-    //    that keeps the per-round enrich+score short and lets the time-budget
-    //    check between rounds actually bite (otherwise one giant round blows
-    //    past the budget and the serverless function gets killed mid-run).
-    //    runAutoGeneration dedups against everything already scraped, so seen
-    //    places never count twice; only genuinely new leads are added.
-    //    Stops when: pool full · a round finds no new leads (area exhausted)
-    //    · round cap hit · time budget spent (then pushes what it has).
+    // Push helper — flush whatever's e-mail-ready RIGHT NOW into Smartlead.
+    // Called before and after every round so a mid-run timeout can never lose
+    // progress: the old code pushed only ONCE at the very end (after the slow
+    // scrape→enrich→score loop), so if the serverless function got killed
+    // during scoring, 0 leads were pushed despite dozens generated.
+    const pushReady = async () => {
+      if (pushed >= remaining) return;
+      const ready = await getEmailPoolForNiche(c.niche, remaining - pushed);
+      if (ready.length === 0) return;
+      await setColdMailProgress({
+        campaignId: c.campaignId,
+        phase: "push",
+        label: `In Smartlead pushen (${ready.length}) …`,
+        generated,
+        pushed,
+      });
+      const res = await pushLeadsToCampaign({
+        campaignId: c.campaignId,
+        leadIds: ready.slice(0, remaining - pushed).map((l) => l.id),
+      });
+      pushed += res.uploaded;
+      await setColdMailProgress({ pushed });
+    };
+
+    // 1. Flush any leftover e-mail-ready leads from earlier runs first.
+    await pushReady();
+
+    // 2. Top up in ROUNDS — scrape a small chunk → enrich → score → route →
+    //    PUSH that round's ready leads immediately. Small chunks keep each
+    //    round short (so the time-budget check between rounds bites), and the
+    //    per-round push means a kill only ever loses the in-flight round, not
+    //    the whole run. runAutoGeneration dedups, so seen places never recur.
+    //    Stops when: quota pushed · a round finds no new leads (exhausted) ·
+    //    round cap · time budget spent.
     const ROUND_CHUNK = 10;
     const MAX_ROUNDS = 40;
     let round = 0;
     while (
-      pool.length < remaining &&
+      pushed < remaining &&
       round < MAX_ROUNDS &&
       Date.now() - t0 < timeBudget
     ) {
       round += 1;
-      const shortfall = remaining - pool.length;
-      const target = Math.min(shortfall, ROUND_CHUNK);
+      const target = Math.min(remaining - pushed, ROUND_CHUNK);
       let gen;
       try {
         await setColdMailProgress({
@@ -530,7 +552,7 @@ export async function runColdMailAutomation(opts?: {
           label:
             round === 1
               ? `Frische ${c.niche}-Leads generieren …`
-              : `Nachscrapen (Runde ${round}) — noch ${shortfall} Mail-Leads fehlen …`,
+              : `Nachscrapen (Runde ${round}) — noch ${remaining - pushed} fehlen …`,
           quota: remaining,
           generated,
         });
@@ -542,11 +564,10 @@ export async function runColdMailAutomation(opts?: {
           batchSize: 20,
         });
       } catch {
-        break; // generation failed — push what we already have
+        break; // generation failed — keep what we already pushed
       }
 
-      // A full scrape round produced no NEW businesses → the configured area
-      // is exhausted; stop, otherwise we'd loop re-pulling only duplicates.
+      // A full scrape round produced no NEW businesses → area exhausted; stop.
       if (gen.newLeads === 0) break;
       generated += gen.newLeads;
 
@@ -565,33 +586,15 @@ export async function runColdMailAutomation(opts?: {
         });
         await scoreAllPending({ limit: gen.newLeads + 20, concurrency: 8 });
       } catch { /* */ }
-
-      await setColdMailProgress({
-        phase: "route",
-        label: "Channels zuweisen (Mail/Call) …",
-      });
       try {
+        await setColdMailProgress({
+          phase: "route",
+          label: "Channels zuweisen (Mail/Call) …",
+        });
         await routeUnassignedNicheLeads(c.niche);
       } catch { /* */ }
 
-      pool = await getEmailPoolForNiche(c.niche, remaining);
-    }
-
-    // 3. Push the freshest top-scored leads straight into Smartlead.
-    let pushed = 0;
-    if (pool.length > 0) {
-      await setColdMailProgress({
-        phase: "push",
-        label: `In Smartlead pushen (${Math.min(pool.length, remaining)}) …`,
-        generated,
-      });
-      const ids = pool.slice(0, remaining).map((l) => l.id);
-      const res = await pushLeadsToCampaign({
-        campaignId: c.campaignId,
-        leadIds: ids,
-      });
-      pushed = res.uploaded;
-      await setColdMailProgress({ pushed });
+      await pushReady(); // flush this round's ready leads immediately
     }
 
     results.push({
@@ -601,12 +604,7 @@ export async function runColdMailAutomation(opts?: {
       pushedBefore: before,
       generated,
       pushed,
-      reason:
-        pushed >= remaining
-          ? "done"
-          : pool.length === 0
-            ? "pool_empty"
-            : "partial",
+      reason: pushed >= remaining ? "done" : pushed > 0 ? "partial" : "pool_empty",
     });
   }
 

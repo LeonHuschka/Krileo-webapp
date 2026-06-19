@@ -442,8 +442,8 @@ export async function discoverWebsite(
   // Already has a website and we're not forcing a re-search (force is used
   // when the linked URL turned out dead).
   if (lead.website_url && !opts.force) return lead.website_url;
+  if (!lead.business_name) return null; // need a name to search + verify
   const phoneNorm = lead.phone ? normalizePhone(lead.phone) : null;
-  if (!phoneNorm || !lead.business_name) return null; // can't verify → skip
 
   let results;
   try {
@@ -467,18 +467,21 @@ export async function discoverWebsite(
     }
     if (pages.length === 0) continue;
     const blob = pages.join(" ");
-
-    // Guard 1: the lead's phone must appear on the site.
-    if (!pageHasPhone(blob, phoneNorm)) continue;
-
-    // Guard 2: the site must actually BELONG to this business. A phone alone
-    // also matches directories (bikeshops.de) and landlord sites (a sports
-    // club hosting the restaurant's number) — the Impressum check rejects
-    // those (their Impressum names a different company).
     const text = stripHtml(blob).slice(0, 6000);
     const extracted =
       text.length >= 50 ? await extractFromText(text, lead.business_name) : null;
-    if (extracted && extracted.belongs_to_business === false) continue;
+
+    // Reject sites whose Impressum names a DIFFERENT company — directories
+    // (bikeshops.de) and landlord/club sites — even if the phone matches.
+    if (extracted?.belongs_to_business === false) continue;
+
+    // Accept when the Impressum CONFIRMS it's this business, or (fallback) the
+    // lead's phone is on the site. The belongs-check is primary because Maps
+    // often lists a mobile that isn't published on the real site — requiring a
+    // phone match would wrongly reject the correct site (e.g. lichtundton-hn.de).
+    const belongs = extracted?.belongs_to_business === true;
+    const phoneOk = phoneNorm ? pageHasPhone(blob, phoneNorm) : false;
+    if (!belongs && !phoneOk) continue;
 
     await db.from("leads").update({ website_url: c.url }).eq("id", leadId);
     return c.url;

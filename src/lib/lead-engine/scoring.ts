@@ -495,15 +495,28 @@ export async function scoreLead(leadId: string): Promise<ScoringResult> {
     };
   }
 
+  // Tier on (re)score: a D2D lead is WARM by definition (we met/spoke to them)
+  // and must never be reset to cold by scoring. For cold-scrape leads default
+  // to cold, but NEVER downgrade a tier that outreach/manual already lifted to
+  // warm/hot.
+  const lr = lead as unknown as Lead;
+  const curTier = lr.qualification_tier;
+  const tier =
+    lr.lead_source === "d2d"
+      ? curTier && curTier !== "cold"
+        ? curTier
+        : "warm"
+      : curTier === "warm" || curTier === "hot"
+        ? curTier
+        : "cold";
+
   const { error: updateErr } = await db
     .from("leads")
     .update({
       lead_score: computedScore,
       score_breakdown: parsed.score_breakdown,
       website_assessment: parsed.website_assessment,
-      // Fresh leads default to cold — tier moves to warm/hot via
-      // outreach outcomes (Interessiert / Demo gebucht) or manual override.
-      qualification_tier: "cold",
+      qualification_tier: tier,
       business_size: parsed.business_size,
       fit_offer: parsed.fit_offer,
       pickup_profile: parsed.pickup_profile,

@@ -29,6 +29,7 @@ import { NextStepSection } from "@/components/akquise/next-step-section";
 import { DemoLinkButton } from "@/components/akquise/demo-link-button";
 import { OfferPdfButton } from "@/components/akquise/offer-pdf-button";
 import { OnHoldButton } from "@/components/akquise/on-hold-button";
+import { MarkWonButton } from "@/components/akquise/mark-won-button";
 import { PhoneManager } from "@/components/akquise/phone-manager";
 import { SalesPointsEditor } from "@/components/akquise/sales-points-editor";
 import { PrepQuestions } from "@/components/akquise/prep-questions";
@@ -237,6 +238,12 @@ export default async function LeadDetailPage({
                   />
                   <OnHoldButton leadId={lead.id} />
                   <RescoreButton leadId={lead.id} />
+                  {lead.outreach_status !== "won" && (
+                    <MarkWonButton
+                      leadId={lead.id}
+                      className="border-amber-500/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20"
+                    />
+                  )}
                 </div>
               </div>
             </CardHeader>

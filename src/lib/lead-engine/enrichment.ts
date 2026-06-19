@@ -403,6 +403,47 @@ export type EnrichResult = {
   source: "impressum" | "homepage" | "email" | "raw_data" | "none";
 };
 
+function foldDe(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/ä/g, "ae")
+    .replace(/ö/g, "oe")
+    .replace(/ü/g, "ue")
+    .replace(/ß/g, "ss");
+}
+
+const NAME_STOP = new Set([
+  "und", "der", "die", "das", "gmbh", "co", "kg", "ohg", "ug", "mbh", "ev",
+  "inh", "and", "the", "fuer", "von", "am", "im", "by", "service", "gbr",
+]);
+
+/**
+ * Does the candidate domain reflect the business name? e.g. "lichtundton-hn.de"
+ * ↔ "Licht und Ton Heilbronn" (matches) but "englert.de" (a competitor) does
+ * not. Guards against accepting a same-niche competitor's site.
+ */
+function domainMatchesBusiness(url: string, name: string | null): boolean {
+  if (!name) return false;
+  let host: string;
+  try {
+    host = new URL(url.startsWith("http") ? url : `https://${url}`).hostname;
+  } catch {
+    return false;
+  }
+  const core = foldDe(host.replace(/^www\./, "").split(".").slice(0, -1).join(""))
+    .replace(/[^a-z0-9]/g, "");
+  if (!core) return false;
+  const tokens = foldDe(name)
+    .split(/[^a-z0-9]+/)
+    .filter((t) => t.length >= 3 && !NAME_STOP.has(t));
+  if (tokens.length === 0) return false;
+  const hits = tokens.filter((t) => core.includes(t));
+  return (
+    hits.length >= 2 ||
+    (tokens.length <= 2 && hits.some((t) => t.length >= 5))
+  );
+}
+
 /** Does the page text contain the lead's phone number (any common format)? */
 function pageHasPhone(html: string, phoneNorm: string): boolean {
   const text = stripHtml(html);
@@ -472,16 +513,17 @@ export async function discoverWebsite(
       text.length >= 50 ? await extractFromText(text, lead.business_name) : null;
 
     // Reject sites whose Impressum names a DIFFERENT company — directories
-    // (bikeshops.de) and landlord/club sites — even if the phone matches.
+    // (bikeshops.de), landlord/club sites, etc. — even if the phone matches.
     if (extracted?.belongs_to_business === false) continue;
 
-    // Accept when the Impressum CONFIRMS it's this business, or (fallback) the
-    // lead's phone is on the site. The belongs-check is primary because Maps
-    // often lists a mobile that isn't published on the real site — requiring a
-    // phone match would wrongly reject the correct site (e.g. lichtundton-hn.de).
-    const belongs = extracted?.belongs_to_business === true;
+    // Accept only on a STRONG identity signal: the domain reflects the
+    // business name (lichtundton-hn.de ↔ "Licht und Ton") OR the lead's exact
+    // phone is on the site. The LLM belongs-check alone is too lenient — it
+    // wrongly accepts a same-niche competitor — so it's used only to REJECT,
+    // never as the sole reason to accept.
+    const domainOk = domainMatchesBusiness(c.url, lead.business_name);
     const phoneOk = phoneNorm ? pageHasPhone(blob, phoneNorm) : false;
-    if (!belongs && !phoneOk) continue;
+    if (!domainOk && !phoneOk) continue;
 
     await db.from("leads").update({ website_url: c.url }).eq("id", leadId);
     return c.url;

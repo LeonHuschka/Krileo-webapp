@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/popover";
 import {
   logCallOutcome,
+  markCallHandled,
   updateLeadNotes,
   updateLeadTier,
   type CallOutcome,
@@ -163,6 +164,22 @@ export function CallCard({
       callbackAt: date,
     });
     router.refresh();
+  }
+
+  function handleDone() {
+    startTransition(async () => {
+      try {
+        // Save any unsaved note first, then take the lead out of the queue.
+        if (notes !== (lead.notes ?? "")) {
+          await updateLeadNotes(lead.id, notes);
+        }
+        await markCallHandled(lead.id);
+        toast.success("Erledigt — Lead aus der Call-Queue genommen");
+        router.refresh();
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Fehler");
+      }
+    });
   }
 
   const priceRange =
@@ -512,6 +529,19 @@ export function CallCard({
           </Button>
         </div>
       </div>
+
+      {/* Erledigt — take the lead out of the queue once it's handled
+          (reached + notes / next step / callback / offer prepared). */}
+      <Button
+        onClick={handleDone}
+        disabled={pending}
+        variant="outline"
+        className="h-9 w-full gap-1.5 border-t border-border/60 bg-muted/30 text-xs font-medium text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+        title="Lead aus der Call-Queue nehmen (erledigt)"
+      >
+        <CheckCircle2 className="h-3.5 w-3.5" />
+        Erledigt — aus Call-Queue nehmen
+      </Button>
     </Card>
   );
 }

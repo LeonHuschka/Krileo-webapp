@@ -1362,6 +1362,31 @@ export async function markAppointmentStatus(
 }
 
 /**
+ * Manually take a lead OUT of the cold-call queue once it's handled — you
+ * reached them and did the work (notes, next step, callback, prepared an
+ * offer, booked a follow-up …). The queue lists call leads whose
+ * next_action_at is null or in the past, so we park it far in the future.
+ * Status & tier stay untouched (e.g. a freshly-warm lead stays warm) — it's
+ * just no longer a cold-call to-do.
+ */
+const CALL_QUEUE_PARK_AT = "2099-01-01T00:00:00.000Z";
+
+export async function markCallHandled(leadId: string) {
+  const db = leadEngine();
+  const { error } = await db
+    .from("leads")
+    .update({ next_action_at: CALL_QUEUE_PARK_AT })
+    .eq("id", leadId);
+  if (error) throw new Error(error.message);
+  await appendLeadEvent({
+    leadId,
+    type: "note",
+    notes: "Erledigt — aus der Call-Queue genommen",
+  });
+  revalidateAll();
+}
+
+/**
  * Mark a lead's next-step as handled: clears next_step + next_step_at (so
  * the overdue red state goes away) and lifts an on-hold flag. Used by the
  * "Erledigt" control on the lead detail + D2D card.

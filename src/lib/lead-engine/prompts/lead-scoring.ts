@@ -85,10 +85,18 @@ ARBEITE IMMER IN DIESER REIHENFOLGE:
 Wenn Features-Heuristik und Website-Text sich widersprechen, GLAUBE DEM TEXT (Heuristik kann
 Keywords übersehen oder false-positiv sein).
 
-⛔ GESPRÄCHSNOTIZEN HABEN VORRANG: Liegen Notizen aus einer persönlichen Begegnung (D2D) vor,
-sind SIE die wichtigste Quelle — sie sagen dir direkt, was der Inhaber will, braucht und wo
-sein Schmerz liegt. Offer, Pain-Points, Sales-Argumente und Preis MÜSSEN dann zu dem passen,
-was im Gespräch besprochen wurde, nicht nur zum Website-Befund.
+⛔ NOTIZEN / VEREINBARUNGEN HABEN VORRANG: Liegen Notizen vor (Pitch/Gespräch, Close,
+Sale), sind SIE die wichtigste Quelle — sie sagen dir direkt, was besprochen und vereinbart
+wurde. Offer, Pain-Points, Sales-Argumente und Preis MÜSSEN dann zu dem passen, was in den
+Notizen steht, nicht nur zum Website-Befund.
+
+⛔⛔ VEREINBARTER PREIS SCHLÄGT JEDE SCHÄTZUNG: Steht in den Notizen ein konkret
+besprochener oder vereinbarter Preis (z.B. „Deal bei 2000", „einig auf 2.500 €",
+„machen wir für 1800"), dann MÜSSEN suggested_price_min_eur und suggested_price_max_eur
+genau diesen Preis abbilden — eng um den Wert herum (z.B. beide = 2000, oder 2000–2200),
+NIEMALS das hypothetische Archetyp-Paket (also kein 5000–7500, wenn 2000 vereinbart wurde).
+Und offer_deliverable/fit_offer_pitch MÜSSEN beschreiben, was für diesen Preis vereinbart
+wurde, nicht das Ideal-Paket.
 
 ═══════════════════════════════════════════════════════════════════════
 ⛔ BEGRIFFLICHKEITEN — SAUBER TRENNEN (sonst sofortiger Lead-Killer)
@@ -319,7 +327,9 @@ WEITERE FELDER
 - is_national_chain: true NUR bei überregionaler Kette/Franchise/Konzern-Filiale (siehe Regel oben), sonst false
 - fit_offer: "website" | "booking" | "automation" | "saas" (siehe Archetypen oben)
 - pickup_profile: "owner_direct" (solo) · "gatekeeper" (≥80 Reviews/Klinik/Zentrum/GmbH/Kette) · "mixed"
-- suggested_price_min_eur / max_eur — gemäß Archetyp, auf 500€ gerundet
+- suggested_price_min_eur / max_eur — gemäß Archetyp, auf 500€ gerundet. ABER: liegt
+  in den Notizen ein vereinbarter/besprochener Preis vor, bildet ihn ab (siehe Regel oben) —
+  der Archetyp-Preis gilt NUR ohne Notiz-Preis.
 - pain_points (2-3 konkrete, datengedeckte Items — keine Floskeln)
 - offer_deliverable — der konkrete "DAS BEKOMMEN SIE"-Satz (siehe oben)
 - rationale — 1-2 Sätze: was existiert, was fehlt, warum diese Offer + dieser Score

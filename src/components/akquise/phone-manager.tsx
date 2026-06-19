@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Phone, Plus, X, Loader2 } from "lucide-react";
+import { Phone, Plus, X, Loader2, Pencil, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import {
   addLeadPhone,
   removeLeadPhone,
+  updateLeadFields,
 } from "@/app/(app)/akquise/actions";
 import type { AdditionalPhone } from "@/lib/lead-engine/types";
 
@@ -49,6 +50,21 @@ export function PhoneManager({
   const [open, setOpen] = useState(false);
   const [number, setNumber] = useState("");
   const [label, setLabel] = useState("");
+  const [editingPrimary, setEditingPrimary] = useState(false);
+  const [primaryVal, setPrimaryVal] = useState(primaryPhone ?? "");
+
+  function savePrimary() {
+    startTransition(async () => {
+      try {
+        await updateLeadFields({ leadId, phone: primaryVal.trim() || null });
+        toast.success("Hauptnummer aktualisiert");
+        setEditingPrimary(false);
+        router.refresh();
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Fehler");
+      }
+    });
+  }
 
   function submit() {
     if (!number.trim()) {
@@ -87,22 +103,70 @@ export function PhoneManager({
   return (
     <div className="space-y-1.5">
       {/* Primary number */}
-      <a
-        href={telHref(primaryPhone)}
-        className="flex w-full items-center gap-2 rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
-        style={{
-          pointerEvents: primaryPhone ? "auto" : "none",
-          opacity: primaryPhone ? 1 : 0.5,
-        }}
-      >
-        <Phone className="h-4 w-4" />
-        <span className="font-mono text-base tracking-tight">
-          {primaryPhone ?? "keine Hauptnummer"}
-        </span>
-        <span className="ml-auto text-[10px] uppercase opacity-70">
-          Hauptnr.
-        </span>
-      </a>
+      {editingPrimary ? (
+        <div className="flex items-center gap-1">
+          <Input
+            autoFocus
+            value={primaryVal}
+            onChange={(e) => setPrimaryVal(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") savePrimary();
+              if (e.key === "Escape") setEditingPrimary(false);
+            }}
+            placeholder="+49…"
+            className="h-9 flex-1 font-mono"
+          />
+          <Button
+            size="sm"
+            onClick={savePrimary}
+            disabled={pending}
+            className="h-9 w-9 shrink-0 bg-emerald-600 p-0 hover:bg-emerald-700"
+            title="Speichern"
+          >
+            <Check className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setEditingPrimary(false)}
+            className="h-9 w-9 shrink-0 p-0"
+            title="Abbrechen"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-1">
+          <a
+            href={telHref(primaryPhone)}
+            className="flex flex-1 items-center gap-2 rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+            style={{
+              pointerEvents: primaryPhone ? "auto" : "none",
+              opacity: primaryPhone ? 1 : 0.5,
+            }}
+          >
+            <Phone className="h-4 w-4" />
+            <span className="font-mono text-base tracking-tight">
+              {primaryPhone ?? "keine Hauptnummer"}
+            </span>
+            <span className="ml-auto text-[10px] uppercase opacity-70">
+              Hauptnr.
+            </span>
+          </a>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setPrimaryVal(primaryPhone ?? "");
+              setEditingPrimary(true);
+            }}
+            className="h-9 w-9 shrink-0 p-0 text-muted-foreground hover:text-foreground"
+            title="Hauptnummer bearbeiten"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      )}
 
       {/* Additional numbers */}
       {additional.map((p, i) => (

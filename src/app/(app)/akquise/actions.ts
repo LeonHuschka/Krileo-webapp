@@ -1931,6 +1931,8 @@ export async function answerPrepQuestion(input: {
 
 export async function updateLeadFields(input: {
   leadId: string;
+  business_name?: string;
+  phone?: string | null;
   owner_name?: string | null;
   met_location?: string | null;
   meeting_notes?: string | null;
@@ -1941,6 +1943,10 @@ export async function updateLeadFields(input: {
 }) {
   const db = leadEngine();
   const patch: Record<string, unknown> = {};
+  // business_name is NOT NULL — only update when a non-empty value is given.
+  if (input.business_name !== undefined && input.business_name.trim())
+    patch.business_name = input.business_name.trim();
+  if (input.phone !== undefined) patch.phone = input.phone?.trim() || null;
   if (input.owner_name !== undefined)
     patch.owner_name = input.owner_name?.trim() || null;
   if (input.met_location !== undefined)

@@ -24,6 +24,7 @@ import { DayCalendar, type ExternalEvent } from "@/components/akquise/day-calend
 import { LeadNotes } from "@/components/akquise/lead-notes";
 import { LeadFeatureLabels } from "@/components/akquise/lead-feature-labels";
 import { OwnerEditable } from "@/components/akquise/owner-editable";
+import { EditableField } from "@/components/akquise/editable-field";
 import { NextStepSection } from "@/components/akquise/next-step-section";
 import { DemoLinkButton } from "@/components/akquise/demo-link-button";
 import { OfferPdfButton } from "@/components/akquise/offer-pdf-button";
@@ -168,9 +169,14 @@ export default async function LeadDetailPage({
             <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
               <div className="flex-1 space-y-2">
                 <OwnerEditable leadId={lead.id} ownerName={lead.owner_name} />
-                <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
-                  {lead.business_name}
-                </h1>
+                <EditableField
+                  leadId={lead.id}
+                  field="business_name"
+                  value={lead.business_name}
+                  placeholder="Firmenname"
+                  displayClassName="text-2xl font-semibold tracking-tight md:text-3xl"
+                  inputClassName="text-2xl font-semibold tracking-tight w-full max-w-md"
+                />
                 <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                   {lead.city && (
                     <span className="flex items-center gap-1">

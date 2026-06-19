@@ -243,10 +243,23 @@ function buildUserPrompt(
   // Persönliche Begegnung (D2D) — wenn vorhanden, hat das VORRANG vor dem
   // Website-Befund, weil hier steht was der Inhaber wirklich gesagt/gebraucht hat.
   if (lead.met_location) fields.push(`Getroffen bei: ${lead.met_location}`);
-  if (lead.meeting_notes) {
+
+  // ALL notes feed the score — not just the pitch. A price agreed in the
+  // Close/Sale notes must override the archetype estimate.
+  const noteParts: string[] = [];
+  if (lead.meeting_notes) noteParts.push(`PITCH / GESPRÄCH:\n${lead.meeting_notes}`);
+  if (lead.close_notes) noteParts.push(`CLOSE (Verhandlung/Vereinbarung):\n${lead.close_notes}`);
+  if (lead.sale_notes) noteParts.push(`SALE / ABSCHLUSS:\n${lead.sale_notes}`);
+  if (lead.actual_price_eur != null)
+    noteParts.push(`VEREINBARTER PREIS: ${lead.actual_price_eur} €`);
+  if (lead.actual_price_notes)
+    noteParts.push(`PREIS-NOTIZ: ${lead.actual_price_notes}`);
+  if (lead.close_scope) noteParts.push(`VEREINBARTER UMFANG: ${lead.close_scope}`);
+  if (noteParts.length > 0) {
     fields.push("");
     fields.push(
-      `GESPRÄCHSNOTIZEN (persönliche Begegnung — VORRANG für Offer/Pain/Preis):\n"""\n${lead.meeting_notes}\n"""`,
+      `⛔ NOTIZEN / VEREINBARUNGEN (HÖCHSTE PRIORITÄT — überschreiben jede Schätzung,\n` +
+        `inkl. Preis und Umfang):\n"""\n${noteParts.join("\n\n")}\n"""`,
     );
   }
   return fields.join("\n");

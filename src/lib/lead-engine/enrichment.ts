@@ -520,24 +520,27 @@ export async function discoverWebsite(
       const impHtml = await fetchWithTimeout(imp);
       if (impHtml) pages.push(impHtml);
     }
-    if (pages.length === 0) continue;
+    if (pages.length === 0) continue; // unreachable candidate
     const blob = pages.join(" ");
+
+    // Strong signal: the domain carries the business's brand token
+    // (lichtundton-hn.de ↔ "Licht und Ton"). This is URL-based and a
+    // competitor/directory domain never has it → accept outright, without
+    // letting an LLM misread of a bloated page veto it.
+    if (domainMatchesBusiness(c.url, lead.business_name, lead.city)) {
+      await db.from("leads").update({ website_url: c.url }).eq("id", leadId);
+      return c.url;
+    }
+
+    // Otherwise fall back to the phone: it must be on the site AND the
+    // Impressum must NOT name a different company (rejects directories /
+    // landlord sites that merely list the number).
+    const phoneOk = phoneNorm ? pageHasPhone(blob, phoneNorm) : false;
+    if (!phoneOk) continue;
     const text = stripHtml(blob).slice(0, 6000);
     const extracted =
       text.length >= 50 ? await extractFromText(text, lead.business_name) : null;
-
-    // Reject sites whose Impressum names a DIFFERENT company — directories
-    // (bikeshops.de), landlord/club sites, etc. — even if the phone matches.
     if (extracted?.belongs_to_business === false) continue;
-
-    // Accept only on a STRONG identity signal: the domain reflects the
-    // business name (lichtundton-hn.de ↔ "Licht und Ton") OR the lead's exact
-    // phone is on the site. The LLM belongs-check alone is too lenient — it
-    // wrongly accepts a same-niche competitor — so it's used only to REJECT,
-    // never as the sole reason to accept.
-    const domainOk = domainMatchesBusiness(c.url, lead.business_name, lead.city);
-    const phoneOk = phoneNorm ? pageHasPhone(blob, phoneNorm) : false;
-    if (!domainOk && !phoneOk) continue;
 
     await db.from("leads").update({ website_url: c.url }).eq("id", leadId);
     return c.url;

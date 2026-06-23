@@ -231,6 +231,45 @@ function titleCase(raw: string): string {
     .join(" ");
 }
 
+// A niche covers MANY sub-types — one generic "<niche> <city>" Maps search
+// only finds businesses literally named that, missing the rest of the branch.
+// Each niche expands to a set of keyword variants so we surface the whole
+// market (a "verleih" search must also hit Fahrrad-/Boots-/Kanuverleih,
+// Autovermietung, Maschinenverleih, …). Add niches here as they come up.
+export const NICHE_QUERY_VARIANTS: Record<string, string[]> = {
+  verleih: [
+    "Fahrradverleih",
+    "E-Bike Verleih",
+    "Bootsverleih",
+    "Kanuverleih",
+    "SUP Verleih",
+    "Kajakverleih",
+    "Autovermietung",
+    "Transporter mieten",
+    "Wohnmobilvermietung",
+    "Anhängerverleih",
+    "Maschinenverleih",
+    "Baumaschinenverleih",
+    "Werkzeugverleih",
+    "Gerüstverleih",
+    "Eventverleih",
+    "Partyverleih",
+    "Zeltverleih",
+    "Hüpfburg mieten",
+  ],
+};
+
+/** Build the Google-Maps search queries for a niche×city. */
+export function searchQueriesFor(industryRaw: string, city: string): string[] {
+  const slug = slugifyIndustry(industryRaw);
+  const variants = NICHE_QUERY_VARIANTS[slug];
+  const terms =
+    variants && variants.length > 0
+      ? variants
+      : [industryRaw.trim().replace(/_/g, " ")];
+  return terms.map((t) => `${t} ${city}`);
+}
+
 async function findOrCreateCampaign(
   industryRaw: string,
   cityRaw: string,
@@ -254,7 +293,7 @@ async function findOrCreateCampaign(
       name: `${readable} ${city}`,
       industry,
       city,
-      search_queries: [`${readable} ${city}`],
+      search_queries: searchQueriesFor(industryRaw, city),
     })
     .select("id")
     .single();

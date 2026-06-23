@@ -105,7 +105,12 @@ export async function scrapeCampaign(
   type RawPlace = Awaited<ReturnType<typeof searchPlaces>>["places"][number];
   const collected: RawPlace[] = [];
 
-  for (const q of campaign.search_queries) {
+  for (let qi = 0; qi < campaign.search_queries.length; qi++) {
+    const q = campaign.search_queries[qi];
+    // Gentle pacing between searches — a niche now fans out to many keyword
+    // variants, so without a small gap a single scrape fires a burst that can
+    // trip DataForSEO's "unusual activity" anomaly guard (account 40201).
+    if (qi > 0) await new Promise((r) => setTimeout(r, 400));
     // Skip locationName — DataForSEO requires it to match their
     // canonical location-DB exactly (e.g. "Stuttgart, Stuttgart Region,
     // Baden-Württemberg, Germany"), and plain "City,Germany" gets

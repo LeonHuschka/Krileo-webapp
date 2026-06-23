@@ -363,6 +363,17 @@ export type AutomationRunResult = {
  * Runs over every still-unassigned, non-terminal lead in the niche, so it's
  * safe to call once per scrape round.
  */
+/** Unprocessed leads for a niche (scraped but not yet scored/routed). */
+async function countNicheBacklog(niche: string): Promise<number> {
+  const db = leadEngine();
+  const { count } = await db
+    .from("leads")
+    .select("id, campaigns!inner(industry)", { head: true, count: "exact" })
+    .eq("campaigns.industry", niche)
+    .in("outreach_status", ["raw", "enriched"]);
+  return count ?? 0;
+}
+
 async function routeUnassignedNicheLeads(niche: string): Promise<void> {
   const db = leadEngine();
   const { data: fresh } = await db
@@ -527,14 +538,14 @@ export async function runColdMailAutomation(opts?: {
     // 1. Flush any leftover e-mail-ready leads from earlier runs first.
     await pushReady();
 
-    // 2. Top up in ROUNDS — scrape a small chunk → enrich → score → route →
-    //    PUSH that round's ready leads immediately. Small chunks keep each
-    //    round short (so the time-budget check between rounds bites), and the
-    //    per-round push means a kill only ever loses the in-flight round, not
-    //    the whole run. runAutoGeneration dedups, so seen places never recur.
-    //    Stops when: quota pushed · a round finds no new leads (exhausted) ·
-    //    round cap · time budget spent.
-    const ROUND_CHUNK = 10;
+    // 2. Process in ROUNDS. KEY for a tight DataForSEO balance: only scrape
+    //    when the unprocessed backlog is too small to feed a round. One big
+    //    scrape builds a reusable 'raw' backlog that gets enriched/scored/
+    //    pushed over MANY runs WITHOUT paying to re-scrape the same area — so
+    //    €0.25 buys a few big scrapes worth of leads, processed over days,
+    //    instead of being burned re-scraping every single round.
+    const ROUND_CHUNK = 10; // leads processed per round
+    const SCRAPE_BATCH = 50; // when refilling, scrape this many NEW at once
     const MAX_ROUNDS = 40;
     let round = 0;
     while (
@@ -543,48 +554,50 @@ export async function runColdMailAutomation(opts?: {
       Date.now() - t0 < timeBudget
     ) {
       round += 1;
-      const target = Math.min(remaining - pushed, ROUND_CHUNK);
-      let gen;
-      try {
-        await setColdMailProgress({
-          campaignId: c.campaignId,
-          phase: "scrape",
-          label:
-            round === 1
-              ? `Frische ${c.niche}-Leads generieren …`
-              : `Nachscrapen (Runde ${round}) — noch ${remaining - pushed} fehlen …`,
-          quota: remaining,
-          generated,
-        });
-        gen = await runAutoGeneration({
-          target,
-          niches: [c.niche],
-          cities: c.automation.cities,
-          bundeslaender: c.automation.bundeslaender,
-          batchSize: 20,
-        });
-      } catch {
-        break; // generation failed — keep what we already pushed
+
+      const backlog = await countNicheBacklog(c.niche);
+      if (backlog < ROUND_CHUNK) {
+        // Refill: scrape a big batch (cheap searches, keep them all as 'raw').
+        try {
+          await setColdMailProgress({
+            campaignId: c.campaignId,
+            phase: "scrape",
+            label: `Frische ${c.niche}-Leads holen …`,
+            quota: remaining,
+            generated,
+          });
+          const gen = await runAutoGeneration({
+            target: SCRAPE_BATCH,
+            niches: [c.niche],
+            cities: c.automation.cities,
+            bundeslaender: c.automation.bundeslaender,
+            batchSize: 20,
+          });
+          generated += gen.newLeads;
+          // No new businesses AND nothing queued → genuinely nothing to do.
+          if (gen.newLeads === 0 && backlog === 0) break;
+        } catch {
+          // Scrape failed (e.g. DataForSEO out of balance) — keep processing
+          // whatever backlog exists; stop only if there's nothing left.
+          if (backlog === 0) break;
+        }
       }
 
-      // A full scrape round produced no NEW businesses → area exhausted; stop.
-      if (gen.newLeads === 0) break;
-      generated += gen.newLeads;
-
+      // Process a chunk of the backlog: enrich → score → route → push.
       try {
         await setColdMailProgress({
           phase: "enrich",
-          label: `Kontaktdaten anreichern (${gen.newLeads} neue Leads) …`,
+          label: "Kontaktdaten anreichern …",
           generated,
         });
-        await enrichAllPending({ limit: gen.newLeads + 20, concurrency: 8 });
+        await enrichAllPending({ limit: ROUND_CHUNK + 10, concurrency: 8 });
       } catch { /* */ }
       try {
         await setColdMailProgress({
           phase: "score",
-          label: `Qualifizieren & Texte generieren (${gen.newLeads}) …`,
+          label: "Qualifizieren & Texte generieren …",
         });
-        await scoreAllPending({ limit: gen.newLeads + 20, concurrency: 8 });
+        await scoreAllPending({ limit: ROUND_CHUNK + 10, concurrency: 8 });
       } catch { /* */ }
       try {
         await setColdMailProgress({

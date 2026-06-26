@@ -281,8 +281,8 @@ export function ClosedLeadCard({ lead }: { lead: Lead }) {
               </p>
             ) : (
               <p className="text-[10px] italic text-muted-foreground">
-                Noch kein Lieferumfang. „Eintragen" oder per Angebot generieren —
-                dann steht hier, was der Kunde bekommt.
+                Noch kein Lieferumfang. Über Eintragen oder per Angebot
+                generieren — dann steht hier, was der Kunde bekommt.
               </p>
             )}
           </div>

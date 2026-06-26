@@ -14,7 +14,8 @@ import {
   type TodoCreateData,
   type TodoUpdateData,
 } from "@/lib/validations/todo";
-import type { OrderStatus } from "@/lib/types/database";
+import type { OrderStatus, OrderType } from "@/lib/types/database";
+import { leadEngine } from "@/lib/lead-engine/supabase";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -56,6 +57,84 @@ export async function createOrder(input: OrderCreateData) {
     .select()
     .single();
 
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/orders");
+  revalidatePath("/");
+  return row;
+}
+
+/**
+ * Turn a won lead (from /akquise → Closes) into a real order in /orders,
+ * auto-filling everything we know: company, value (actual price or estimate),
+ * scope/deliverable as description, and the offer type mapped to an order type.
+ * Returns the created order. Lives here so it reuses the orders table + auth.
+ */
+const FIT_OFFER_TO_ORDER_TYPE: Record<string, OrderType> = {
+  website: "website",
+  booking: "website_plus",
+  automation: "automation",
+  saas: "other",
+};
+
+export async function createOrderFromLead(leadId: string) {
+  const { supabase, user } = await requireUser();
+
+  const { data: lead, error: leadErr } = await leadEngine()
+    .from("leads")
+    .select(
+      "business_name, owner_name, actual_price_eur, suggested_price_max_eur, suggested_price_min_eur, close_scope, offer_deliverable, fit_offer",
+    )
+    .eq("id", leadId)
+    .single();
+  if (leadErr || !lead) throw new Error("Lead nicht gefunden");
+  const l = lead as {
+    business_name: string;
+    owner_name: string | null;
+    actual_price_eur: number | null;
+    suggested_price_max_eur: number | null;
+    suggested_price_min_eur: number | null;
+    close_scope: string | null;
+    offer_deliverable: string | null;
+    fit_offer: string | null;
+  };
+
+  const priceEur =
+    l.actual_price_eur ??
+    l.suggested_price_max_eur ??
+    l.suggested_price_min_eur ??
+    null;
+  const orderType = FIT_OFFER_TO_ORDER_TYPE[l.fit_offer ?? ""] ?? "website";
+  // A close is a won deal → the order starts active (in Arbeit), not "Angebot".
+  const status: OrderStatus = "aktiv";
+
+  const { data: maxRow } = await supabase
+    .from("orders")
+    .select("position")
+    .eq("status", status)
+    .order("position", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const nextPosition = (maxRow?.position ?? 0) + 1000;
+
+  const { data: row, error } = await supabase
+    .from("orders")
+    .insert({
+      title: l.business_name,
+      client_name: l.business_name,
+      contact_id: null,
+      order_type: orderType,
+      status,
+      priority: "medium",
+      value_cents: priceEur != null ? Math.round(priceEur * 100) : null,
+      due_date: null,
+      assigned_to: null,
+      description: l.close_scope ?? l.offer_deliverable ?? "",
+      created_by: user.id,
+      position: nextPosition,
+    })
+    .select()
+    .single();
   if (error) throw new Error(error.message);
 
   revalidatePath("/orders");

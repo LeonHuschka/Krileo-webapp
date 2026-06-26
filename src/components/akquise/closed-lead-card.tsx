@@ -21,6 +21,7 @@ import {
   X,
   Pencil,
   FileText,
+  Briefcase,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +33,7 @@ import {
   setActualClosePrice,
   setCloseScope,
 } from "@/app/(app)/akquise/actions";
+import { createOrderFromLead } from "@/app/(app)/orders/actions";
 import { cn } from "@/lib/utils";
 import type { Lead } from "@/lib/lead-engine/types";
 
@@ -76,8 +78,11 @@ export function ClosedLeadCard({ lead }: { lead: Lead }) {
   const [draftNotes, setDraftNotes] = useState<string>(
     lead.actual_price_notes ?? "",
   );
+  // Lieferumfang defaults to the generated "Das bekommen Sie" (offer_deliverable)
+  // — same text the Angebot-PDF uses — and stays editable (saved as close_scope).
+  const scopeText = lead.close_scope ?? lead.offer_deliverable ?? null;
   const [draftScope, setDraftScope] = useState<string>(
-    lead.close_scope ?? "",
+    lead.close_scope ?? lead.offer_deliverable ?? "",
   );
 
   const suggested =
@@ -134,6 +139,18 @@ export function ClosedLeadCard({ lead }: { lead: Lead }) {
         toast.success(trimmed ? "Scope gespeichert" : "Scope gelöscht");
         setEditingScope(false);
         router.refresh();
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Fehler");
+      }
+    });
+  }
+
+  function createOrder() {
+    startTransition(async () => {
+      try {
+        await createOrderFromLead(lead.id);
+        toast.success("Auftrag angelegt — in Aufträge");
+        router.push("/orders");
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Fehler");
       }
@@ -255,18 +272,17 @@ export function ClosedLeadCard({ lead }: { lead: Lead }) {
                 className="h-6 gap-1 px-1.5 text-[10px] text-sky-300 hover:bg-sky-500/15"
               >
                 <Pencil className="h-3 w-3" />
-                {lead.close_scope ? "Edit" : "Eintragen"}
+                {scopeText ? "Edit" : "Eintragen"}
               </Button>
             </div>
-            {lead.close_scope ? (
+            {scopeText ? (
               <p className="whitespace-pre-wrap text-[11px] leading-snug text-foreground">
-                {lead.close_scope}
+                {scopeText}
               </p>
             ) : (
               <p className="text-[10px] italic text-muted-foreground">
-                Wenn vom ursprünglichen Pitch abweichend (z.B. nur
-                Frontend, weniger Module), hier eintragen — die Schätzung
-                richtet sich danach.
+                Noch kein Lieferumfang. „Eintragen" oder per Angebot generieren —
+                dann steht hier, was der Kunde bekommt.
               </p>
             )}
           </div>
@@ -291,7 +307,7 @@ export function ClosedLeadCard({ lead }: { lead: Lead }) {
                 variant="ghost"
                 onClick={() => {
                   setEditingScope(false);
-                  setDraftScope(lead.close_scope ?? "");
+                  setDraftScope(lead.close_scope ?? lead.offer_deliverable ?? "");
                 }}
                 disabled={pending}
                 className="h-7 gap-1 px-2 text-[11px]"
@@ -493,6 +509,23 @@ export function ClosedLeadCard({ lead }: { lead: Lead }) {
           ))}
         </ul>
       )}
+
+      {/* Turn this close into a real order in /orders */}
+      <Button
+        type="button"
+        size="sm"
+        onClick={createOrder}
+        disabled={pending}
+        className="w-full gap-1.5"
+        title="Aus diesem Verkauf einen Auftrag in Aufträge anlegen"
+      >
+        {pending ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <Briefcase className="h-3.5 w-3.5" />
+        )}
+        Auftrag anlegen
+      </Button>
 
       {/* Quick contact */}
       <div className="flex flex-wrap gap-1.5 border-t border-border/40 pt-2">

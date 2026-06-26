@@ -8,14 +8,17 @@ import {
   StyleSheet,
 } from "@react-pdf/renderer";
 
-// Krileo brand palette — calm, premium, teal-green accent (matches the
-// app's emerald "Offer" styling and the screenshot mock).
-const ACCENT = "#0F766E"; // teal-700
+// Krileo brand palette — clean, premium, brand-blue accent (matches the
+// Krileo logo) on a dark header band.
+const ACCENT = "#1B86C9"; // Krileo blue
+const DARK = "#0F2233"; // header band background
 const FG = "#0F1729";
 const MUTED = "#5B6472";
 const FAINT = "#9CA3AF";
 const HAIRLINE = "#E5E7EB";
-const PANEL = "#F4F6F5";
+const PANEL = "#F1F7FB"; // faint blue tint
+const ON_DARK = "#FFFFFF";
+const ON_DARK_MUTED = "#A9C2D6";
 
 // Sender block. Fill in the legal details once and they flow into every
 // Auftrag/Angebot. Empty fields are simply skipped (no ugly placeholders).
@@ -24,7 +27,7 @@ export const KRILEO_SENDER = {
   slogan: "MEHR KUNDEN. WENIGER AUFWAND.",
   owner: "Leon Huschka", // Inhaber / Firmierung
   addressLine: "", // z.B. "Musterstraße 1, 70173 Stuttgart"
-  contact: "hi@krileo.de · krileo.de",
+  contact: "krileoworks@gmail.com · krileo.de",
   vatId: "", // USt-IdNr.
 };
 
@@ -39,42 +42,44 @@ const styles = StyleSheet.create({
     lineHeight: 1.5,
   },
 
-  // Header
+  // Header — dark band so the white wordmark + logo read premium.
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingBottom: 14,
-    borderBottomWidth: 1.5,
-    borderBottomColor: FG,
+    backgroundColor: DARK,
+    borderRadius: 6,
+    paddingVertical: 18,
+    paddingHorizontal: 22,
     marginBottom: 34,
   },
-  brandRow: { flexDirection: "row", alignItems: "center", gap: 9 },
-  logo: { width: 26, height: 26 },
+  brandRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  logo: { width: 30, height: 30 },
   brandName: {
-    fontSize: 20,
+    fontSize: 21,
     fontFamily: "Helvetica-Bold",
-    color: FG,
-    letterSpacing: 2,
+    color: ON_DARK,
+    letterSpacing: 2.5,
   },
   slogan: {
-    fontSize: 8,
+    fontSize: 7.5,
     fontFamily: "Helvetica-Bold",
-    color: MUTED,
+    color: ON_DARK_MUTED,
     letterSpacing: 1.6,
   },
 
   // Title
   title: {
-    fontSize: 26,
+    fontSize: 25,
     fontFamily: "Helvetica-Bold",
     color: FG,
-    marginBottom: 8,
+    marginBottom: 3,
   },
-  titleRule: {
-    width: 52,
-    height: 3,
-    backgroundColor: ACCENT,
+  subtitle: {
+    fontSize: 10.5,
+    color: ACCENT,
+    fontFamily: "Helvetica-Bold",
+    letterSpacing: 0.5,
     marginBottom: 30,
   },
 
@@ -123,6 +128,26 @@ const styles = StyleSheet.create({
   priceValueWrap: { flexDirection: "row", alignItems: "baseline", gap: 4 },
   priceValue: { fontSize: 15, fontFamily: "Helvetica-Bold", color: FG },
   priceSuffix: { fontSize: 8.5, color: FAINT },
+  // Total row (when detailed line items are used)
+  totalDivider: {
+    borderTopWidth: 0.75,
+    borderTopColor: "#CBD5E1",
+    marginTop: 6,
+    marginBottom: 6,
+  },
+  totalRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    justifyContent: "space-between",
+  },
+  totalLabel: {
+    fontSize: 11,
+    fontFamily: "Helvetica-Bold",
+    color: ACCENT,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+  },
+  totalValue: { fontSize: 17, fontFamily: "Helvetica-Bold", color: ACCENT },
 
   // Signature
   signatures: {
@@ -177,11 +202,14 @@ export type OfferPriceItem = {
 
 export type OfferData = {
   documentTitle: string; // "Auftrag"
+  documentSubtitle?: string; // e.g. "Leistungs- & Preisübersicht"
   dateLabel: string; // formatted date
   customerName: string;
   customerLines: string[];
   deliverable: string; // DAS BEKOMMEN SIE
   priceItems: OfferPriceItem[];
+  /** Optional summed total — shown bold below the line items. */
+  total?: { label: string; eur: number; suffix?: string };
   termLine: string | null; // START & LAUFZEIT body
   logoSrc?: string;
   sender?: typeof KRILEO_SENDER;
@@ -211,7 +239,9 @@ export function OfferDocument({ data }: { data: OfferData }) {
 
         {/* Title */}
         <Text style={styles.title}>{data.documentTitle}</Text>
-        <View style={styles.titleRule} />
+        <Text style={styles.subtitle}>
+          {data.documentSubtitle ?? "Leistungs- & Preisübersicht"}
+        </Text>
 
         {/* Meta */}
         <View style={styles.meta}>
@@ -251,6 +281,22 @@ export function OfferDocument({ data }: { data: OfferData }) {
                 </View>
               </View>
             ))}
+            {data.total && (
+              <>
+                <View style={styles.totalDivider} />
+                <View style={styles.totalRow}>
+                  <Text style={styles.totalLabel}>{data.total.label}</Text>
+                  <View style={styles.priceValueWrap}>
+                    <Text style={styles.totalValue}>
+                      {fmtEuro(data.total.eur)}
+                    </Text>
+                    {data.total.suffix && (
+                      <Text style={styles.priceSuffix}>{data.total.suffix}</Text>
+                    )}
+                  </View>
+                </View>
+              </>
+            )}
           </View>
         </View>
 

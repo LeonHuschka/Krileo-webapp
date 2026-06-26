@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { FileText, Loader2, Download } from "lucide-react";
+import { FileText, Loader2, Download, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -40,6 +40,9 @@ export function OfferPdfButton({
   const [setupEur, setSetupEur] = useState("");
   const [monthlyEur, setMonthlyEur] = useState("");
   const [priceFound, setPriceFound] = useState(true);
+  // Detailed line items (Posten + Preis). When the user adds any, they drive
+  // the price table + total instead of the simple einmalig/monatlich fields.
+  const [items, setItems] = useState<Array<{ label: string; eur: string }>>([]);
 
   function openDialog() {
     setOpen(true);
@@ -51,11 +54,26 @@ export function OfferPdfButton({
         setDeliverable(d.deliverable ?? "");
         setSetupEur(d.setup_eur != null ? String(d.setup_eur) : "");
         setMonthlyEur(d.monthly_eur != null ? String(d.monthly_eur) : "");
+        setItems([]);
         setPriceFound(d.price_found);
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Fehler beim Laden");
       }
     });
+  }
+
+  const cleanItems = items
+    .map((i) => ({ label: i.label.trim(), eur: Number(i.eur.replace(/[^\d]/g, "")) }))
+    .filter((i) => i.label && i.eur > 0);
+
+  function addItem() {
+    setItems((prev) => [...prev, { label: "", eur: "" }]);
+  }
+  function updateItem(idx: number, patch: Partial<{ label: string; eur: string }>) {
+    setItems((prev) => prev.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
+  }
+  function removeItem(idx: number) {
+    setItems((prev) => prev.filter((_, i) => i !== idx));
   }
 
   async function generate() {
@@ -67,8 +85,8 @@ export function OfferPdfButton({
       toast.error("Bitte den Auftragsumfang ausfüllen");
       return;
     }
-    if (!setup || setup <= 0) {
-      toast.error("Bitte einen Preis eintragen");
+    if (cleanItems.length === 0 && (!setup || setup <= 0)) {
+      toast.error("Bitte einen Preis oder einzelne Posten eintragen");
       return;
     }
     setGenerating(true);
@@ -80,8 +98,9 @@ export function OfferPdfButton({
           customerName,
           customerLines,
           deliverable: deliverable.trim(),
-          setup_eur: setup,
+          setup_eur: setup || null,
           monthly_eur: monthly,
+          items: cleanItems,
         }),
       });
       if (!res.ok) {
@@ -155,6 +174,60 @@ export function OfferPdfButton({
                 />
               </div>
 
+              {/* Detailed line items (optional) */}
+              <div className="space-y-2 rounded-md border border-border/60 bg-muted/20 p-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs">
+                    Detaillierte Posten (optional)
+                  </Label>
+                  {cleanItems.length > 0 && (
+                    <span className="text-[11px] font-medium text-primary">
+                      Gesamt:{" "}
+                      {new Intl.NumberFormat("de-DE", {
+                        style: "currency",
+                        currency: "EUR",
+                        maximumFractionDigits: 0,
+                      }).format(cleanItems.reduce((s, i) => s + i.eur, 0))}
+                    </span>
+                  )}
+                </div>
+                {items.map((it, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <Input
+                      value={it.label}
+                      onChange={(e) => updateItem(idx, { label: e.target.value })}
+                      placeholder="Posten, z.B. Website-Redesign"
+                      className="h-8 flex-1 text-xs"
+                    />
+                    <Input
+                      inputMode="numeric"
+                      value={it.eur}
+                      onChange={(e) => updateItem(idx, { eur: e.target.value })}
+                      placeholder="€"
+                      className="h-8 w-20 text-xs"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeItem(idx)}
+                      className="h-8 w-8 shrink-0 p-0 text-muted-foreground hover:text-rose-300"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addItem}
+                  className="h-7 gap-1 text-[11px]"
+                >
+                  <Plus className="h-3 w-3" /> Posten hinzufügen
+                </Button>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label className="text-xs">Einmalig (€, netto)</Label>
@@ -163,6 +236,7 @@ export function OfferPdfButton({
                     value={setupEur}
                     onChange={(e) => setSetupEur(e.target.value)}
                     placeholder="z.B. 490"
+                    disabled={cleanItems.length > 0}
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -178,8 +252,9 @@ export function OfferPdfButton({
                 </div>
               </div>
               <p className="text-[11px] leading-snug text-muted-foreground">
-                Monatlich leer lassen = einmaliges Projekt. Mit Monatsbetrag =
-                Einrichtung + Abo (12 Monate Laufzeit).
+                {cleanItems.length > 0
+                  ? "Posten aktiv — die einzelnen Beträge bilden die Preisliste + Gesamtsumme. Das Feld Einmalig wird ignoriert."
+                  : "Ohne Posten: Einmalig = Projektpreis. Monatlich = Einrichtung + Abo (12 Monate)."}
               </p>
             </div>
           )}

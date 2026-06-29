@@ -157,6 +157,12 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
   },
   totalValue: { fontSize: 17, fontFamily: "Helvetica-Bold", color: ACCENT },
+  totalSuffix: {
+    fontSize: 8.5,
+    color: FAINT,
+    textAlign: "right",
+    marginTop: 2,
+  },
 
   // Signature
   signatures: {
@@ -295,15 +301,11 @@ export function OfferDocument({ data }: { data: OfferData }) {
                 <View style={styles.totalDivider} />
                 <View style={styles.totalRow}>
                   <Text style={styles.totalLabel}>{data.total.label}</Text>
-                  <View style={styles.priceValueWrap}>
-                    <Text style={styles.totalValue}>
-                      {fmtEuro(data.total.eur)}
-                    </Text>
-                    {data.total.suffix && (
-                      <Text style={styles.priceSuffix}>{data.total.suffix}</Text>
-                    )}
-                  </View>
+                  <Text style={styles.totalValue}>{fmtEuro(data.total.eur)}</Text>
                 </View>
+                {data.total.suffix && (
+                  <Text style={styles.totalSuffix}>{data.total.suffix}</Text>
+                )}
               </>
             )}
           </View>

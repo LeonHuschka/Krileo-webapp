@@ -70,16 +70,18 @@ const styles = StyleSheet.create({
 
   // Title
   title: {
-    fontSize: 25,
+    fontSize: 24,
     fontFamily: "Helvetica-Bold",
     color: FG,
-    marginBottom: 3,
+    lineHeight: 1.2,
+    marginBottom: 9,
   },
   subtitle: {
-    fontSize: 10.5,
+    fontSize: 10,
     color: ACCENT,
     fontFamily: "Helvetica-Bold",
-    letterSpacing: 0.5,
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
     marginBottom: 30,
   },
 
@@ -120,13 +122,20 @@ const styles = StyleSheet.create({
   },
   priceRow: {
     flexDirection: "row",
-    alignItems: "baseline",
+    alignItems: "flex-start",
     justifyContent: "space-between",
-    paddingVertical: 5,
+    paddingVertical: 6,
+    gap: 16,
   },
-  priceLabel: { fontSize: 11, color: FG },
-  priceValueWrap: { flexDirection: "row", alignItems: "baseline", gap: 4 },
-  priceValue: { fontSize: 15, fontFamily: "Helvetica-Bold", color: FG },
+  // flex:1 so long labels WRAP instead of running into the price column.
+  priceLabel: { fontSize: 11, color: FG, flex: 1, lineHeight: 1.4 },
+  priceValueWrap: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: 4,
+    flexShrink: 0,
+  },
+  priceValue: { fontSize: 14, fontFamily: "Helvetica-Bold", color: FG },
   priceSuffix: { fontSize: 8.5, color: FAINT },
   // Total row (when detailed line items are used)
   totalDivider: {

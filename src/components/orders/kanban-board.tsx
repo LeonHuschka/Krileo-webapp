@@ -29,7 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { OrderCard } from "@/components/orders/order-card";
+import { OrderCard, type CardDeployment } from "@/components/orders/order-card";
 import { ORDER_STATUSES, ORDER_STATUS_COLUMN } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { updateOrderPosition } from "@/app/(app)/orders/actions";
@@ -42,14 +42,17 @@ import type {
 interface KanbanProps {
   orders: OrderRow[];
   members: UserProfileRow[];
+  deployMap?: Record<string, CardDeployment>;
 }
 
 function SortableCard({
   order,
   assignee,
+  deployment,
 }: {
   order: OrderRow;
   assignee?: UserProfileRow | null;
+  deployment?: CardDeployment | null;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: order.id });
@@ -60,7 +63,12 @@ function SortableCard({
   };
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <OrderCard order={order} assignee={assignee} asLink={!isDragging} />
+      <OrderCard
+        order={order}
+        assignee={assignee}
+        deployment={deployment}
+        asLink={!isDragging}
+      />
     </div>
   );
 }
@@ -70,12 +78,14 @@ function DroppableColumn({
   label,
   items,
   members,
+  deployMap,
   isOver,
 }: {
   status: OrderStatus;
   label: string;
   items: OrderRow[];
   members: UserProfileRow[];
+  deployMap: Record<string, CardDeployment>;
   isOver: boolean;
 }) {
   const { setNodeRef } = useDroppable({ id: status });
@@ -133,6 +143,7 @@ function DroppableColumn({
                 assignee={
                   order.assigned_to ? memberMap[order.assigned_to] : null
                 }
+                deployment={deployMap[order.id]}
               />
             ))
           )}
@@ -142,7 +153,11 @@ function DroppableColumn({
   );
 }
 
-export function OrdersKanban({ orders, members }: KanbanProps) {
+export function OrdersKanban({
+  orders,
+  members,
+  deployMap = {},
+}: KanbanProps) {
   const [items, setItems] = useState<OrderRow[]>(orders);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overColumnId, setOverColumnId] = useState<OrderStatus | null>(null);
@@ -317,6 +332,7 @@ export function OrdersKanban({ orders, members }: KanbanProps) {
                 assignee={
                   order.assigned_to ? memberMap[order.assigned_to] : null
                 }
+                deployment={deployMap[order.id]}
               />
             ))
           )}
@@ -341,6 +357,7 @@ export function OrdersKanban({ orders, members }: KanbanProps) {
                 label={column.label}
                 items={column.items}
                 members={members}
+                deployMap={deployMap}
                 isOver={overColumnId === column.status}
               />
             ))}
@@ -355,6 +372,7 @@ export function OrdersKanban({ orders, members }: KanbanProps) {
                       ? memberMap[activeOrder.assigned_to]
                       : null
                   }
+                  deployment={deployMap[activeOrder.id]}
                   asLink={false}
                 />
               </div>

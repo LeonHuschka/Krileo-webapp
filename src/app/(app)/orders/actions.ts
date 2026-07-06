@@ -16,7 +16,6 @@ import {
 } from "@/lib/validations/todo";
 import type { OrderStatus, OrderType } from "@/lib/types/database";
 import { leadEngine } from "@/lib/lead-engine/supabase";
-import { generateTechBrief } from "@/lib/orders/tech-brief";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -153,50 +152,6 @@ export async function updateOrder(id: string, patch: OrderUpdateData) {
   revalidatePath("/orders");
   revalidatePath(`/orders/${id}`);
   revalidatePath("/");
-}
-
-/**
- * Turn the order's raw sales notes (description) into a structured tech brief
- * for the build team via Claude, and persist it to orders.tech_brief.
- * Returns the generated brief so the client can render it immediately.
- */
-export async function generateOrderTechBrief(orderId: string) {
-  const { supabase } = await requireUser();
-
-  const { data: order, error } = await supabase
-    .from("orders")
-    .select("title, order_type, client_name, description")
-    .eq("id", orderId)
-    .single();
-  if (error || !order) throw new Error("Auftrag nicht gefunden");
-
-  const notes = (order.description ?? "").trim();
-  if (notes.length < 12) {
-    throw new Error(
-      "Zu wenig Notizen — bitte erst die Anforderungen/Notizen ausfüllen.",
-    );
-  }
-
-  const brief = await generateTechBrief({
-    title: order.title,
-    orderType: order.order_type,
-    clientName: order.client_name,
-    notes,
-  });
-  if (!brief) {
-    throw new Error(
-      "Aufbereitung fehlgeschlagen (kein API-Key oder Fehler beim Modell).",
-    );
-  }
-
-  const { error: saveErr } = await supabase
-    .from("orders")
-    .update({ tech_brief: brief })
-    .eq("id", orderId);
-  if (saveErr) throw new Error(saveErr.message);
-
-  revalidatePath(`/orders/${orderId}`);
-  return brief;
 }
 
 export async function updateOrderPosition(

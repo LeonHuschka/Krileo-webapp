@@ -17,15 +17,32 @@ export const ORDER_STATUSES: { value: OrderStatus; label: string }[] = [
   { value: "archiv", label: "Archiv" },
 ];
 
-/** Thumbnail of a work URL via thum.io (no API key, live screenshot). */
-export function workThumbnailUrl(url: string, width = 900): string {
-  return `https://image.thum.io/get/width/${width}/crop/700/noanimate/${url}`;
+/** Live screenshot of a work URL via thum.io (no API key). `device: "mobile"`
+ *  renders the real mobile layout via a 390px viewport; desktop uses 1440px. */
+export function workThumbnailUrl(
+  url: string,
+  width = 900,
+  device: "desktop" | "mobile" = "desktop",
+): string {
+  const viewport = device === "mobile" ? 390 : 1440;
+  const crop = device === "mobile" ? Math.round(width * 2.05) : Math.round(width * 0.62);
+  return `https://image.thum.io/get/viewportWidth/${viewport}/width/${width}/crop/${crop}/noanimate/${url}`;
 }
 
 /** Whole days elapsed since an ISO timestamp (>= 0). */
 export function daysSince(iso: string): number {
   const ms = Date.now() - new Date(iso).getTime();
   return Math.max(0, Math.floor(ms / 86_400_000));
+}
+
+/** Compact relative time: "gerade" / "vor 5m" / "vor 3h" / "vor 2d". */
+export function shortAgo(input: string | number): string {
+  const mins = Math.floor((Date.now() - new Date(input).getTime()) / 60_000);
+  if (mins < 1) return "gerade";
+  if (mins < 60) return `vor ${mins}m`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `vor ${hrs}h`;
+  return `vor ${Math.floor(hrs / 24)}d`;
 }
 
 /** "heute" / "gestern" / "vor N Tagen" from an ISO timestamp. */

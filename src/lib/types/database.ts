@@ -52,12 +52,13 @@ export type TechBrief = {
   generated_at: string;
 };
 
-export type ReviewChecklistItem = { id: string; label: string; done: boolean };
+/** A single change request Leon noted in review — the dev ticks it off. */
+export type ReviewItem = { id: string; text: string; done: boolean };
 
-/** Structured review flow for the Review column. Stored on orders.review. */
+/** Review flow for the Review column. Leon lists what must be changed; the
+ *  order bounces Review → Aktiv → Review until approved. Stored on orders.review. */
 export type OrderReview = {
-  checklist: ReviewChecklistItem[];
-  notes: string;
+  items: ReviewItem[];
   decision: "approved" | "changes" | null;
   reviewed_at: string | null;
 };

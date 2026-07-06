@@ -95,27 +95,22 @@ function bestProductionUrl(aliases: string[]): string | null {
   return pick ? `https://${pick}` : null;
 }
 
-export async function getDeploymentStatusForUrl(
-  workUrl: string | null,
-): Promise<DeploymentStatus | null> {
-  if (!workUrl) return null;
-  const host = normHost(workUrl);
-  if (!host) return null;
-
-  const teamId = await getTeamId();
-  if (!teamId) return null;
-
-  const projects = await getProjects(teamId);
-  const match = projects.find((p) =>
+function matchProject(
+  projects: VercelProject[],
+  host: string,
+): VercelProject | undefined {
+  return projects.find((p) =>
     (p.targets?.production?.alias ?? []).some(
       (a) => String(a).replace(/^www\./, "").toLowerCase() === host,
     ),
   );
-  if (!match) return null;
+}
 
-  const aliases = match.targets?.production?.alias ?? [];
-  const productionUrl = bestProductionUrl(aliases);
-
+async function buildStatus(
+  teamId: string,
+  match: VercelProject,
+): Promise<DeploymentStatus> {
+  const productionUrl = bestProductionUrl(match.targets?.production?.alias ?? []);
   const dep = await vfetch<{
     deployments?: {
       state?: string;
@@ -153,4 +148,49 @@ export async function getDeploymentStatusForUrl(
     inspectorUrl: d?.inspectorUrl ?? null,
     productionUrl,
   };
+}
+
+export async function getDeploymentStatusForUrl(
+  workUrl: string | null,
+): Promise<DeploymentStatus | null> {
+  if (!workUrl) return null;
+  const host = normHost(workUrl);
+  if (!host) return null;
+  const teamId = await getTeamId();
+  if (!teamId) return null;
+  const match = matchProject(await getProjects(teamId), host);
+  if (!match) return null;
+  return buildStatus(teamId, match);
+}
+
+/**
+ * Batch variant for the board: fetches the project list once, then resolves the
+ * latest deployment per work URL in parallel. Returns a Map keyed by the exact
+ * input URL. Missing token / no match → the URL is simply absent from the Map.
+ */
+export async function getDeploymentStatusesForUrls(
+  workUrls: (string | null | undefined)[],
+): Promise<Map<string, DeploymentStatus>> {
+  const out = new Map<string, DeploymentStatus>();
+  const urls = Array.from(new Set(workUrls.filter((u): u is string => !!u)));
+  if (urls.length === 0) return out;
+
+  const teamId = await getTeamId();
+  if (!teamId) return out;
+  const projects = await getProjects(teamId);
+
+  await Promise.all(
+    urls.map(async (url) => {
+      const host = normHost(url);
+      if (!host) return;
+      const match = matchProject(projects, host);
+      if (!match) return;
+      try {
+        out.set(url, await buildStatus(teamId, match));
+      } catch {
+        /* skip this one */
+      }
+    }),
+  );
+  return out;
 }

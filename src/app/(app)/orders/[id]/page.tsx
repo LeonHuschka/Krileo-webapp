@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getDeploymentStatusForUrl } from "@/lib/orders/vercel";
 import { OrderDetail } from "@/components/orders/order-detail";
 import { OrderTodoList } from "@/components/orders/order-todo-list";
-import { TechBriefPanel } from "@/components/orders/tech-brief-panel";
+import { NotesPanel } from "@/components/orders/notes-panel";
 import { ReviewPanel } from "@/components/orders/review-panel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -54,22 +54,17 @@ export default async function OrderDetailPage({
         deployment={deployment}
       />
 
-      <TechBriefPanel
-        orderId={order.id}
-        initialNotes={order.description ?? ""}
-        initialBrief={order.tech_brief ?? null}
-      />
+      <NotesPanel orderId={order.id} initialNotes={order.description ?? ""} />
 
       <ReviewPanel
         orderId={order.id}
         status={order.status}
         initialReview={order.review ?? null}
-        seedMustHaves={order.tech_brief?.must_haves ?? []}
       />
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">To-Dos</CardTitle>
+          <CardTitle className="text-base">Entwickler-Tasks</CardTitle>
         </CardHeader>
         <CardContent>
           <OrderTodoList

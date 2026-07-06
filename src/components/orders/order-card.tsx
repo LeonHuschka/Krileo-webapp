@@ -2,8 +2,9 @@ import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Clock, Camera } from "lucide-react";
+import { Clock, History, RotateCcw } from "lucide-react";
 import type { OrderRow, UserProfileRow } from "@/lib/types/database";
+import type { DeploymentState } from "@/lib/orders/vercel";
 import {
   ORDER_STATUS_COLUMN,
   ORDER_TYPES,
@@ -11,8 +12,14 @@ import {
   PRIORITY_COLORS,
   workThumbnailUrl,
   daysSinceLabel,
+  shortAgo,
 } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+
+export type CardDeployment = {
+  state: DeploymentState;
+  createdAt: number | null;
+};
 
 function initials(name: string | null | undefined) {
   if (!name) return "?";
@@ -36,10 +43,12 @@ function formatValue(cents: number | null) {
 export function OrderCard({
   order,
   assignee,
+  deployment,
   asLink = true,
 }: {
   order: OrderRow;
   assignee?: UserProfileRow | null;
+  deployment?: CardDeployment | null;
   asLink?: boolean;
 }) {
   const typeLabel =
@@ -48,6 +57,16 @@ export function OrderCard({
   const statusCol = ORDER_STATUS_COLUMN[order.status];
   // Priority is only surfaced when it's been manually set away from "mittel".
   const showPriority = order.priority !== "medium";
+  // Open change requests bounced back from review (only while in Aktiv).
+  const reviewOpen =
+    order.status === "aktiv"
+      ? (order.review?.items ?? []).filter((i) => !i.done).length
+      : 0;
+
+  const building =
+    !!deployment &&
+    ["BUILDING", "QUEUED", "INITIALIZING"].includes(deployment.state);
+  const changedLabel = deployment?.createdAt ? shortAgo(deployment.createdAt) : null;
 
   const inner = (
     <Card className="group relative cursor-pointer space-y-2 overflow-hidden border-border/60 bg-card p-3 pl-3.5 shadow-none transition-all hover:-translate-y-px hover:border-primary/40 hover:shadow-lg hover:shadow-primary/10">
@@ -68,9 +87,24 @@ export function OrderCard({
             loading="lazy"
             className="h-full w-full object-cover object-top"
           />
-          <div className="pointer-events-none absolute right-1.5 top-1.5 flex items-center gap-1 rounded-md bg-background/70 px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground backdrop-blur">
-            <Camera className="h-2.5 w-2.5" /> Live-Vorschau
-          </div>
+          {(building || changedLabel) && (
+            <div className="pointer-events-none absolute right-1.5 top-1.5 flex items-center gap-1 rounded-md bg-background/75 px-1.5 py-0.5 text-[9px] font-medium backdrop-blur">
+              {building ? (
+                <>
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" />
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-amber-400" />
+                  </span>
+                  <span className="text-amber-300">baut…</span>
+                </>
+              ) : (
+                <>
+                  <History className="h-2.5 w-2.5 text-muted-foreground" />
+                  <span className="text-muted-foreground">{changedLabel}</span>
+                </>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -94,6 +128,13 @@ export function OrderCard({
       {order.client_name && (
         <div className="truncate text-xs text-muted-foreground">
           {order.client_name}
+        </div>
+      )}
+
+      {reviewOpen > 0 && (
+        <div className="flex items-center gap-1 rounded-md bg-amber-500/10 px-2 py-1 text-[11px] font-medium text-amber-300">
+          <RotateCcw className="h-3 w-3 shrink-0" />
+          Review: {reviewOpen} offen
         </div>
       )}
 

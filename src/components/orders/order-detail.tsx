@@ -3,7 +3,14 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Trash2, FileDown, ExternalLink, Radio, Camera } from "lucide-react";
+import {
+  Trash2,
+  FileDown,
+  ExternalLink,
+  Radio,
+  Camera,
+  GitCommit,
+} from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,12 +39,13 @@ import type {
   OrderStatus,
   UserProfileRow,
 } from "@/lib/types/database";
+import type { DeploymentStatus, DeploymentState } from "@/lib/orders/vercel";
 import { cn } from "@/lib/utils";
 
 const NONE = "__none__";
 
-function relTime(iso: string): string {
-  const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+function relTime(input: string | number): string {
+  const mins = Math.floor((Date.now() - new Date(input).getTime()) / 60000);
   if (mins < 1) return "gerade eben";
   if (mins < 60) return `vor ${mins} Min`;
   const hrs = Math.floor(mins / 60);
@@ -45,14 +53,125 @@ function relTime(iso: string): string {
   return `vor ${Math.floor(hrs / 24)} Tagen`;
 }
 
+const DEPLOY_UI: Record<
+  DeploymentState,
+  { label: string; text: string; dot: string; pulse: boolean }
+> = {
+  READY: {
+    label: "Live · Deployment aktuell",
+    text: "text-emerald-300",
+    dot: "bg-emerald-400",
+    pulse: false,
+  },
+  BUILDING: {
+    label: "Deployment läuft · daran wird gearbeitet",
+    text: "text-amber-300",
+    dot: "bg-amber-400",
+    pulse: true,
+  },
+  INITIALIZING: {
+    label: "Deployment startet",
+    text: "text-amber-300",
+    dot: "bg-amber-400",
+    pulse: true,
+  },
+  QUEUED: {
+    label: "In Warteschlange",
+    text: "text-amber-300",
+    dot: "bg-amber-400",
+    pulse: true,
+  },
+  ERROR: {
+    label: "Letztes Deployment fehlgeschlagen",
+    text: "text-rose-300",
+    dot: "bg-rose-400",
+    pulse: false,
+  },
+  CANCELED: {
+    label: "Deployment abgebrochen",
+    text: "text-zinc-400",
+    dot: "bg-zinc-500",
+    pulse: false,
+  },
+  UNKNOWN: {
+    label: "Deployment-Status unbekannt",
+    text: "text-zinc-400",
+    dot: "bg-zinc-500",
+    pulse: false,
+  },
+};
+
+function DeploymentBlock({ d }: { d: DeploymentStatus }) {
+  const ui = DEPLOY_UI[d.state];
+  const commitLine = d.commitMessage?.split("\n")[0] ?? null;
+  return (
+    <div className="space-y-1.5 rounded-lg border border-border/50 bg-background/40 p-2.5">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="relative flex h-2 w-2 shrink-0">
+          {ui.pulse && (
+            <span
+              className={cn(
+                "absolute inline-flex h-full w-full animate-ping rounded-full opacity-75",
+                ui.dot,
+              )}
+            />
+          )}
+          <span
+            className={cn("relative inline-flex h-2 w-2 rounded-full", ui.dot)}
+          />
+        </span>
+        <span className={cn("text-sm font-medium", ui.text)}>{ui.label}</span>
+        {d.createdAt && (
+          <span className="text-[11px] text-muted-foreground">
+            · {relTime(d.createdAt)}
+          </span>
+        )}
+        <span className="ml-auto font-mono text-[11px] text-muted-foreground">
+          {d.projectName}
+        </span>
+      </div>
+      {commitLine && (
+        <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
+          <GitCommit className="mt-0.5 h-3 w-3 shrink-0" />
+          <span className="min-w-0 break-words">{commitLine}</span>
+        </div>
+      )}
+      <div className="flex flex-wrap gap-3 pt-0.5 text-[11px]">
+        {d.inspectorUrl && (
+          <a
+            href={d.inspectorUrl}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="inline-flex items-center gap-1 text-primary hover:underline"
+          >
+            <ExternalLink className="h-3 w-3" /> Vercel öffnen
+          </a>
+        )}
+        {d.productionUrl && (
+          <a
+            href={d.productionUrl}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground hover:underline"
+          >
+            <ExternalLink className="h-3 w-3" /> Live-Seite
+          </a>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function OrderDetail({
   order,
   members,
   contacts,
+  deployment,
 }: {
   order: OrderRow;
   members: UserProfileRow[];
   contacts: ContactRow[];
+  deployment?: DeploymentStatus | null;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -210,7 +329,10 @@ export function OrderDetail({
             </div>
           )}
 
-          {/* Live status from Claude Code */}
+          {/* Live deployment status from Vercel (automatic) */}
+          {deployment && <DeploymentBlock d={deployment} />}
+
+          {/* Live status from Claude Code (manual override) */}
           <div className="flex items-start gap-2 rounded-lg border border-border/50 bg-background/40 p-2.5">
             <Radio
               className={cn(

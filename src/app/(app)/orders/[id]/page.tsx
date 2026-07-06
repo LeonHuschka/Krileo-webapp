@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getDeploymentStatusForUrl } from "@/lib/orders/vercel";
 import { OrderDetail } from "@/components/orders/order-detail";
 import { OrderTodoList } from "@/components/orders/order-todo-list";
 import { TechBriefPanel } from "@/components/orders/tech-brief-panel";
@@ -31,6 +32,12 @@ export default async function OrderDetailPage({
 
   if (!order) notFound();
 
+  // Live deployment status from Vercel (matched via the order's work link).
+  // Null when no link, no match, or the token/env is missing.
+  const deployment = await getDeploymentStatusForUrl(order.work_url).catch(
+    () => null,
+  );
+
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-4 md:p-6">
       <Link
@@ -44,6 +51,7 @@ export default async function OrderDetailPage({
         order={order}
         members={members ?? []}
         contacts={contacts ?? []}
+        deployment={deployment}
       />
 
       <TechBriefPanel

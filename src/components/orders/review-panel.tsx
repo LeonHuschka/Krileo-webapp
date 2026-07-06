@@ -32,6 +32,32 @@ function newId(): string {
 
 const EMPTY: OrderReview = { items: [], decision: null, reviewed_at: null };
 
+/** Tolerate older/partial review shapes (e.g. the previous `checklist` model)
+ *  so an existing order never crashes the page. */
+function normalizeReview(r: OrderReview | null): OrderReview {
+  if (!r) return EMPTY;
+  const raw = r as unknown as {
+    items?: ReviewItem[];
+    checklist?: { id: string; label?: string; text?: string; done?: boolean }[];
+    decision?: OrderReview["decision"];
+    reviewed_at?: string | null;
+  };
+  const items: ReviewItem[] = Array.isArray(raw.items)
+    ? raw.items
+    : Array.isArray(raw.checklist)
+      ? raw.checklist.map((c) => ({
+          id: c.id,
+          text: c.label ?? c.text ?? "",
+          done: !!c.done,
+        }))
+      : [];
+  return {
+    items,
+    decision: raw.decision ?? null,
+    reviewed_at: raw.reviewed_at ?? null,
+  };
+}
+
 export function ReviewPanel({
   orderId,
   status,
@@ -42,7 +68,9 @@ export function ReviewPanel({
   initialReview: OrderReview | null;
 }) {
   const router = useRouter();
-  const [review, setReview] = useState<OrderReview>(initialReview ?? EMPTY);
+  const [review, setReview] = useState<OrderReview>(() =>
+    normalizeReview(initialReview),
+  );
   const [newText, setNewText] = useState("");
   const [pending, startTransition] = useTransition();
 

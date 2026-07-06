@@ -3,14 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import {
-  Trash2,
-  FileDown,
-  ExternalLink,
-  Radio,
-  Camera,
-  GitCommit,
-} from "lucide-react";
+import { Trash2, FileDown, ExternalLink, Camera, GitCommit } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,7 +21,6 @@ import {
   ORDER_STATUSES,
   ORDER_STATUS_COLORS,
   ORDER_TYPES,
-  LIVE_STATUS_FRESH_MS,
   workThumbnailUrl,
   daysSinceLabel,
 } from "@/lib/constants";
@@ -216,10 +208,6 @@ export function OrderDetail({
     });
   }
 
-  const isLive =
-    !!order.live_status_at &&
-    Date.now() - new Date(order.live_status_at).getTime() < LIVE_STATUS_FRESH_MS;
-
   return (
     <Card>
       <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
@@ -331,59 +319,6 @@ export function OrderDetail({
 
           {/* Live deployment status from Vercel (automatic) */}
           {deployment && <DeploymentBlock d={deployment} />}
-
-          {/* Live status from Claude Code (manual override) */}
-          <div className="flex items-start gap-2 rounded-lg border border-border/50 bg-background/40 p-2.5">
-            <Radio
-              className={cn(
-                "mt-0.5 h-4 w-4 shrink-0",
-                isLive ? "text-emerald-400" : "text-muted-foreground/50",
-              )}
-            />
-            <div className="min-w-0 flex-1">
-              {order.live_status ? (
-                <>
-                  <div className="flex items-center gap-2">
-                    {isLive && (
-                      <span className="relative flex h-1.5 w-1.5 shrink-0">
-                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                      </span>
-                    )}
-                    <span
-                      className={cn(
-                        "text-sm font-medium",
-                        isLive ? "text-emerald-300" : "text-foreground",
-                      )}
-                    >
-                      {isLive ? "Daran wird gearbeitet" : "Zuletzt gearbeitet"}
-                    </span>
-                    {order.live_status_at && (
-                      <span className="text-[11px] text-muted-foreground">
-                        · {relTime(order.live_status_at)}
-                      </span>
-                    )}
-                  </div>
-                  <p className="mt-0.5 break-words text-xs text-muted-foreground">
-                    {order.live_status}
-                  </p>
-                </>
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  Noch keine Live-Meldung von Claude Code.
-                </p>
-              )}
-              <details className="mt-1.5">
-                <summary className="cursor-pointer select-none text-[11px] text-muted-foreground/70 hover:text-muted-foreground">
-                  Claude Code verbinden
-                </summary>
-                <pre className="mt-1.5 overflow-x-auto rounded-md bg-muted/60 p-2 text-[10px] leading-relaxed text-muted-foreground">{`curl -s -X POST "$KRILEO_URL/api/orders/${order.id}/status" \\
-  -H "Authorization: Bearer $ORDER_STATUS_TOKEN" \\
-  -H "Content-Type: application/json" \\
-  -d '{"status":"Kurzer Stand, woran gerade gearbeitet wird"}'`}</pre>
-              </details>
-            </div>
-          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

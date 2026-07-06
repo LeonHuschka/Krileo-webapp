@@ -9,7 +9,6 @@ import {
   ORDER_TYPES,
   ORDER_TYPE_COLORS,
   PRIORITY_COLORS,
-  LIVE_STATUS_FRESH_MS,
   workThumbnailUrl,
   daysSinceLabel,
 } from "@/lib/constants";
@@ -49,9 +48,6 @@ export function OrderCard({
   const statusCol = ORDER_STATUS_COLUMN[order.status];
   // Priority is only surfaced when it's been manually set away from "mittel".
   const showPriority = order.priority !== "medium";
-  const isLive =
-    !!order.live_status_at &&
-    Date.now() - new Date(order.live_status_at).getTime() < LIVE_STATUS_FRESH_MS;
 
   const inner = (
     <Card className="group relative cursor-pointer space-y-2 overflow-hidden border-border/60 bg-card p-3 pl-3.5 shadow-none transition-all hover:-translate-y-px hover:border-primary/40 hover:shadow-lg hover:shadow-primary/10">
@@ -98,16 +94,6 @@ export function OrderCard({
       {order.client_name && (
         <div className="truncate text-xs text-muted-foreground">
           {order.client_name}
-        </div>
-      )}
-
-      {isLive && (
-        <div className="flex items-center gap-1.5 rounded-md bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-300">
-          <span className="relative flex h-1.5 w-1.5 shrink-0">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
-          </span>
-          <span className="truncate">{order.live_status}</span>
         </div>
       )}
 

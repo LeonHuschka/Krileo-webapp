@@ -17,10 +17,6 @@ export const ORDER_STATUSES: { value: OrderStatus; label: string }[] = [
   { value: "archiv", label: "Archiv" },
 ];
 
-/** Live status counts as "actively being worked on" if reported within this
- *  window (ms). Older than that → shown as last activity, no pulse. */
-export const LIVE_STATUS_FRESH_MS = 20 * 60 * 1000;
-
 /** Thumbnail of a work URL via thum.io (no API key, live screenshot). */
 export function workThumbnailUrl(url: string, width = 900): string {
   return `https://image.thum.io/get/width/${width}/crop/700/noanimate/${url}`;

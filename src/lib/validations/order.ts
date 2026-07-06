@@ -29,8 +29,6 @@ export const orderCreateSchema = z.object({
 export const orderUpdateSchema = orderCreateSchema.partial().extend({
   tech_brief: z.any().optional().nullable(),
   review: z.any().optional().nullable(),
-  live_status: z.string().max(280).optional().nullable(),
-  live_status_at: z.string().optional().nullable(),
 });
 
 export type OrderCreateData = z.infer<typeof orderCreateSchema>;

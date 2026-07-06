@@ -4,6 +4,8 @@ import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { OrderDetail } from "@/components/orders/order-detail";
 import { OrderTodoList } from "@/components/orders/order-todo-list";
+import { TechBriefPanel } from "@/components/orders/tech-brief-panel";
+import { ReviewPanel } from "@/components/orders/review-panel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const dynamic = "force-dynamic";
@@ -42,6 +44,19 @@ export default async function OrderDetailPage({
         order={order}
         members={members ?? []}
         contacts={contacts ?? []}
+      />
+
+      <TechBriefPanel
+        orderId={order.id}
+        initialNotes={order.description ?? ""}
+        initialBrief={order.tech_brief ?? null}
+      />
+
+      <ReviewPanel
+        orderId={order.id}
+        status={order.status}
+        initialReview={order.review ?? null}
+        seedMustHaves={order.tech_brief?.must_haves ?? []}
       />
 
       <Card>

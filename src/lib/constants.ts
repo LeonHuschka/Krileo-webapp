@@ -10,12 +10,35 @@ import type {
 } from "@/lib/types/database";
 
 export const ORDER_STATUSES: { value: OrderStatus; label: string }[] = [
-  { value: "angebot", label: "Angebot" },
+  { value: "angebot", label: "Auftrag" },
   { value: "aktiv", label: "Aktiv" },
   { value: "review", label: "Review" },
   { value: "geliefert", label: "Geliefert" },
   { value: "archiv", label: "Archiv" },
 ];
+
+/** Live status counts as "actively being worked on" if reported within this
+ *  window (ms). Older than that → shown as last activity, no pulse. */
+export const LIVE_STATUS_FRESH_MS = 20 * 60 * 1000;
+
+/** Thumbnail of a work URL via thum.io (no API key, live screenshot). */
+export function workThumbnailUrl(url: string, width = 900): string {
+  return `https://image.thum.io/get/width/${width}/crop/700/noanimate/${url}`;
+}
+
+/** Whole days elapsed since an ISO timestamp (>= 0). */
+export function daysSince(iso: string): number {
+  const ms = Date.now() - new Date(iso).getTime();
+  return Math.max(0, Math.floor(ms / 86_400_000));
+}
+
+/** "heute" / "gestern" / "vor N Tagen" from an ISO timestamp. */
+export function daysSinceLabel(iso: string): string {
+  const d = daysSince(iso);
+  if (d === 0) return "heute";
+  if (d === 1) return "gestern";
+  return `vor ${d} Tagen`;
+}
 
 export const ORDER_STATUS_VALUES = ORDER_STATUSES.map((s) => s.value);
 

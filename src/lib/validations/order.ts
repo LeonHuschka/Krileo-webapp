@@ -21,9 +21,17 @@ export const orderCreateSchema = z.object({
   due_date: z.string().optional().nullable(),
   assigned_to: z.string().uuid().optional().nullable(),
   description: z.string().max(5000).optional().nullable(),
+  work_url: z.string().url().max(2000).optional().nullable().or(z.literal("")),
 });
 
-export const orderUpdateSchema = orderCreateSchema.partial();
+// tech_brief / review are structured JSON managed by their own flows, not the
+// generic form. Accept them as loose passthrough so updateOrder can persist them.
+export const orderUpdateSchema = orderCreateSchema.partial().extend({
+  tech_brief: z.any().optional().nullable(),
+  review: z.any().optional().nullable(),
+  live_status: z.string().max(280).optional().nullable(),
+  live_status_at: z.string().optional().nullable(),
+});
 
 export type OrderCreateData = z.infer<typeof orderCreateSchema>;
 export type OrderUpdateData = z.infer<typeof orderUpdateSchema>;

@@ -39,6 +39,29 @@ export type GrowthStatus =
 
 export type Subtask = { id: string; title: string; done: boolean };
 
+/** AI-prepared brief that turns Leon's raw sales notes into a spec the
+ *  build team can act on. Stored on orders.tech_brief. */
+export type TechBrief = {
+  summary: string;
+  goals: string[];
+  must_haves: string[];
+  nice_to_haves: string[];
+  constraints: string[];
+  open_questions: string[];
+  suggested_stack: string[];
+  generated_at: string;
+};
+
+export type ReviewChecklistItem = { id: string; label: string; done: boolean };
+
+/** Structured review flow for the Review column. Stored on orders.review. */
+export type OrderReview = {
+  checklist: ReviewChecklistItem[];
+  notes: string;
+  decision: "approved" | "changes" | null;
+  reviewed_at: string | null;
+};
+
 export type BillingCycle =
   | "weekly"
   | "monthly"
@@ -146,6 +169,11 @@ export type Database = {
           assigned_to: string | null;
           created_by: string;
           description: string | null;
+          work_url: string | null;
+          tech_brief: TechBrief | null;
+          review: OrderReview | null;
+          live_status: string | null;
+          live_status_at: string | null;
           position: number;
           created_at: string;
           updated_at: string;
@@ -163,6 +191,11 @@ export type Database = {
           assigned_to?: string | null;
           created_by: string;
           description?: string | null;
+          work_url?: string | null;
+          tech_brief?: TechBrief | null;
+          review?: OrderReview | null;
+          live_status?: string | null;
+          live_status_at?: string | null;
           position?: number;
           created_at?: string;
           updated_at?: string;
@@ -180,6 +213,11 @@ export type Database = {
           assigned_to?: string | null;
           created_by?: string;
           description?: string | null;
+          work_url?: string | null;
+          tech_brief?: TechBrief | null;
+          review?: OrderReview | null;
+          live_status?: string | null;
+          live_status_at?: string | null;
           position?: number;
           created_at?: string;
           updated_at?: string;

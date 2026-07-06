@@ -25,11 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  ORDER_PRIORITIES,
-  ORDER_STATUSES,
-  ORDER_TYPES,
-} from "@/lib/constants";
+import { ORDER_STATUSES, ORDER_TYPES } from "@/lib/constants";
 import {
   orderCreateSchema,
   type OrderCreateData,
@@ -65,6 +61,7 @@ export function CreateOrderDialog({
       due_date: null,
       assigned_to: null,
       description: "",
+      work_url: "",
     },
   });
 
@@ -189,30 +186,6 @@ export function CreateOrderDialog({
               />
             </div>
             <div className="space-y-2">
-              <Label>Priorität</Label>
-              <Controller
-                control={form.control}
-                name="priority"
-                render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ORDER_PRIORITIES.map((p) => (
-                        <SelectItem key={p.value} value={p.value}>
-                          {p.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
               <Label htmlFor="value">Wert (€)</Label>
               <Input
                 id="value"
@@ -229,10 +202,16 @@ export function CreateOrderDialog({
                 }}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="due_date">Fällig am</Label>
-              <Input id="due_date" type="date" {...form.register("due_date")} />
-            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="work_url">Arbeits-Link (optional)</Label>
+            <Input
+              id="work_url"
+              type="url"
+              placeholder="https://demo.krileo.de/kunde"
+              {...form.register("work_url")}
+            />
           </div>
 
           <div className="space-y-2">
@@ -262,11 +241,11 @@ export function CreateOrderDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Beschreibung</Label>
+            <Label htmlFor="description">Notizen / Anforderungen</Label>
             <Textarea
               id="description"
               rows={3}
-              placeholder="Was soll gebaut werden?"
+              placeholder="Frei reinschreiben — Claude macht daraus später einen Technik-Brief."
               {...form.register("description")}
             />
           </div>

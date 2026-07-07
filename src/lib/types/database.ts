@@ -177,6 +177,7 @@ export type Database = {
           review: OrderReview | null;
           live_status: string | null;
           live_status_at: string | null;
+          canceled_at: string | null;
           position: number;
           created_at: string;
           updated_at: string;
@@ -201,6 +202,7 @@ export type Database = {
           review?: OrderReview | null;
           live_status?: string | null;
           live_status_at?: string | null;
+          canceled_at?: string | null;
           position?: number;
           created_at?: string;
           updated_at?: string;
@@ -225,6 +227,7 @@ export type Database = {
           review?: OrderReview | null;
           live_status?: string | null;
           live_status_at?: string | null;
+          canceled_at?: string | null;
           position?: number;
           created_at?: string;
           updated_at?: string;

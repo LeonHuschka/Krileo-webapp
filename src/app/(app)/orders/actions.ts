@@ -154,6 +154,20 @@ export async function updateOrder(id: string, patch: OrderUpdateData) {
   revalidatePath("/");
 }
 
+/** Cancel or reactivate an order. Canceled orders are struck through and are
+ *  excluded from dashboard revenue. */
+export async function setOrderCanceled(orderId: string, canceled: boolean) {
+  const { supabase } = await requireUser();
+  const { error } = await supabase
+    .from("orders")
+    .update({ canceled_at: canceled ? new Date().toISOString() : null })
+    .eq("id", orderId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/orders");
+  revalidatePath(`/orders/${orderId}`);
+  revalidatePath("/");
+}
+
 export async function updateOrderPosition(
   id: string,
   position: number,

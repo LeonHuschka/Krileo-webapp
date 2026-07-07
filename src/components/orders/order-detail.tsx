@@ -10,6 +10,8 @@ import {
   GitCommit,
   RefreshCw,
   Loader2,
+  Ban,
+  RotateCcw,
 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -31,7 +33,11 @@ import {
   workThumbnailUrl,
   daysSinceLabel,
 } from "@/lib/constants";
-import { deleteOrder, updateOrder } from "@/app/(app)/orders/actions";
+import {
+  deleteOrder,
+  updateOrder,
+  setOrderCanceled,
+} from "@/app/(app)/orders/actions";
 import type {
   ContactRow,
   OrderRow,
@@ -305,6 +311,19 @@ export function OrderDetail({
     });
   }
 
+  const canceled = !!order.canceled_at;
+  function toggleCanceled() {
+    startTransition(async () => {
+      try {
+        await setOrderCanceled(order.id, !canceled);
+        toast.success(canceled ? "Auftrag reaktiviert" : "Auftrag storniert");
+        router.refresh();
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Fehler");
+      }
+    });
+  }
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
@@ -316,6 +335,11 @@ export function OrderDetail({
             className="border-none bg-transparent px-0 text-xl font-semibold focus-visible:ring-0 md:text-2xl"
           />
           <div className="flex flex-wrap items-center gap-2">
+            {canceled && (
+              <Badge className="border-rose-500/40 bg-rose-500/15 text-rose-300">
+                Storniert
+              </Badge>
+            )}
             <Badge
               variant="outline"
               className={cn("border", ORDER_STATUS_COLORS[order.status])}
@@ -347,6 +371,29 @@ export function OrderDetail({
               <FileDown className="h-3.5 w-3.5" />
               Rechnung
             </a>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={toggleCanceled}
+            disabled={pending}
+            className={cn(
+              "gap-1.5",
+              canceled
+                ? "text-emerald-300 hover:text-emerald-200"
+                : "text-muted-foreground hover:text-rose-300",
+            )}
+            title={canceled ? "Auftrag wieder aktivieren" : "Auftrag stornieren"}
+          >
+            {canceled ? (
+              <>
+                <RotateCcw className="h-3.5 w-3.5" /> Reaktivieren
+              </>
+            ) : (
+              <>
+                <Ban className="h-3.5 w-3.5" /> Stornieren
+              </>
+            )}
           </Button>
           <Button
             variant="ghost"

@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Clock, History, RotateCcw } from "lucide-react";
+import { OrderCancelButton } from "@/components/orders/order-cancel-button";
 import type { OrderRow, UserProfileRow } from "@/lib/types/database";
 import type { DeploymentState } from "@/lib/orders/vercel";
 import {
@@ -67,18 +68,25 @@ export function OrderCard({
     !!deployment &&
     ["BUILDING", "QUEUED", "INITIALIZING"].includes(deployment.state);
   const changedLabel = deployment?.createdAt ? shortAgo(deployment.createdAt) : null;
+  const canceled = !!order.canceled_at;
+  const isArchiv = order.status === "archiv";
 
   const inner = (
-    <Card className="group relative cursor-pointer space-y-2 overflow-hidden border-border/60 bg-card p-3 pl-3.5 shadow-none transition-all hover:-translate-y-px hover:border-primary/40 hover:shadow-lg hover:shadow-primary/10">
+    <Card
+      className={cn(
+        "group relative cursor-pointer space-y-2.5 overflow-hidden border-border/60 bg-card p-3 pl-3.5 shadow-none transition-all hover:-translate-y-px hover:border-primary/40 hover:shadow-lg hover:shadow-primary/10",
+        canceled && "opacity-60",
+      )}
+    >
       <div
         className={cn(
           "absolute inset-y-2 left-0 z-10 w-1 rounded-r-full bg-gradient-to-b",
-          statusCol.bar,
+          canceled ? "from-zinc-600 to-zinc-700" : statusCol.bar,
         )}
       />
 
       {order.work_url && (
-        <div className="relative -mx-3 -mt-3 mb-1 aspect-[16/9] overflow-hidden border-b border-border/60 bg-muted/40">
+        <div className="relative aspect-[16/9] overflow-hidden rounded-lg border border-border/60 bg-muted/40">
           {/* Live screenshot of the work link. Plain img so no next/image allowlist. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -88,10 +96,13 @@ export function OrderCard({
             }
             alt=""
             loading="lazy"
-            className="h-full w-full object-cover object-top"
+            className={cn(
+              "h-full w-full object-cover object-top",
+              canceled && "grayscale",
+            )}
           />
           {(building || changedLabel) && (
-            <div className="pointer-events-none absolute right-1.5 top-1.5 flex items-center gap-1 rounded-md bg-background/75 px-1.5 py-0.5 text-[9px] font-medium backdrop-blur">
+            <div className="pointer-events-none absolute right-1.5 top-1.5 flex items-center gap-1 rounded-md bg-background/80 px-2 py-1 text-[11px] font-medium backdrop-blur">
               {building ? (
                 <>
                   <span className="relative flex h-1.5 w-1.5">
@@ -102,7 +113,7 @@ export function OrderCard({
                 </>
               ) : (
                 <>
-                  <History className="h-2.5 w-2.5 text-muted-foreground" />
+                  <History className="h-3 w-3 text-muted-foreground" />
                   <span className="text-muted-foreground">{changedLabel}</span>
                 </>
               )}
@@ -111,26 +122,37 @@ export function OrderCard({
         </div>
       )}
 
+      {/* Title + right-side controls */}
       <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 break-words text-sm font-semibold leading-tight">
+        <div
+          className={cn(
+            "min-w-0 break-words text-sm font-semibold leading-tight",
+            canceled && "text-muted-foreground line-through",
+          )}
+        >
           {order.title}
         </div>
-        {showPriority && (
-          <Badge
-            variant="outline"
-            className={cn(
-              "shrink-0 border text-[10px] font-semibold uppercase tracking-wide",
-              PRIORITY_COLORS[order.priority],
-            )}
-          >
-            {order.priority === "high" ? "Hoch" : "Niedrig"}
-          </Badge>
-        )}
+        <div className="flex shrink-0 items-center gap-1.5">
+          {showPriority && !canceled && (
+            <Badge
+              variant="outline"
+              className={cn(
+                "border text-[10px] font-semibold uppercase tracking-wide",
+                PRIORITY_COLORS[order.priority],
+              )}
+            >
+              {order.priority === "high" ? "Hoch" : "Niedrig"}
+            </Badge>
+          )}
+          {isArchiv && (
+            <OrderCancelButton orderId={order.id} canceled={canceled} />
+          )}
+        </div>
       </div>
 
-      {order.client_name && (
+      {(order.client_name || canceled) && (
         <div className="truncate text-xs text-muted-foreground">
-          {order.client_name}
+          {canceled ? "Storniert" : order.client_name}
         </div>
       )}
 
@@ -141,7 +163,8 @@ export function OrderCard({
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-1.5 text-xs">
+      {/* Type + value */}
+      <div className="flex items-center justify-between gap-2">
         <Badge
           variant="outline"
           className={cn(
@@ -152,13 +175,19 @@ export function OrderCard({
           {typeLabel}
         </Badge>
         {value && (
-          <span className="ml-auto truncate text-xs font-bold tracking-tight text-foreground">
+          <span
+            className={cn(
+              "truncate text-sm font-bold tracking-tight text-foreground",
+              canceled && "text-muted-foreground line-through",
+            )}
+          >
             {value}
           </span>
         )}
       </div>
 
-      <div className="flex items-center justify-between pt-1">
+      {/* Footer: age + assignee */}
+      <div className="flex items-center justify-between border-t border-border/40 pt-2">
         <div
           className="flex items-center gap-1 text-xs text-muted-foreground"
           title={`Auftrag seit ${new Date(order.created_at).toLocaleDateString("de-DE")}`}

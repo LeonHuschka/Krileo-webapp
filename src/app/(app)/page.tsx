@@ -168,8 +168,10 @@ export default async function DashboardPage() {
     counts.angebot + counts.aktiv + counts.review;
 
   // ── Revenue goal ──────────────────────────────────────────
+  // Canceled orders never count toward revenue, even in geliefert/archiv.
   const closedOrders = allOrders.filter(
-    (o) => o.status === "geliefert" || o.status === "archiv",
+    (o) =>
+      (o.status === "geliefert" || o.status === "archiv") && !o.canceled_at,
   );
   const revenueCents = closedOrders.reduce(
     (sum, o) => sum + (o.value_cents ?? 0),

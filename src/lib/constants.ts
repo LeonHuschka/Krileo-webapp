@@ -18,15 +18,18 @@ export const ORDER_STATUSES: { value: OrderStatus; label: string }[] = [
 ];
 
 /** Live screenshot of a work URL via thum.io (no API key). `device: "mobile"`
- *  renders the real mobile layout via a 390px viewport; desktop uses 1440px. */
+ *  renders the real mobile layout in a 390×844 viewport; desktop uses 1440×900.
+ *  thum.io's `crop` is the VIEWPORT HEIGHT (not the output height), so it is a
+ *  constant per device — this keeps the render at the true device aspect ratio
+ *  (desktop 16:10, mobile ~9:19.5) with no stretching. */
 export function workThumbnailUrl(
   url: string,
   width = 900,
   device: "desktop" | "mobile" = "desktop",
 ): string {
-  const viewport = device === "mobile" ? 390 : 1440;
-  const crop = device === "mobile" ? Math.round(width * 2.05) : Math.round(width * 0.62);
-  return `https://image.thum.io/get/viewportWidth/${viewport}/width/${width}/crop/${crop}/noanimate/${url}`;
+  const viewportWidth = device === "mobile" ? 390 : 1440;
+  const viewportHeight = device === "mobile" ? 844 : 900;
+  return `https://image.thum.io/get/viewportWidth/${viewportWidth}/crop/${viewportHeight}/width/${width}/noanimate/${url}`;
 }
 
 /** Whole days elapsed since an ISO timestamp (>= 0). */

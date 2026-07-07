@@ -154,6 +154,55 @@ function DeploymentBlock({ d }: { d: DeploymentStatus }) {
   );
 }
 
+/** Live preview shown as a MacBook + iPhone device mockup, both linking out. */
+function WorkPreview({ url }: { url: string }) {
+  return (
+    <div className="relative mx-auto w-full max-w-[620px]">
+      {/* MacBook — screen + aluminium base */}
+      <a
+        href={url}
+        target="_blank"
+        rel="noreferrer noopener"
+        className="group block w-[85%]"
+        title="Desktop-Ansicht öffnen"
+      >
+        <div className="relative overflow-hidden rounded-t-[12px] border-[9px] border-b-0 border-zinc-900 bg-zinc-900">
+          <span className="absolute left-1/2 top-[3px] z-10 h-[3px] w-[3px] -translate-x-1/2 rounded-full bg-zinc-600" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={workThumbnailUrl(url, 1200, "desktop")}
+            alt="Desktop-Vorschau des Arbeits-Links"
+            className="block aspect-[16/10] w-full object-cover object-top transition-transform group-hover:scale-[1.01]"
+          />
+        </div>
+        <div className="relative left-1/2 h-[13px] w-[112%] -translate-x-1/2 rounded-b-[10px] bg-gradient-to-b from-zinc-300 to-zinc-400 shadow-md">
+          <span className="absolute left-1/2 top-0 h-[5px] w-[15%] -translate-x-1/2 rounded-b-[7px] bg-zinc-400" />
+        </div>
+      </a>
+
+      {/* iPhone — overlapping the laptop's lower-right */}
+      <a
+        href={url}
+        target="_blank"
+        rel="noreferrer noopener"
+        className="absolute bottom-0 right-0 z-10 w-[27%] min-w-[104px] max-w-[152px] transition-transform hover:-translate-y-0.5"
+        title="Mobil-Ansicht öffnen"
+      >
+        <div className="relative overflow-hidden rounded-[1.9rem] border-[6px] border-zinc-900 bg-zinc-900 shadow-2xl ring-1 ring-black/20">
+          <span className="absolute left-1/2 top-0 z-10 h-[13px] w-[40%] -translate-x-1/2 rounded-b-[10px] bg-zinc-900" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={workThumbnailUrl(url, 420, "mobile")}
+            alt="Mobil-Vorschau des Arbeits-Links"
+            className="block aspect-[9/19.5] w-full object-cover object-top"
+          />
+          <span className="absolute bottom-[5px] left-1/2 h-1 w-1/4 -translate-x-1/2 rounded-full bg-white/70" />
+        </div>
+      </a>
+    </div>
+  );
+}
+
 export function OrderDetail({
   order,
   members,
@@ -295,47 +344,7 @@ export function OrderDetail({
           </div>
 
           {order.work_url ? (
-            <div className="flex flex-col items-stretch gap-3 sm:flex-row">
-              {/* Desktop preview in a browser/laptop frame */}
-              <a
-                href={order.work_url}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="group relative min-w-0 flex-1 overflow-hidden rounded-lg border border-border/60 bg-muted/40"
-              >
-                <div className="flex items-center gap-1.5 border-b border-border/50 bg-muted/50 px-2.5 py-1.5">
-                  <span className="h-2 w-2 rounded-full bg-rose-400/70" />
-                  <span className="h-2 w-2 rounded-full bg-amber-400/70" />
-                  <span className="h-2 w-2 rounded-full bg-emerald-400/70" />
-                  <span className="ml-1 text-[10px] font-medium text-muted-foreground">
-                    Desktop
-                  </span>
-                </div>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={workThumbnailUrl(order.work_url, 1200, "desktop")}
-                  alt="Desktop-Vorschau des Arbeits-Links"
-                  className="aspect-[16/10] w-full object-cover object-top transition-transform group-hover:scale-[1.01]"
-                />
-              </a>
-
-              {/* Mobile preview in a phone frame */}
-              <a
-                href={order.work_url}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="relative mx-auto w-[130px] shrink-0 overflow-hidden rounded-[1.6rem] border-[5px] border-zinc-800 bg-black shadow-lg transition-transform hover:-translate-y-0.5 sm:mx-0"
-                title="Mobil-Ansicht"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={workThumbnailUrl(order.work_url, 390, "mobile")}
-                  alt="Mobil-Vorschau des Arbeits-Links"
-                  className="aspect-[9/19] w-full object-cover object-top"
-                />
-                <span className="pointer-events-none absolute left-1/2 top-1.5 h-1 w-9 -translate-x-1/2 rounded-full bg-zinc-700" />
-              </a>
-            </div>
+            <WorkPreview url={order.work_url} />
           ) : (
             <div className="flex aspect-[16/9] items-center justify-center rounded-lg border border-dashed border-border/50 bg-muted/20 text-xs text-muted-foreground/60">
               Link eintragen → Desktop- & Mobil-Vorschau erscheinen hier

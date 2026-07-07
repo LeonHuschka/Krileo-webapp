@@ -171,6 +171,8 @@ export type Database = {
           created_by: string;
           description: string | null;
           work_url: string | null;
+          preview_desktop_url: string | null;
+          preview_mobile_url: string | null;
           tech_brief: TechBrief | null;
           review: OrderReview | null;
           live_status: string | null;
@@ -193,6 +195,8 @@ export type Database = {
           created_by: string;
           description?: string | null;
           work_url?: string | null;
+          preview_desktop_url?: string | null;
+          preview_mobile_url?: string | null;
           tech_brief?: TechBrief | null;
           review?: OrderReview | null;
           live_status?: string | null;
@@ -215,6 +219,8 @@ export type Database = {
           created_by?: string;
           description?: string | null;
           work_url?: string | null;
+          preview_desktop_url?: string | null;
+          preview_mobile_url?: string | null;
           tech_brief?: TechBrief | null;
           review?: OrderReview | null;
           live_status?: string | null;

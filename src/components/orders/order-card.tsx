@@ -82,7 +82,10 @@ export function OrderCard({
           {/* Live screenshot of the work link. Plain img so no next/image allowlist. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={workThumbnailUrl(order.work_url, 640)}
+            src={
+              order.preview_desktop_url ||
+              workThumbnailUrl(order.work_url, 640)
+            }
             alt=""
             loading="lazy"
             className="h-full w-full object-cover object-top"

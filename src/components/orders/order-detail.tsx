@@ -3,7 +3,14 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Trash2, FileDown, ExternalLink, GitCommit } from "lucide-react";
+import {
+  Trash2,
+  FileDown,
+  ExternalLink,
+  GitCommit,
+  RefreshCw,
+  Loader2,
+} from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -154,8 +161,17 @@ function DeploymentBlock({ d }: { d: DeploymentStatus }) {
   );
 }
 
-/** Live preview shown as a MacBook + iPhone device mockup, both linking out. */
-function WorkPreview({ url }: { url: string }) {
+/** Live preview shown as a MacBook + iPhone device mockup, both linking out.
+ *  Sources are the uploaded real screenshots when present, else the auto render. */
+function WorkPreview({
+  url,
+  desktopSrc,
+  mobileSrc,
+}: {
+  url: string;
+  desktopSrc: string;
+  mobileSrc: string;
+}) {
   return (
     <div className="relative mx-auto w-full max-w-[620px]">
       {/* MacBook — screen + aluminium base */}
@@ -170,7 +186,7 @@ function WorkPreview({ url }: { url: string }) {
           <span className="absolute left-1/2 top-[3px] z-10 h-[3px] w-[3px] -translate-x-1/2 rounded-full bg-zinc-600" />
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={workThumbnailUrl(url, 1200, "desktop")}
+            src={desktopSrc}
             alt="Desktop-Vorschau des Arbeits-Links"
             className="block aspect-[16/10] w-full object-cover object-top transition-transform group-hover:scale-[1.01]"
           />
@@ -192,7 +208,7 @@ function WorkPreview({ url }: { url: string }) {
           <span className="absolute left-1/2 top-0 z-10 h-[13px] w-[40%] -translate-x-1/2 rounded-b-[10px] bg-zinc-900" />
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={workThumbnailUrl(url, 420, "mobile")}
+            src={mobileSrc}
             alt="Mobil-Vorschau des Arbeits-Links"
             className="block aspect-[9/19.5] w-full object-cover object-top"
           />
@@ -216,6 +232,7 @@ export function OrderDetail({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [capturing, setCapturing] = useState(false);
   const [draft, setDraft] = useState({
     title: order.title,
     client_name: order.client_name ?? "",
@@ -234,12 +251,43 @@ export function OrderDetail({
     });
   }
 
+  // Capture real desktop + iPhone screenshots server-side (microlink).
+  async function capture() {
+    setCapturing(true);
+    try {
+      const res = await fetch(`/api/orders/${order.id}/capture-preview`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error || "Aufnahme fehlgeschlagen");
+      }
+      toast.success("Screenshots aufgenommen");
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Fehler");
+    } finally {
+      setCapturing(false);
+    }
+  }
+
   function saveTextFields() {
-    patch({
-      title: draft.title,
-      client_name: draft.client_name || null,
-      value_cents: draft.value_cents,
-      work_url: draft.work_url.trim() || null,
+    const nextWorkUrl = draft.work_url.trim() || null;
+    const workUrlChanged = nextWorkUrl !== (order.work_url ?? null);
+    startTransition(async () => {
+      try {
+        await updateOrder(order.id, {
+          title: draft.title,
+          client_name: draft.client_name || null,
+          value_cents: draft.value_cents,
+          work_url: nextWorkUrl,
+        });
+        router.refresh();
+        // New/changed link → grab real screenshots automatically.
+        if (workUrlChanged && nextWorkUrl) void capture();
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Fehler");
+      }
     });
   }
 
@@ -344,7 +392,39 @@ export function OrderDetail({
           </div>
 
           {order.work_url ? (
-            <WorkPreview url={order.work_url} />
+            <div className="space-y-2.5">
+              <WorkPreview
+                url={order.work_url}
+                desktopSrc={
+                  order.preview_desktop_url ||
+                  workThumbnailUrl(order.work_url, 1200, "desktop")
+                }
+                mobileSrc={
+                  order.preview_mobile_url ||
+                  workThumbnailUrl(order.work_url, 420, "mobile")
+                }
+              />
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={capture}
+                  disabled={capturing}
+                  className="h-7 gap-1 text-[11px]"
+                >
+                  {capturing ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-3 w-3" />
+                  )}
+                  {capturing ? "Nehme auf…" : "Screenshots aktualisieren"}
+                </Button>
+                <span className="text-[11px] text-muted-foreground">
+                  Echte Desktop- & iPhone-Aufnahme, automatisch.
+                </span>
+              </div>
+            </div>
           ) : (
             <div className="flex aspect-[16/9] items-center justify-center rounded-lg border border-dashed border-border/50 bg-muted/20 text-xs text-muted-foreground/60">
               Link eintragen → Desktop- & Mobil-Vorschau erscheinen hier

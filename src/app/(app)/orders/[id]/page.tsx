@@ -3,18 +3,28 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getDeploymentStatusForUrl } from "@/lib/orders/vercel";
-import { OrderDetail } from "@/components/orders/order-detail";
-import { OrderTodoList } from "@/components/orders/order-todo-list";
-import { NotesPanel } from "@/components/orders/notes-panel";
-import { ReviewPanel } from "@/components/orders/review-panel";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  OrderDetail,
+  statusToTab,
+  type OrderTabKey,
+} from "@/components/orders/order-detail";
 
 export const dynamic = "force-dynamic";
 
+const TAB_KEYS: OrderTabKey[] = [
+  "auftrag",
+  "aktiv",
+  "review",
+  "geliefert",
+  "archiv",
+];
+
 export default async function OrderDetailPage({
   params,
+  searchParams,
 }: {
   params: { id: string };
+  searchParams: { tab?: string };
 }) {
   const supabase = await createClient();
 
@@ -33,10 +43,14 @@ export default async function OrderDetailPage({
   if (!order) notFound();
 
   // Live deployment status from Vercel (matched via the order's work link).
-  // Null when no link, no match, or the token/env is missing.
   const deployment = await getDeploymentStatusForUrl(order.work_url).catch(
     () => null,
   );
+
+  // Open the tab matching the order's status, unless the URL pins one.
+  const urlTab = searchParams.tab as OrderTabKey | undefined;
+  const defaultTab =
+    urlTab && TAB_KEYS.includes(urlTab) ? urlTab : statusToTab(order.status);
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-4 md:p-6">
@@ -52,28 +66,9 @@ export default async function OrderDetailPage({
         members={members ?? []}
         contacts={contacts ?? []}
         deployment={deployment}
+        todos={todos ?? []}
+        defaultTab={defaultTab}
       />
-
-      <NotesPanel orderId={order.id} initialNotes={order.description ?? ""} />
-
-      <ReviewPanel
-        orderId={order.id}
-        status={order.status}
-        initialReview={order.review ?? null}
-      />
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Entwickler-Tasks</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <OrderTodoList
-            orderId={order.id}
-            todos={todos ?? []}
-            members={members ?? []}
-          />
-        </CardContent>
-      </Card>
     </div>
   );
 }

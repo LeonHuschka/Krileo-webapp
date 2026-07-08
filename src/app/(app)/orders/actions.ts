@@ -59,6 +59,14 @@ export async function createOrder(input: OrderCreateData) {
 
   if (error) throw new Error(error.message);
 
+  // Seed the status history so lead-time analytics has a starting point.
+  await supabase.from("order_events").insert({
+    order_id: row.id,
+    from_status: null,
+    to_status: row.status,
+    actor_id: user.id,
+  });
+
   revalidatePath("/orders");
   revalidatePath("/");
   return row;
@@ -137,17 +145,45 @@ export async function createOrderFromLead(leadId: string) {
     .single();
   if (error) throw new Error(error.message);
 
+  // Seed the status history so lead-time analytics has a starting point.
+  await supabase.from("order_events").insert({
+    order_id: row.id,
+    from_status: null,
+    to_status: row.status,
+    actor_id: user.id,
+  });
+
   revalidatePath("/orders");
   revalidatePath("/");
   return row;
 }
 
 export async function updateOrder(id: string, patch: OrderUpdateData) {
-  const { supabase } = await requireUser();
+  const { supabase, user } = await requireUser();
   const data = orderUpdateSchema.parse(emptyToNull(patch));
+
+  // Capture the previous status so a status change is logged for analytics.
+  let prevStatus: string | null = null;
+  if (data.status) {
+    const { data: cur } = await supabase
+      .from("orders")
+      .select("status")
+      .eq("id", id)
+      .maybeSingle();
+    prevStatus = cur?.status ?? null;
+  }
 
   const { error } = await supabase.from("orders").update(data).eq("id", id);
   if (error) throw new Error(error.message);
+
+  if (data.status && prevStatus && prevStatus !== data.status) {
+    await supabase.from("order_events").insert({
+      order_id: id,
+      from_status: prevStatus,
+      to_status: data.status,
+      actor_id: user.id,
+    });
+  }
 
   revalidatePath("/orders");
   revalidatePath(`/orders/${id}`);
@@ -173,11 +209,31 @@ export async function updateOrderPosition(
   position: number,
   status?: OrderStatus,
 ) {
-  const { supabase } = await requireUser();
+  const { supabase, user } = await requireUser();
+
+  let prevStatus: string | null = null;
+  if (status) {
+    const { data: cur } = await supabase
+      .from("orders")
+      .select("status")
+      .eq("id", id)
+      .maybeSingle();
+    prevStatus = cur?.status ?? null;
+  }
+
   const patch: { position: number; status?: OrderStatus } = { position };
   if (status) patch.status = status;
   const { error } = await supabase.from("orders").update(patch).eq("id", id);
   if (error) throw new Error(error.message);
+
+  if (status && prevStatus && prevStatus !== status) {
+    await supabase.from("order_events").insert({
+      order_id: id,
+      from_status: prevStatus,
+      to_status: status,
+      actor_id: user.id,
+    });
+  }
   revalidatePath("/orders");
 }
 

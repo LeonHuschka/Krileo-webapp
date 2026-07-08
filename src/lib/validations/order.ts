@@ -31,6 +31,8 @@ export const orderUpdateSchema = orderCreateSchema.partial().extend({
   review: z.any().optional().nullable(),
   preview_desktop_url: z.string().max(2000).optional().nullable(),
   preview_mobile_url: z.string().max(2000).optional().nullable(),
+  cancellation_reason: z.string().max(2000).optional().nullable(),
+  cancellation_type: z.enum(["permanent", "temporary"]).optional().nullable(),
 });
 
 export type OrderCreateData = z.infer<typeof orderCreateSchema>;

@@ -178,6 +178,8 @@ export type Database = {
           live_status: string | null;
           live_status_at: string | null;
           canceled_at: string | null;
+          cancellation_reason: string | null;
+          cancellation_type: "permanent" | "temporary" | null;
           position: number;
           created_at: string;
           updated_at: string;
@@ -203,6 +205,8 @@ export type Database = {
           live_status?: string | null;
           live_status_at?: string | null;
           canceled_at?: string | null;
+          cancellation_reason?: string | null;
+          cancellation_type?: "permanent" | "temporary" | null;
           position?: number;
           created_at?: string;
           updated_at?: string;
@@ -228,6 +232,8 @@ export type Database = {
           live_status?: string | null;
           live_status_at?: string | null;
           canceled_at?: string | null;
+          cancellation_reason?: string | null;
+          cancellation_type?: "permanent" | "temporary" | null;
           position?: number;
           created_at?: string;
           updated_at?: string;
@@ -267,6 +273,33 @@ export type Database = {
           position?: number;
           created_at?: string;
           updated_at?: string;
+        };
+        Relationships: [];
+      };
+      order_events: {
+        Row: {
+          id: string;
+          order_id: string;
+          from_status: string | null;
+          to_status: string;
+          actor_id: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          order_id: string;
+          from_status?: string | null;
+          to_status: string;
+          actor_id?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          order_id?: string;
+          from_status?: string | null;
+          to_status?: string;
+          actor_id?: string | null;
+          created_at?: string;
         };
         Relationships: [];
       };
@@ -468,6 +501,7 @@ export type Database = {
 export type UserProfileRow = Database["public"]["Tables"]["user_profiles"]["Row"];
 export type OrderRow = Database["public"]["Tables"]["orders"]["Row"];
 export type OrderTodoRow = Database["public"]["Tables"]["order_todos"]["Row"];
+export type OrderEventRow = Database["public"]["Tables"]["order_events"]["Row"];
 export type ContactRow = Database["public"]["Tables"]["contacts"]["Row"];
 export type GrowthTaskRow =
   Database["public"]["Tables"]["growth_tasks"]["Row"];

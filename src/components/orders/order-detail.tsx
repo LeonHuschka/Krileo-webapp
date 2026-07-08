@@ -13,11 +13,18 @@ import {
   Ban,
   RotateCcw,
 } from "lucide-react";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -38,16 +45,35 @@ import {
   updateOrder,
   setOrderCanceled,
 } from "@/app/(app)/orders/actions";
+import { NotesPanel } from "@/components/orders/notes-panel";
+import { ReviewPanel } from "@/components/orders/review-panel";
+import { OrderTodoList } from "@/components/orders/order-todo-list";
 import type {
   ContactRow,
   OrderRow,
   OrderStatus,
+  OrderTodoRow,
   UserProfileRow,
 } from "@/lib/types/database";
 import type { DeploymentStatus, DeploymentState } from "@/lib/orders/vercel";
 import { cn } from "@/lib/utils";
 
 const NONE = "__none__";
+
+const ORDER_TABS = [
+  { key: "auftrag", label: "Auftrag" },
+  { key: "aktiv", label: "Aktiv" },
+  { key: "review", label: "Review" },
+  { key: "geliefert", label: "Geliefert" },
+  { key: "archiv", label: "Archiv" },
+] as const;
+
+export type OrderTabKey = (typeof ORDER_TABS)[number]["key"];
+
+/** The status the kanban uses maps 1:1 to a tab, except "angebot" → "auftrag". */
+export function statusToTab(status: OrderStatus): OrderTabKey {
+  return status === "angebot" ? "auftrag" : (status as OrderTabKey);
+}
 
 function relTime(input: string | number): string {
   const mins = Math.floor((Date.now() - new Date(input).getTime()) / 60000);
@@ -230,21 +256,32 @@ export function OrderDetail({
   members,
   contacts,
   deployment,
+  todos,
+  defaultTab,
 }: {
   order: OrderRow;
   members: UserProfileRow[];
   contacts: ContactRow[];
   deployment?: DeploymentStatus | null;
+  todos: OrderTodoRow[];
+  defaultTab: OrderTabKey;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [capturing, setCapturing] = useState(false);
+  const [tab, setTab] = useState<string>(defaultTab);
   const [draft, setDraft] = useState({
     title: order.title,
     client_name: order.client_name ?? "",
     value_cents: order.value_cents,
     work_url: order.work_url ?? "",
   });
+
+  function selectTab(v: string) {
+    setTab(v);
+    if (typeof window !== "undefined")
+      window.history.replaceState(null, "", `?tab=${v}`);
+  }
 
   function patch(values: Record<string, unknown>) {
     startTransition(async () => {
@@ -324,94 +361,222 @@ export function OrderDetail({
     });
   }
 
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
-        <div className="flex-1 space-y-2">
-          <Input
-            value={draft.title}
-            onChange={(e) => setDraft({ ...draft, title: e.target.value })}
-            onBlur={saveTextFields}
-            className="border-none bg-transparent px-0 text-xl font-semibold focus-visible:ring-0 md:text-2xl"
-          />
-          <div className="flex flex-wrap items-center gap-2">
-            {canceled && (
-              <Badge className="border-rose-500/40 bg-rose-500/15 text-rose-300">
-                Storniert
-              </Badge>
-            )}
-            <Badge
-              variant="outline"
-              className={cn("border", ORDER_STATUS_COLORS[order.status])}
-            >
-              {ORDER_STATUSES.find((s) => s.value === order.status)?.label}
-            </Badge>
-            <Badge variant="secondary">
-              {ORDER_TYPES.find((t) => t.value === order.order_type)?.label}
-            </Badge>
-            {order.priority !== "medium" && (
-              <Badge variant="secondary" className="capitalize">
-                {order.priority === "high" ? "Hoch" : "Niedrig"}
-              </Badge>
-            )}
-            <span className="text-xs text-muted-foreground">
-              Auftrag {daysSinceLabel(order.created_at)}
-            </span>
-          </div>
-        </div>
-        <div className="flex items-center gap-1">
-          <Button
-            asChild
-            variant="outline"
-            size="sm"
-            className="gap-1.5"
-            title="Rechnung als PDF herunterladen"
-          >
-            <a href={`/api/orders/${order.id}/invoice`} download>
-              <FileDown className="h-3.5 w-3.5" />
-              Rechnung
-            </a>
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={toggleCanceled}
-            disabled={pending}
-            className={cn(
-              "gap-1.5",
-              canceled
-                ? "text-emerald-300 hover:text-emerald-200"
-                : "text-muted-foreground hover:text-rose-300",
-            )}
-            title={canceled ? "Auftrag wieder aktivieren" : "Auftrag stornieren"}
-          >
-            {canceled ? (
-              <>
-                <RotateCcw className="h-3.5 w-3.5" /> Reaktivieren
-              </>
-            ) : (
-              <>
-                <Ban className="h-3.5 w-3.5" /> Stornieren
-              </>
-            )}
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={remove}
-            className="text-muted-foreground hover:text-destructive"
-            disabled={pending}
-            title="Auftrag löschen"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      </CardHeader>
+  const detailsGrid = (
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="space-y-2">
+        <Label>Status</Label>
+        <Select
+          value={order.status}
+          onValueChange={(v) => patch({ status: v as OrderStatus })}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {ORDER_STATUSES.map((s) => (
+              <SelectItem key={s.value} value={s.value}>
+                {s.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
-      <CardContent className="space-y-5">
-        {/* Work link + live preview + Claude Code live status */}
-        <div className="space-y-3 rounded-xl border border-border/60 bg-muted/20 p-3">
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto]">
+      <div className="space-y-2">
+        <Label>Priorität</Label>
+        <Select
+          value={order.priority}
+          onValueChange={(v) => patch({ priority: v })}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {ORDER_PRIORITIES.map((p) => (
+              <SelectItem key={p.value} value={p.value}>
+                {p.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Typ</Label>
+        <Select
+          value={order.order_type}
+          onValueChange={(v) => patch({ order_type: v })}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {ORDER_TYPES.map((t) => (
+              <SelectItem key={t.value} value={t.value}>
+                {t.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Verantwortlich</Label>
+        <Select
+          value={order.assigned_to ?? NONE}
+          onValueChange={(v) => patch({ assigned_to: v === NONE ? null : v })}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="— niemand —" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={NONE}>— niemand —</SelectItem>
+            {members.map((m) => (
+              <SelectItem key={m.id} value={m.id}>
+                {m.full_name || m.id.slice(0, 6)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Kunden-Name</Label>
+        <Input
+          value={draft.client_name}
+          onChange={(e) => setDraft({ ...draft, client_name: e.target.value })}
+          onBlur={saveTextFields}
+          placeholder="Mustermann GmbH"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label>Kontakt</Label>
+        <Select
+          value={order.contact_id ?? NONE}
+          onValueChange={(v) => patch({ contact_id: v === NONE ? null : v })}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="— keiner —" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={NONE}>— keiner —</SelectItem>
+            {contacts.map((c) => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.name}
+                {c.company ? ` · ${c.company}` : ""}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Wert (€)</Label>
+        <Input
+          type="number"
+          min={0}
+          defaultValue={draft.value_cents != null ? draft.value_cents / 100 : ""}
+          onBlur={(e) => {
+            const n = e.target.valueAsNumber;
+            const cents = Number.isFinite(n) ? Math.round(n * 100) : null;
+            if (cents !== order.value_cents) patch({ value_cents: cents });
+          }}
+        />
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-4">
+      {/* Shared header + device preview across all tabs */}
+      <Card>
+        <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
+          <div className="flex-1 space-y-2">
+            <Input
+              value={draft.title}
+              onChange={(e) => setDraft({ ...draft, title: e.target.value })}
+              onBlur={saveTextFields}
+              className="border-none bg-transparent px-0 text-xl font-semibold focus-visible:ring-0 md:text-2xl"
+            />
+            <div className="flex flex-wrap items-center gap-2">
+              {canceled && (
+                <Badge className="border-rose-500/40 bg-rose-500/15 text-rose-300">
+                  Storniert
+                </Badge>
+              )}
+              <Badge
+                variant="outline"
+                className={cn("border", ORDER_STATUS_COLORS[order.status])}
+              >
+                {ORDER_STATUSES.find((s) => s.value === order.status)?.label}
+              </Badge>
+              <Badge variant="secondary">
+                {ORDER_TYPES.find((t) => t.value === order.order_type)?.label}
+              </Badge>
+              {order.priority !== "medium" && (
+                <Badge variant="secondary" className="capitalize">
+                  {order.priority === "high" ? "Hoch" : "Niedrig"}
+                </Badge>
+              )}
+              <span className="text-xs text-muted-foreground">
+                Auftrag {daysSinceLabel(order.created_at)}
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-1">
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              title="Rechnung als PDF herunterladen"
+            >
+              <a href={`/api/orders/${order.id}/invoice`} download>
+                <FileDown className="h-3.5 w-3.5" />
+                Rechnung
+              </a>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleCanceled}
+              disabled={pending}
+              className={cn(
+                "gap-1.5",
+                canceled
+                  ? "text-emerald-300 hover:text-emerald-200"
+                  : "text-muted-foreground hover:text-rose-300",
+              )}
+              title={
+                canceled ? "Auftrag wieder aktivieren" : "Auftrag stornieren"
+              }
+            >
+              {canceled ? (
+                <>
+                  <RotateCcw className="h-3.5 w-3.5" /> Reaktivieren
+                </>
+              ) : (
+                <>
+                  <Ban className="h-3.5 w-3.5" /> Stornieren
+                </>
+              )}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={remove}
+              className="text-muted-foreground hover:text-destructive"
+              disabled={pending}
+              title="Auftrag löschen"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </CardHeader>
+
+        <CardContent>
+          <div className="space-y-3 rounded-xl border border-border/60 bg-muted/20 p-3">
             <div className="space-y-1.5">
               <Label className="text-xs">Arbeits-Link (Demo / Staging)</Label>
               <div className="flex items-center gap-2">
@@ -436,180 +601,179 @@ export function OrderDetail({
                 )}
               </div>
             </div>
-          </div>
 
-          {order.work_url ? (
-            <div className="space-y-2.5">
-              <WorkPreview
-                url={order.work_url}
-                desktopSrc={
-                  order.preview_desktop_url ||
-                  workThumbnailUrl(order.work_url, 1200, "desktop")
-                }
-                mobileSrc={
-                  order.preview_mobile_url ||
-                  workThumbnailUrl(order.work_url, 420, "mobile")
-                }
-              />
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={capture}
-                  disabled={capturing}
-                  className="h-7 gap-1 text-[11px]"
-                >
-                  {capturing ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    <RefreshCw className="h-3 w-3" />
-                  )}
-                  {capturing ? "Nehme auf…" : "Screenshots aktualisieren"}
-                </Button>
-                <span className="text-[11px] text-muted-foreground">
-                  Echte Desktop- & iPhone-Aufnahme, automatisch.
-                </span>
+            {order.work_url ? (
+              <div className="space-y-2.5">
+                <WorkPreview
+                  url={order.work_url}
+                  desktopSrc={
+                    order.preview_desktop_url ||
+                    workThumbnailUrl(order.work_url, 1200, "desktop")
+                  }
+                  mobileSrc={
+                    order.preview_mobile_url ||
+                    workThumbnailUrl(order.work_url, 420, "mobile")
+                  }
+                />
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={capture}
+                    disabled={capturing}
+                    className="h-7 gap-1 text-[11px]"
+                  >
+                    {capturing ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-3 w-3" />
+                    )}
+                    {capturing ? "Nehme auf…" : "Screenshots aktualisieren"}
+                  </Button>
+                  <span className="text-[11px] text-muted-foreground">
+                    Echte Desktop- & iPhone-Aufnahme, automatisch.
+                  </span>
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="flex aspect-[16/9] items-center justify-center rounded-lg border border-dashed border-border/50 bg-muted/20 text-xs text-muted-foreground/60">
-              Link eintragen → Desktop- & Mobil-Vorschau erscheinen hier
-            </div>
-          )}
+            ) : (
+              <div className="flex aspect-[16/9] items-center justify-center rounded-lg border border-dashed border-border/50 bg-muted/20 text-xs text-muted-foreground/60">
+                Link eintragen → Desktop- & Mobil-Vorschau erscheinen hier
+              </div>
+            )}
 
-          {/* Live deployment status from Vercel (automatic) */}
-          {deployment && <DeploymentBlock d={deployment} />}
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <Label>Status</Label>
-            <Select
-              value={order.status}
-              onValueChange={(v) => patch({ status: v as OrderStatus })}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {ORDER_STATUSES.map((s) => (
-                  <SelectItem key={s.value} value={s.value}>
-                    {s.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {deployment && <DeploymentBlock d={deployment} />}
           </div>
+        </CardContent>
+      </Card>
 
-          <div className="space-y-2">
-            <Label>Priorität</Label>
-            <Select
-              value={order.priority}
-              onValueChange={(v) => patch({ priority: v })}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {ORDER_PRIORITIES.map((p) => (
-                  <SelectItem key={p.value} value={p.value}>
-                    {p.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+      {/* Status-specific tabs */}
+      <Tabs value={tab} onValueChange={selectTab} className="w-full">
+        <TabsList className="grid h-auto w-full grid-cols-5">
+          {ORDER_TABS.map((t) => (
+            <TabsTrigger key={t.key} value={t.key} className="py-1.5">
+              {t.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
 
-          <div className="space-y-2">
-            <Label>Typ</Label>
-            <Select
-              value={order.order_type}
-              onValueChange={(v) => patch({ order_type: v })}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {ORDER_TYPES.map((t) => (
-                  <SelectItem key={t.value} value={t.value}>
-                    {t.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <TabsContent value="auftrag" className="space-y-4">
+          <NotesPanel orderId={order.id} initialNotes={order.description ?? ""} />
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Details</CardTitle>
+            </CardHeader>
+            <CardContent>{detailsGrid}</CardContent>
+          </Card>
+        </TabsContent>
 
-          <div className="space-y-2">
-            <Label>Verantwortlich</Label>
-            <Select
-              value={order.assigned_to ?? NONE}
-              onValueChange={(v) => patch({ assigned_to: v === NONE ? null : v })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="— niemand —" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={NONE}>— niemand —</SelectItem>
-                {members.map((m) => (
-                  <SelectItem key={m.id} value={m.id}>
-                    {m.full_name || m.id.slice(0, 6)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <TabsContent value="aktiv" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Entwickler-Tasks</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="rounded-md bg-muted/30 px-2.5 py-1.5 text-[11px] text-muted-foreground">
+                Priorisierbare Dev-Karten (links) + Uploads (rechts) folgen in
+                Stufe 2. Vorerst die Task-Liste:
+              </p>
+              <OrderTodoList
+                orderId={order.id}
+                todos={todos}
+                members={members}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-          <div className="space-y-2">
-            <Label>Kunden-Name</Label>
-            <Input
-              value={draft.client_name}
-              onChange={(e) =>
-                setDraft({ ...draft, client_name: e.target.value })
-              }
-              onBlur={saveTextFields}
-              placeholder="Mustermann GmbH"
-            />
-          </div>
+        <TabsContent value="review" className="space-y-4">
+          <ReviewPanel
+            orderId={order.id}
+            status={order.status}
+            initialReview={order.review ?? null}
+          />
+        </TabsContent>
 
-          <div className="space-y-2">
-            <Label>Kontakt</Label>
-            <Select
-              value={order.contact_id ?? NONE}
-              onValueChange={(v) => patch({ contact_id: v === NONE ? null : v })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="— keiner —" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={NONE}>— keiner —</SelectItem>
-                {contacts.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name}
-                    {c.company ? ` · ${c.company}` : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <TabsContent value="geliefert">
+          <Card>
+            <CardContent className="flex min-h-[180px] flex-col items-center justify-center gap-1.5 py-12 text-center">
+              <p className="text-sm font-medium">Kennzahlen & Diagramme</p>
+              <p className="max-w-sm text-xs text-muted-foreground">
+                Kommt in Stufe 4 — Durchlaufzeit, Zeit pro Phase, Review-Runden
+                und mehr. Das Status-Tracking läuft ab jetzt und sammelt die
+                Daten dafür.
+              </p>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-          <div className="space-y-2">
-            <Label>Wert (€)</Label>
-            <Input
-              type="number"
-              min={0}
-              defaultValue={
-                draft.value_cents != null ? draft.value_cents / 100 : ""
-              }
-              onBlur={(e) => {
-                const n = e.target.valueAsNumber;
-                const cents = Number.isFinite(n) ? Math.round(n * 100) : null;
-                if (cents !== order.value_cents) patch({ value_cents: cents });
-              }}
-            />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+        <TabsContent value="archiv" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Archiv & Stornierung</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {canceled ? (
+                <div className="rounded-lg border border-rose-500/30 bg-rose-500/5 p-3 text-sm">
+                  <span className="font-medium text-rose-300">Storniert</span>
+                  {order.canceled_at && (
+                    <span className="text-muted-foreground">
+                      {" "}
+                      · am{" "}
+                      {new Date(order.canceled_at).toLocaleDateString("de-DE")}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Nicht storniert. Über den Stornieren-Button oben markierst du
+                  den Auftrag als abgebrochen (zählt dann nicht mehr zum Umsatz).
+                </p>
+              )}
+
+              <div className="space-y-2">
+                <Label>Verbleib</Label>
+                <Select
+                  value={order.cancellation_type ?? NONE}
+                  onValueChange={(v) =>
+                    patch({ cancellation_type: v === NONE ? null : v })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="— offen —" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE}>— offen —</SelectItem>
+                    <SelectItem value="permanent">Endgültig vorbei</SelectItem>
+                    <SelectItem value="temporary">Nur vorübergehend</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Grund</Label>
+                <Textarea
+                  rows={3}
+                  defaultValue={order.cancellation_reason ?? ""}
+                  onBlur={(e) => {
+                    const v = e.target.value.trim();
+                    if (v !== (order.cancellation_reason ?? ""))
+                      patch({ cancellation_reason: v || null });
+                  }}
+                  placeholder="Warum wurde der Auftrag archiviert/storniert? Wie ist man verblieben?"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Übersicht</CardTitle>
+            </CardHeader>
+            <CardContent>{detailsGrid}</CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 }

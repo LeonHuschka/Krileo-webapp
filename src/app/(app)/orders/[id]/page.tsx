@@ -21,12 +21,21 @@ export default async function OrderDetailPage({
 }) {
   const supabase = await createClient();
 
-  const [{ data: order }, { data: members }, { data: contacts }] =
-    await Promise.all([
-      supabase.from("orders").select("*").eq("id", params.id).maybeSingle(),
-      supabase.from("user_profiles").select("*").order("full_name"),
-      supabase.from("contacts").select("*").order("name"),
-    ]);
+  const [
+    { data: order },
+    { data: members },
+    { data: contacts },
+    { data: events },
+  ] = await Promise.all([
+    supabase.from("orders").select("*").eq("id", params.id).maybeSingle(),
+    supabase.from("user_profiles").select("*").order("full_name"),
+    supabase.from("contacts").select("*").order("name"),
+    supabase
+      .from("order_events")
+      .select("*")
+      .eq("order_id", params.id)
+      .order("created_at", { ascending: true }),
+  ]);
 
   if (!order) notFound();
 
@@ -56,6 +65,7 @@ export default async function OrderDetailPage({
         members={members ?? []}
         contacts={contacts ?? []}
         deployment={deployment}
+        events={events ?? []}
         defaultTab={defaultTab}
       />
     </div>

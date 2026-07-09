@@ -50,8 +50,10 @@ import { NotesPanel } from "@/components/orders/notes-panel";
 import { ReviewPanel } from "@/components/orders/review-panel";
 import { DevItemsPanel } from "@/components/orders/dev-items-panel";
 import { AttachmentsPanel } from "@/components/orders/attachments-panel";
+import { DeliveredPanel } from "@/components/orders/delivered-panel";
 import type {
   ContactRow,
+  OrderEventRow,
   OrderRow,
   OrderStatus,
   UserProfileRow,
@@ -252,12 +254,14 @@ export function OrderDetail({
   members,
   contacts,
   deployment,
+  events,
   defaultTab,
 }: {
   order: OrderRow;
   members: UserProfileRow[];
   contacts: ContactRow[];
   deployment?: DeploymentStatus | null;
+  events: OrderEventRow[];
   defaultTab: OrderTabKey;
 }) {
   const router = useRouter();
@@ -737,16 +741,7 @@ export function OrderDetail({
 
         <TabsContent value="geliefert" className="space-y-4">
           {previewArea(true)}
-          <Card>
-            <CardContent className="flex min-h-[180px] flex-col items-center justify-center gap-1.5 py-12 text-center">
-              <p className="text-sm font-medium">Kennzahlen & Diagramme</p>
-              <p className="max-w-sm text-xs text-muted-foreground">
-                Kommt in Stufe 4 — Durchlaufzeit, Zeit pro Phase, Review-Runden
-                und mehr. Das Status-Tracking läuft ab jetzt und sammelt die
-                Daten dafür.
-              </p>
-            </CardContent>
-          </Card>
+          <DeliveredPanel order={order} events={events} />
         </TabsContent>
 
         <TabsContent value="archiv" className="space-y-4">

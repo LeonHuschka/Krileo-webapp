@@ -70,15 +70,30 @@ export type Attachment = {
   size: number;
 };
 
-/** A single change request Leon noted in review — the dev ticks it off. */
-export type ReviewItem = { id: string; text: string; done: boolean };
+export type ReviewCategory = "bug" | "design" | "text" | "other";
 
-/** Review flow for the Review column. Leon lists what must be changed; the
- *  order bounces Review → Aktiv → Review until approved. Stored on orders.review. */
-export type OrderReview = {
+/** One concrete review point the engineer noted — the tech team ticks it off. */
+export type ReviewItem = {
+  id: string;
+  text: string;
+  done: boolean;
+  category: ReviewCategory;
+};
+
+/** A review loop: a batch of points found in one pass. The order stays in
+ *  Review; new rounds are opened until it is approved. */
+export type ReviewRound = {
+  id: string;
   items: ReviewItem[];
-  decision: "approved" | "changes" | null;
-  reviewed_at: string | null;
+  created_at: string;
+  closed_at: string | null;
+};
+
+/** Round-based review flow stored on orders.review. */
+export type OrderReview = {
+  rounds: ReviewRound[];
+  decision: "approved" | null;
+  approved_at: string | null;
 };
 
 export type BillingCycle =

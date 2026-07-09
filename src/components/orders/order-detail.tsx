@@ -731,7 +731,6 @@ export function OrderDetail({
           {previewArea(true)}
           <ReviewPanel
             orderId={order.id}
-            status={order.status}
             initialReview={order.review ?? null}
           />
         </TabsContent>

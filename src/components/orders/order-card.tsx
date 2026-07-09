@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Clock, History, RotateCcw } from "lucide-react";
+import { Clock, History } from "lucide-react";
 import { OrderCancelButton } from "@/components/orders/order-cancel-button";
 import type { OrderRow, UserProfileRow } from "@/lib/types/database";
 import type { DeploymentState } from "@/lib/orders/vercel";
@@ -58,11 +58,6 @@ export function OrderCard({
   const statusCol = ORDER_STATUS_COLUMN[order.status];
   // Priority is only surfaced when it's been manually set away from "mittel".
   const showPriority = order.priority !== "medium";
-  // Open change requests bounced back from review (only while in Aktiv).
-  const reviewOpen =
-    order.status === "aktiv"
-      ? (order.review?.items ?? []).filter((i) => !i.done).length
-      : 0;
 
   const building =
     !!deployment &&
@@ -153,13 +148,6 @@ export function OrderCard({
       {(order.client_name || canceled) && (
         <div className="truncate text-xs text-muted-foreground">
           {canceled ? "Storniert" : order.client_name}
-        </div>
-      )}
-
-      {reviewOpen > 0 && (
-        <div className="flex items-center gap-1 rounded-md bg-amber-500/10 px-2 py-1 text-[11px] font-medium text-amber-300">
-          <RotateCcw className="h-3 w-3 shrink-0" />
-          Review: {reviewOpen} offen
         </div>
       )}
 

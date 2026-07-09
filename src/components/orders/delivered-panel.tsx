@@ -1,30 +1,27 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  Cell,
-  CartesianGrid,
-} from "recharts";
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import { Clock, Euro, Repeat, GitBranch } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { OrderEventRow, OrderRow } from "@/lib/types/database";
 import { ORDER_STATUSES } from "@/lib/constants";
+import { cn } from "@/lib/utils";
 
 const HOUR = 3_600_000;
 const DAY = 86_400_000;
 
-// Working phases we chart time for (end states omitted).
 const PHASES: { status: string; label: string; color: string }[] = [
   { status: "angebot", label: "Auftrag", color: "#38bdf8" },
   { status: "aktiv", label: "Aktiv", color: "#a78bfa" },
   { status: "review", label: "Review", color: "#fbbf24" },
 ];
+
+const PRIO_COLOR = {
+  high: "#fb7185",
+  medium: "#fbbf24",
+  low: "#a1a1aa",
+} as const;
 
 function fmtDuration(ms: number): string {
   if (ms <= 0) return "0 h";
@@ -41,6 +38,13 @@ function fmtEuro(cents: number | null): string {
     maximumFractionDigits: 0,
   }).format(cents / 100);
 }
+
+const tooltipStyle = {
+  background: "hsl(240 10% 8%)",
+  border: "1px solid hsl(0 0% 100% / 0.1)",
+  borderRadius: 8,
+  fontSize: 12,
+};
 
 function KpiTile({
   icon,
@@ -65,15 +69,55 @@ function KpiTile({
   );
 }
 
+/** Donut with a value + caption in the centre. */
+function CenterDonut({
+  data,
+  centerValue,
+  centerLabel,
+}: {
+  data: { name: string; value: number; color: string }[];
+  centerValue: string;
+  centerLabel: string;
+}) {
+  return (
+    <div className="relative h-[200px]">
+      <ResponsiveContainer width="100%" height="100%">
+        <PieChart>
+          <Pie
+            data={data}
+            dataKey="value"
+            nameKey="name"
+            innerRadius={62}
+            outerRadius={88}
+            startAngle={90}
+            endAngle={-270}
+            stroke="none"
+          >
+            {data.map((d, i) => (
+              <Cell key={i} fill={d.color} />
+            ))}
+          </Pie>
+        </PieChart>
+      </ResponsiveContainer>
+      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-2xl font-semibold tracking-tight">
+          {centerValue}
+        </span>
+        <span className="text-[11px] text-muted-foreground">{centerLabel}</span>
+      </div>
+    </div>
+  );
+}
+
 export function DeliveredPanel({
   order,
   events,
+  avgLeadMs,
 }: {
   order: OrderRow;
   events: OrderEventRow[];
+  avgLeadMs: number;
 }) {
-  // Recharts + time math depend on the client — render after mount to avoid
-  // hydration mismatches.
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
@@ -84,7 +128,6 @@ export function DeliveredPanel({
     );
     const now = Date.now();
 
-    // Duration spent in each status.
     const dur: Record<string, number> = {};
     for (let i = 0; i < sorted.length; i++) {
       const s = sorted[i].to_status;
@@ -96,42 +139,43 @@ export function DeliveredPanel({
       dur[s] = (dur[s] ?? 0) + Math.max(0, end - start);
     }
 
-    const firstAt = sorted.length
-      ? new Date(sorted[0].created_at).getTime()
-      : new Date(order.created_at).getTime();
+    const createdAt = new Date(order.created_at).getTime();
     const deliveredEvt = sorted.find((e) => e.to_status === "geliefert");
     const endAt = deliveredEvt
       ? new Date(deliveredEvt.created_at).getTime()
-      : now;
-    const leadMs = Math.max(0, endAt - firstAt);
+      : new Date(order.updated_at).getTime();
+    const leadMs = Math.max(0, (deliveredEvt ? endAt : now) - createdAt);
 
     const phaseData = PHASES.map((p) => ({
-      label: p.label,
-      color: p.color,
+      name: p.label,
+      value: Math.round((dur[p.status] ?? 0) / HOUR), // hours (donut weight)
       ms: dur[p.status] ?? 0,
-      days: +(((dur[p.status] ?? 0) / DAY) || 0).toFixed(2),
+      color: p.color,
+    })).filter((p) => p.value > 0);
+
+    const dev = order.dev_items ?? [];
+    const scopeData = dev.map((it) => ({
+      name: it.text,
+      value: 1,
+      color: PRIO_COLOR[it.priority],
+      done: it.done,
     }));
 
+    const leadPct = avgLeadMs > 0 ? (leadMs / avgLeadMs) * 100 : null;
     const rounds = Array.isArray(order.review?.rounds)
       ? order.review!.rounds
       : [];
-    const roundData = rounds.map((r, i) => {
-      const done = r.items.filter((it) => it.done).length;
-      return {
-        label: `R${i + 1}`,
-        erledigt: done,
-        offen: r.items.length - done,
-      };
-    });
 
     return {
       leadMs,
+      leadPct,
       phaseData,
-      roundData,
+      scopeData,
+      rounds: rounds.length,
       transitions: Math.max(0, sorted.length - 1),
       timeline: sorted,
     };
-  }, [events, order]);
+  }, [events, order, avgLeadMs]);
 
   if (!mounted) {
     return (
@@ -141,7 +185,14 @@ export function DeliveredPanel({
     );
   }
 
-  const hasPhaseData = data.phaseData.some((p) => p.ms > 0);
+  const { leadPct } = data;
+  const pctCapped = leadPct == null ? 0 : Math.min(leadPct, 100);
+  const faster = leadPct != null && leadPct <= 100;
+  const gaugeColor = faster ? "#34d399" : "#fb7185";
+  const gaugeData = [
+    { name: "used", value: pctCapped, color: gaugeColor },
+    { name: "rest", value: 100 - pctCapped, color: "hsl(0 0% 100% / 0.07)" },
+  ];
 
   return (
     <div className="space-y-4">
@@ -161,7 +212,7 @@ export function DeliveredPanel({
         <KpiTile
           icon={<Repeat className="h-3.5 w-3.5" />}
           label="Review-Runden"
-          value={String(data.roundData.length)}
+          value={String(data.rounds)}
         />
         <KpiTile
           icon={<GitBranch className="h-3.5 w-3.5" />}
@@ -170,117 +221,156 @@ export function DeliveredPanel({
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {/* Time per phase */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        {/* Lead time vs. average */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Durchlaufzeit vs. Ø</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {leadPct == null ? (
+              <p className="py-12 text-center text-xs text-muted-foreground">
+                Noch kein Projekt-Schnitt vorhanden (erst mit abgeschlossenen
+                Aufträgen).
+              </p>
+            ) : (
+              <>
+                <CenterDonut
+                  data={gaugeData}
+                  centerValue={`${Math.round(leadPct)}%`}
+                  centerLabel="vom Ø"
+                />
+                <p className="mt-1 text-center text-xs text-muted-foreground">
+                  {faster ? "schneller" : "langsamer"} als der Schnitt
+                  ({fmtDuration(avgLeadMs)})
+                </p>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Time per phase — composition donut */}
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Zeit pro Phase</CardTitle>
           </CardHeader>
           <CardContent>
-            {hasPhaseData ? (
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart
-                  data={data.phaseData}
-                  margin={{ top: 4, right: 8, left: -16, bottom: 0 }}
-                >
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    stroke="hsl(0 0% 100% / 0.06)"
-                    vertical={false}
-                  />
-                  <XAxis
-                    dataKey="label"
-                    tick={{ fill: "hsl(0 0% 100% / 0.5)", fontSize: 12 }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    tick={{ fill: "hsl(0 0% 100% / 0.4)", fontSize: 11 }}
-                    axisLine={false}
-                    tickLine={false}
-                    unit=" d"
-                  />
-                  <Tooltip
-                    cursor={{ fill: "hsl(0 0% 100% / 0.04)" }}
-                    contentStyle={{
-                      background: "hsl(240 10% 8%)",
-                      border: "1px solid hsl(0 0% 100% / 0.1)",
-                      borderRadius: 8,
-                      fontSize: 12,
-                    }}
-                    formatter={(v) => [fmtDuration(Number(v) * DAY), "Dauer"]}
-                  />
-                  <Bar dataKey="days" radius={[4, 4, 0, 0]}>
-                    {data.phaseData.map((p) => (
-                      <Cell key={p.label} fill={p.color} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+            {data.phaseData.length > 0 ? (
+              <>
+                <div className="h-[200px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={data.phaseData}
+                        dataKey="value"
+                        nameKey="name"
+                        innerRadius={50}
+                        outerRadius={85}
+                        paddingAngle={2}
+                        stroke="none"
+                      >
+                        {data.phaseData.map((p, i) => (
+                          <Cell key={i} fill={p.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={tooltipStyle}
+                        formatter={(_v, _n, item) => [
+                          fmtDuration(
+                            (item?.payload as { ms?: number })?.ms ?? 0,
+                          ),
+                          (item?.payload as { name?: string })?.name ?? "",
+                        ]}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="mt-1 flex flex-wrap justify-center gap-3">
+                  {data.phaseData.map((p) => (
+                    <span
+                      key={p.name}
+                      className="flex items-center gap-1.5 text-[11px] text-muted-foreground"
+                    >
+                      <span
+                        className="h-2 w-2 rounded-full"
+                        style={{ background: p.color }}
+                      />
+                      {p.name}
+                    </span>
+                  ))}
+                </div>
+              </>
             ) : (
-              <p className="py-10 text-center text-xs text-muted-foreground">
-                Noch keine Phasen-Daten. Das Tracking sammelt ab jetzt bei jedem
+              <p className="py-12 text-center text-xs text-muted-foreground">
+                Noch keine Phasen-Daten — sammelt ab jetzt bei jedem
                 Status-Wechsel.
               </p>
             )}
           </CardContent>
         </Card>
 
-        {/* Review rounds */}
+        {/* What was delivered — scope donut */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Review-Runden</CardTitle>
+            <CardTitle className="text-base">Umsetzung im Detail</CardTitle>
           </CardHeader>
           <CardContent>
-            {data.roundData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart
-                  data={data.roundData}
-                  margin={{ top: 4, right: 8, left: -16, bottom: 0 }}
-                >
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    stroke="hsl(0 0% 100% / 0.06)"
-                    vertical={false}
-                  />
-                  <XAxis
-                    dataKey="label"
-                    tick={{ fill: "hsl(0 0% 100% / 0.5)", fontSize: 12 }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    allowDecimals={false}
-                    tick={{ fill: "hsl(0 0% 100% / 0.4)", fontSize: 11 }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <Tooltip
-                    cursor={{ fill: "hsl(0 0% 100% / 0.04)" }}
-                    contentStyle={{
-                      background: "hsl(240 10% 8%)",
-                      border: "1px solid hsl(0 0% 100% / 0.1)",
-                      borderRadius: 8,
-                      fontSize: 12,
-                    }}
-                  />
-                  <Bar
-                    dataKey="erledigt"
-                    stackId="a"
-                    fill="#34d399"
-                    radius={[0, 0, 0, 0]}
-                  />
-                  <Bar
-                    dataKey="offen"
-                    stackId="a"
-                    fill="#f59e0b"
-                    radius={[4, 4, 0, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
+            {data.scopeData.length > 0 ? (
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <div className="h-[160px] w-full sm:w-[160px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={data.scopeData}
+                        dataKey="value"
+                        nameKey="name"
+                        innerRadius={44}
+                        outerRadius={72}
+                        paddingAngle={2}
+                        stroke="none"
+                      >
+                        {data.scopeData.map((s, i) => (
+                          <Cell key={i} fill={s.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={tooltipStyle}
+                        formatter={(_v, _n, item) => [
+                          (item?.payload as { name?: string })?.name ?? "",
+                          "",
+                        ]}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <ul className="min-w-0 flex-1 space-y-1">
+                  {data.scopeData.map((s, i) => (
+                    <li
+                      key={i}
+                      className="flex items-center gap-1.5 text-[11px]"
+                    >
+                      <span
+                        className="h-2 w-2 shrink-0 rounded-full"
+                        style={{ background: s.color }}
+                      />
+                      <span
+                        className={cn(
+                          "min-w-0 truncate",
+                          s.done
+                            ? "text-muted-foreground line-through"
+                            : "text-foreground",
+                        )}
+                      >
+                        {s.name}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             ) : (
-              <p className="py-10 text-center text-xs text-muted-foreground">
-                Keine Review-Runden erfasst.
+              <p className="py-12 text-center text-xs text-muted-foreground">
+                Trag im Aktiv-Tab die technischen Anforderungen ein — dann
+                erscheint hier, was umgesetzt wurde.
               </p>
             )}
           </CardContent>
@@ -288,12 +378,12 @@ export function DeliveredPanel({
       </div>
 
       {/* Status timeline */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Status-Verlauf</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {data.timeline.length > 0 ? (
+      {data.timeline.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Status-Verlauf</CardTitle>
+          </CardHeader>
+          <CardContent>
             <ol className="space-y-2">
               {data.timeline.map((e) => {
                 const label =
@@ -316,13 +406,9 @@ export function DeliveredPanel({
                 );
               })}
             </ol>
-          ) : (
-            <p className="py-6 text-center text-xs text-muted-foreground">
-              Noch keine Status-Historie.
-            </p>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

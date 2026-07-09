@@ -26,6 +26,7 @@ export default async function OrderDetailPage({
     { data: members },
     { data: contacts },
     { data: events },
+    { data: allOrders },
   ] = await Promise.all([
     supabase.from("orders").select("*").eq("id", params.id).maybeSingle(),
     supabase.from("user_profiles").select("*").order("full_name"),
@@ -35,9 +36,30 @@ export default async function OrderDetailPage({
       .select("*")
       .eq("order_id", params.id)
       .order("created_at", { ascending: true }),
+    supabase
+      .from("orders")
+      .select("created_at, updated_at, status, canceled_at"),
   ]);
 
   if (!order) notFound();
+
+  // Average project duration (created → last activity) over completed,
+  // non-canceled orders — for the "vs. Ø" gauge in the Geliefert tab.
+  const completed = (allOrders ?? []).filter(
+    (o) =>
+      (o.status === "geliefert" || o.status === "archiv") && !o.canceled_at,
+  );
+  const avgLeadMs = completed.length
+    ? completed.reduce(
+        (s, o) =>
+          s +
+          Math.max(
+            0,
+            new Date(o.updated_at).getTime() - new Date(o.created_at).getTime(),
+          ),
+        0,
+      ) / completed.length
+    : 0;
 
   // Live deployment status from Vercel (matched via the order's work link).
   const deployment = await getDeploymentStatusForUrl(order.work_url).catch(
@@ -66,6 +88,7 @@ export default async function OrderDetailPage({
         contacts={contacts ?? []}
         deployment={deployment}
         events={events ?? []}
+        avgLeadMs={avgLeadMs}
         defaultTab={defaultTab}
       />
     </div>

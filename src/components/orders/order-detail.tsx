@@ -255,6 +255,7 @@ export function OrderDetail({
   contacts,
   deployment,
   events,
+  avgLeadMs,
   defaultTab,
 }: {
   order: OrderRow;
@@ -262,6 +263,7 @@ export function OrderDetail({
   contacts: ContactRow[];
   deployment?: DeploymentStatus | null;
   events: OrderEventRow[];
+  avgLeadMs: number;
   defaultTab: OrderTabKey;
 }) {
   const router = useRouter();
@@ -741,7 +743,11 @@ export function OrderDetail({
 
         <TabsContent value="geliefert" className="space-y-4">
           {previewArea(true)}
-          <DeliveredPanel order={order} events={events} />
+          <DeliveredPanel
+            order={order}
+            events={events}
+            avgLeadMs={avgLeadMs}
+          />
         </TabsContent>
 
         <TabsContent value="archiv" className="space-y-4">

@@ -180,18 +180,27 @@ function DeploymentBlock({ d }: { d: DeploymentStatus }) {
 }
 
 /** Live preview shown as a MacBook + iPhone device mockup, both linking out.
- *  Sources are the uploaded real screenshots when present, else the auto render. */
+ *  Sources are the uploaded real screenshots when present, else the auto render.
+ *  `size` controls how large the mockup renders (full in Auftrag, compact
+ *  everywhere else). */
 function WorkPreview({
   url,
   desktopSrc,
   mobileSrc,
+  size = "full",
 }: {
   url: string;
   desktopSrc: string;
   mobileSrc: string;
+  size?: "full" | "compact";
 }) {
   return (
-    <div className="relative mx-auto w-full max-w-[620px]">
+    <div
+      className={cn(
+        "relative mx-auto w-full",
+        size === "compact" ? "max-w-[400px]" : "max-w-[700px]",
+      )}
+    >
       {/* MacBook — screen + aluminium base */}
       <a
         href={url}
@@ -473,12 +482,111 @@ export function OrderDetail({
     </div>
   );
 
+  // The device preview lives inside each tab: full & slightly larger in Auftrag,
+  // compact everywhere else (link field only shown when no link is set yet).
+  const previewArea = (compact: boolean) => {
+    const hasLink = !!order.work_url;
+    const linkField = (
+      <div className="space-y-1.5">
+        <Label className="text-xs">Arbeits-Link (Demo / Staging)</Label>
+        <div className="flex items-center gap-2">
+          <Input
+            value={draft.work_url}
+            onChange={(e) => setDraft({ ...draft, work_url: e.target.value })}
+            onBlur={saveTextFields}
+            placeholder="https://demo.krileo.de/kunde"
+          />
+          {hasLink && (
+            <Button asChild variant="outline" size="icon" title="Öffnen">
+              <a
+                href={order.work_url ?? "#"}
+                target="_blank"
+                rel="noreferrer noopener"
+              >
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            </Button>
+          )}
+        </div>
+      </div>
+    );
+
+    if (compact) {
+      return (
+        <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+          {hasLink ? (
+            <WorkPreview
+              url={order.work_url ?? ""}
+              size="compact"
+              desktopSrc={
+                order.preview_desktop_url ||
+                workThumbnailUrl(order.work_url ?? "", 800, "desktop")
+              }
+              mobileSrc={
+                order.preview_mobile_url ||
+                workThumbnailUrl(order.work_url ?? "", 420, "mobile")
+              }
+            />
+          ) : (
+            linkField
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-3 rounded-xl border border-border/60 bg-muted/20 p-3">
+        {linkField}
+        {hasLink ? (
+          <div className="space-y-2.5">
+            <WorkPreview
+              url={order.work_url ?? ""}
+              size="full"
+              desktopSrc={
+                order.preview_desktop_url ||
+                workThumbnailUrl(order.work_url ?? "", 1200, "desktop")
+              }
+              mobileSrc={
+                order.preview_mobile_url ||
+                workThumbnailUrl(order.work_url ?? "", 420, "mobile")
+              }
+            />
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={capture}
+                disabled={capturing}
+                className="h-7 gap-1 text-[11px]"
+              >
+                {capturing ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-3 w-3" />
+                )}
+                {capturing ? "Nehme auf…" : "Screenshots aktualisieren"}
+              </Button>
+              <span className="text-[11px] text-muted-foreground">
+                Echte Desktop- & iPhone-Aufnahme, automatisch.
+              </span>
+            </div>
+          </div>
+        ) : (
+          <div className="flex aspect-[16/9] items-center justify-center rounded-lg border border-dashed border-border/50 bg-muted/20 text-xs text-muted-foreground/60">
+            Link eintragen → Desktop- & Mobil-Vorschau erscheinen hier
+          </div>
+        )}
+        {deployment && <DeploymentBlock d={deployment} />}
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-4">
-      {/* Shared header + device preview across all tabs */}
-      <Card>
-        <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
-          <div className="flex-1 space-y-2">
+      {/* Header — the tab bar sits directly below, at the top */}
+      <div className="flex flex-row items-start justify-between gap-3 px-1">
+        <div className="flex-1 space-y-2">
             <Input
               value={draft.title}
               onChange={(e) => setDraft({ ...draft, title: e.target.value })}
@@ -559,79 +667,7 @@ export function OrderDetail({
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
-        </CardHeader>
-
-        <CardContent>
-          <div className="space-y-3 rounded-xl border border-border/60 bg-muted/20 p-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Arbeits-Link (Demo / Staging)</Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  value={draft.work_url}
-                  onChange={(e) =>
-                    setDraft({ ...draft, work_url: e.target.value })
-                  }
-                  onBlur={saveTextFields}
-                  placeholder="https://demo.krileo.de/kunde"
-                />
-                {order.work_url && (
-                  <Button asChild variant="outline" size="icon" title="Öffnen">
-                    <a
-                      href={order.work_url}
-                      target="_blank"
-                      rel="noreferrer noopener"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                    </a>
-                  </Button>
-                )}
-              </div>
-            </div>
-
-            {order.work_url ? (
-              <div className="space-y-2.5">
-                <WorkPreview
-                  url={order.work_url}
-                  desktopSrc={
-                    order.preview_desktop_url ||
-                    workThumbnailUrl(order.work_url, 1200, "desktop")
-                  }
-                  mobileSrc={
-                    order.preview_mobile_url ||
-                    workThumbnailUrl(order.work_url, 420, "mobile")
-                  }
-                />
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={capture}
-                    disabled={capturing}
-                    className="h-7 gap-1 text-[11px]"
-                  >
-                    {capturing ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <RefreshCw className="h-3 w-3" />
-                    )}
-                    {capturing ? "Nehme auf…" : "Screenshots aktualisieren"}
-                  </Button>
-                  <span className="text-[11px] text-muted-foreground">
-                    Echte Desktop- & iPhone-Aufnahme, automatisch.
-                  </span>
-                </div>
-              </div>
-            ) : (
-              <div className="flex aspect-[16/9] items-center justify-center rounded-lg border border-dashed border-border/50 bg-muted/20 text-xs text-muted-foreground/60">
-                Link eintragen → Desktop- & Mobil-Vorschau erscheinen hier
-              </div>
-            )}
-
-            {deployment && <DeploymentBlock d={deployment} />}
-          </div>
-        </CardContent>
-      </Card>
+      </div>
 
       {/* Status-specific tabs */}
       <Tabs value={tab} onValueChange={selectTab} className="w-full">
@@ -644,6 +680,7 @@ export function OrderDetail({
         </TabsList>
 
         <TabsContent value="auftrag" className="space-y-4">
+          {previewArea(false)}
           <NotesPanel orderId={order.id} initialNotes={order.description ?? ""} />
           <Card>
             <CardHeader>
@@ -654,6 +691,7 @@ export function OrderDetail({
         </TabsContent>
 
         <TabsContent value="aktiv" className="space-y-4">
+          {previewArea(true)}
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Entwickler-Tasks</CardTitle>
@@ -673,6 +711,7 @@ export function OrderDetail({
         </TabsContent>
 
         <TabsContent value="review" className="space-y-4">
+          {previewArea(true)}
           <ReviewPanel
             orderId={order.id}
             status={order.status}
@@ -680,7 +719,8 @@ export function OrderDetail({
           />
         </TabsContent>
 
-        <TabsContent value="geliefert">
+        <TabsContent value="geliefert" className="space-y-4">
+          {previewArea(true)}
           <Card>
             <CardContent className="flex min-h-[180px] flex-col items-center justify-center gap-1.5 py-12 text-center">
               <p className="text-sm font-medium">Kennzahlen & Diagramme</p>
@@ -694,6 +734,7 @@ export function OrderDetail({
         </TabsContent>
 
         <TabsContent value="archiv" className="space-y-4">
+          {previewArea(true)}
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Archiv & Stornierung</CardTitle>

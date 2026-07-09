@@ -3,21 +3,14 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getDeploymentStatusForUrl } from "@/lib/orders/vercel";
+import { OrderDetail } from "@/components/orders/order-detail";
 import {
-  OrderDetail,
   statusToTab,
+  ORDER_TAB_KEYS,
   type OrderTabKey,
-} from "@/components/orders/order-detail";
+} from "@/lib/orders/tabs";
 
 export const dynamic = "force-dynamic";
-
-const TAB_KEYS: OrderTabKey[] = [
-  "auftrag",
-  "aktiv",
-  "review",
-  "geliefert",
-  "archiv",
-];
 
 export default async function OrderDetailPage({
   params,
@@ -50,7 +43,9 @@ export default async function OrderDetailPage({
   // Open the tab matching the order's status, unless the URL pins one.
   const urlTab = searchParams.tab as OrderTabKey | undefined;
   const defaultTab =
-    urlTab && TAB_KEYS.includes(urlTab) ? urlTab : statusToTab(order.status);
+    urlTab && ORDER_TAB_KEYS.includes(urlTab)
+      ? urlTab
+      : statusToTab(order.status);
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-4 md:p-6">

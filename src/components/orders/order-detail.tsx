@@ -56,24 +56,10 @@ import type {
   UserProfileRow,
 } from "@/lib/types/database";
 import type { DeploymentStatus, DeploymentState } from "@/lib/orders/vercel";
+import { ORDER_TABS, type OrderTabKey } from "@/lib/orders/tabs";
 import { cn } from "@/lib/utils";
 
 const NONE = "__none__";
-
-const ORDER_TABS = [
-  { key: "auftrag", label: "Auftrag" },
-  { key: "aktiv", label: "Aktiv" },
-  { key: "review", label: "Review" },
-  { key: "geliefert", label: "Geliefert" },
-  { key: "archiv", label: "Archiv" },
-] as const;
-
-export type OrderTabKey = (typeof ORDER_TABS)[number]["key"];
-
-/** The status the kanban uses maps 1:1 to a tab, except "angebot" → "auftrag". */
-export function statusToTab(status: OrderStatus): OrderTabKey {
-  return status === "angebot" ? "auftrag" : (status as OrderTabKey);
-}
 
 function relTime(input: string | number): string {
   const mins = Math.floor((Date.now() - new Date(input).getTime()) / 60000);

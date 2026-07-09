@@ -56,6 +56,26 @@ export function daysSinceLabel(iso: string): string {
   return `vor ${d} Tagen`;
 }
 
+/** Count still-open (unticked) review points across all rounds. Tolerates the
+ *  old flat `items` / `checklist` shapes the review panel also normalizes. */
+export function openReviewCount(review: unknown): number {
+  if (!review || typeof review !== "object") return 0;
+  const r = review as Record<string, unknown>;
+  const buckets: unknown[] = Array.isArray(r.rounds)
+    ? (r.rounds as Record<string, unknown>[]).map((rd) => rd.items)
+    : [r.items ?? r.checklist];
+  let open = 0;
+  for (const b of buckets) {
+    if (!Array.isArray(b)) continue;
+    for (const it of b) {
+      if (it && typeof it === "object" && !(it as { done?: boolean }).done) {
+        open++;
+      }
+    }
+  }
+  return open;
+}
+
 export const ORDER_STATUS_VALUES = ORDER_STATUSES.map((s) => s.value);
 
 export const ORDER_TYPES: { value: OrderType; label: string }[] = [

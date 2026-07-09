@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Clock, History } from "lucide-react";
+import { Clock, History, MessageSquareWarning } from "lucide-react";
 import { OrderCancelButton } from "@/components/orders/order-cancel-button";
 import type { OrderRow, UserProfileRow } from "@/lib/types/database";
 import type { DeploymentState } from "@/lib/orders/vercel";
@@ -14,6 +14,7 @@ import {
   workThumbnailUrl,
   daysSinceLabel,
   shortAgo,
+  openReviewCount,
 } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
@@ -65,6 +66,9 @@ export function OrderCard({
   const changedLabel = deployment?.createdAt ? shortAgo(deployment.createdAt) : null;
   const canceled = !!order.canceled_at;
   const isArchiv = order.status === "archiv";
+  // Open review points — only surfaced while the order sits in Review.
+  const openReviews =
+    order.status === "review" ? openReviewCount(order.review) : 0;
 
   const inner = (
     <Card
@@ -128,6 +132,16 @@ export function OrderCard({
           {order.title}
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
+          {openReviews > 0 && (
+            <Badge
+              variant="outline"
+              className="gap-1 border-amber-500/40 bg-amber-500/10 text-[10px] font-semibold text-amber-300"
+              title={`${openReviews} offene Review-Punkte`}
+            >
+              <MessageSquareWarning className="h-3 w-3" />
+              {openReviews}
+            </Badge>
+          )}
           {showPriority && !canceled && (
             <Badge
               variant="outline"

@@ -52,6 +52,24 @@ export type TechBrief = {
   generated_at: string;
 };
 
+/** A prioritized technical requirement card in the Aktiv tab. List order =
+ *  importance (drag to re-rank). */
+export type DevItem = {
+  id: string;
+  text: string;
+  priority: "high" | "medium" | "low";
+  done: boolean;
+};
+
+/** An uploaded note/media attachment in the Aktiv tab. */
+export type Attachment = {
+  id: string;
+  url: string;
+  name: string;
+  kind: "image" | "video" | "file";
+  size: number;
+};
+
 /** A single change request Leon noted in review — the dev ticks it off. */
 export type ReviewItem = { id: string; text: string; done: boolean };
 
@@ -180,6 +198,8 @@ export type Database = {
           canceled_at: string | null;
           cancellation_reason: string | null;
           cancellation_type: "permanent" | "temporary" | null;
+          dev_items: DevItem[] | null;
+          attachments: Attachment[] | null;
           position: number;
           created_at: string;
           updated_at: string;
@@ -207,6 +227,8 @@ export type Database = {
           canceled_at?: string | null;
           cancellation_reason?: string | null;
           cancellation_type?: "permanent" | "temporary" | null;
+          dev_items?: DevItem[] | null;
+          attachments?: Attachment[] | null;
           position?: number;
           created_at?: string;
           updated_at?: string;
@@ -234,6 +256,8 @@ export type Database = {
           canceled_at?: string | null;
           cancellation_reason?: string | null;
           cancellation_type?: "permanent" | "temporary" | null;
+          dev_items?: DevItem[] | null;
+          attachments?: Attachment[] | null;
           position?: number;
           created_at?: string;
           updated_at?: string;

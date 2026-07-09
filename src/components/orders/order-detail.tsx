@@ -48,12 +48,12 @@ import {
 } from "@/app/(app)/orders/actions";
 import { NotesPanel } from "@/components/orders/notes-panel";
 import { ReviewPanel } from "@/components/orders/review-panel";
-import { OrderTodoList } from "@/components/orders/order-todo-list";
+import { DevItemsPanel } from "@/components/orders/dev-items-panel";
+import { AttachmentsPanel } from "@/components/orders/attachments-panel";
 import type {
   ContactRow,
   OrderRow,
   OrderStatus,
-  OrderTodoRow,
   UserProfileRow,
 } from "@/lib/types/database";
 import type { DeploymentStatus, DeploymentState } from "@/lib/orders/vercel";
@@ -252,14 +252,12 @@ export function OrderDetail({
   members,
   contacts,
   deployment,
-  todos,
   defaultTab,
 }: {
   order: OrderRow;
   members: UserProfileRow[];
   contacts: ContactRow[];
   deployment?: DeploymentStatus | null;
-  todos: OrderTodoRow[];
   defaultTab: OrderTabKey;
 }) {
   const router = useRouter();
@@ -717,22 +715,16 @@ export function OrderDetail({
 
         <TabsContent value="aktiv" className="space-y-4">
           {previewArea(true)}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Entwickler-Tasks</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <p className="rounded-md bg-muted/30 px-2.5 py-1.5 text-[11px] text-muted-foreground">
-                Priorisierbare Dev-Karten (links) + Uploads (rechts) folgen in
-                Stufe 2. Vorerst die Task-Liste:
-              </p>
-              <OrderTodoList
-                orderId={order.id}
-                todos={todos}
-                members={members}
-              />
-            </CardContent>
-          </Card>
+          <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+            <DevItemsPanel
+              orderId={order.id}
+              initialItems={order.dev_items ?? []}
+            />
+            <AttachmentsPanel
+              orderId={order.id}
+              initialAttachments={order.attachments ?? []}
+            />
+          </div>
         </TabsContent>
 
         <TabsContent value="review" className="space-y-4">

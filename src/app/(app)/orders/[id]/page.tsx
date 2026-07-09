@@ -21,14 +21,9 @@ export default async function OrderDetailPage({
 }) {
   const supabase = await createClient();
 
-  const [{ data: order }, { data: todos }, { data: members }, { data: contacts }] =
+  const [{ data: order }, { data: members }, { data: contacts }] =
     await Promise.all([
       supabase.from("orders").select("*").eq("id", params.id).maybeSingle(),
-      supabase
-        .from("order_todos")
-        .select("*")
-        .eq("order_id", params.id)
-        .order("position", { ascending: true }),
       supabase.from("user_profiles").select("*").order("full_name"),
       supabase.from("contacts").select("*").order("name"),
     ]);
@@ -61,7 +56,6 @@ export default async function OrderDetailPage({
         members={members ?? []}
         contacts={contacts ?? []}
         deployment={deployment}
-        todos={todos ?? []}
         defaultTab={defaultTab}
       />
     </div>

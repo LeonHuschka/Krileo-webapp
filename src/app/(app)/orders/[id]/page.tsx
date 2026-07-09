@@ -48,7 +48,7 @@ export default async function OrderDetailPage({
       : statusToTab(order.status);
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 p-4 md:p-6">
+    <div className="mx-auto w-full max-w-[1700px] space-y-4 p-4 md:px-8 md:py-6">
       <Link
         href="/orders"
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"

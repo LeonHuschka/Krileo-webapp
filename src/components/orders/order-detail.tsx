@@ -36,6 +36,7 @@ import {
   ORDER_PRIORITIES,
   ORDER_STATUSES,
   ORDER_STATUS_COLORS,
+  ORDER_STATUS_DOTS,
   ORDER_TYPES,
   workThumbnailUrl,
   daysSinceLabel,
@@ -56,7 +57,7 @@ import type {
   UserProfileRow,
 } from "@/lib/types/database";
 import type { DeploymentStatus, DeploymentState } from "@/lib/orders/vercel";
-import { ORDER_TABS, type OrderTabKey } from "@/lib/orders/tabs";
+import { ORDER_TABS, statusToTab, type OrderTabKey } from "@/lib/orders/tabs";
 import { cn } from "@/lib/utils";
 
 const NONE = "__none__";
@@ -198,7 +199,7 @@ function WorkPreview({
     <div
       className={cn(
         "relative mx-auto w-full",
-        size === "compact" ? "max-w-[400px]" : "max-w-[700px]",
+        size === "compact" ? "max-w-[520px]" : "max-w-[770px]",
       )}
     >
       {/* MacBook — screen + aluminium base */}
@@ -582,11 +583,10 @@ export function OrderDetail({
     );
   };
 
-  return (
-    <div className="space-y-4">
-      {/* Header — the tab bar sits directly below, at the top */}
-      <div className="flex flex-row items-start justify-between gap-3 px-1">
-        <div className="flex-1 space-y-2">
+  // Header (title + badges + actions) — only rendered inside the Auftrag tab.
+  const header = (
+    <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex-1 space-y-2">
             <Input
               value={draft.title}
               onChange={(e) => setDraft({ ...draft, title: e.target.value })}
@@ -667,27 +667,52 @@ export function OrderDetail({
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
-      </div>
+    </div>
+  );
 
-      {/* Status-specific tabs */}
+  const statusTab = statusToTab(order.status);
+
+  return (
+    <div className="space-y-4">
       <Tabs value={tab} onValueChange={selectTab} className="w-full">
-        <TabsList className="grid h-auto w-full grid-cols-5">
+        <TabsList className="flex h-auto w-full gap-1.5 rounded-2xl border border-border/60 bg-card/60 p-1.5 backdrop-blur">
           {ORDER_TABS.map((t) => (
-            <TabsTrigger key={t.key} value={t.key} className="py-1.5">
+            <TabsTrigger
+              key={t.key}
+              value={t.key}
+              className="flex-1 gap-1.5 rounded-xl py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground data-[state=active]:bg-primary/15 data-[state=active]:text-foreground data-[state=active]:shadow-none"
+            >
+              {t.key === statusTab && (
+                <span
+                  className={cn(
+                    "h-1.5 w-1.5 shrink-0 rounded-full",
+                    ORDER_STATUS_DOTS[order.status],
+                  )}
+                  title="Aktueller Status"
+                />
+              )}
               {t.label}
             </TabsTrigger>
           ))}
         </TabsList>
 
         <TabsContent value="auftrag" className="space-y-4">
-          {previewArea(false)}
-          <NotesPanel orderId={order.id} initialNotes={order.description ?? ""} />
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Details</CardTitle>
-            </CardHeader>
-            <CardContent>{detailsGrid}</CardContent>
-          </Card>
+          {header}
+          <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[1.05fr_1fr]">
+            <div>{previewArea(false)}</div>
+            <div className="space-y-4">
+              <NotesPanel
+                orderId={order.id}
+                initialNotes={order.description ?? ""}
+              />
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Details</CardTitle>
+                </CardHeader>
+                <CardContent>{detailsGrid}</CardContent>
+              </Card>
+            </div>
+          </div>
         </TabsContent>
 
         <TabsContent value="aktiv" className="space-y-4">
@@ -753,8 +778,9 @@ export function OrderDetail({
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  Nicht storniert. Über den Stornieren-Button oben markierst du
-                  den Auftrag als abgebrochen (zählt dann nicht mehr zum Umsatz).
+                  Nicht storniert. Über den Stornieren-Button im Auftrag-Tab
+                  markierst du den Auftrag als abgebrochen (zählt dann nicht mehr
+                  zum Umsatz).
                 </p>
               )}
 

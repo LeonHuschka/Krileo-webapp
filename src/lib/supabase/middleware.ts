@@ -5,8 +5,12 @@ const PUBLIC_ROUTES = ["/login", "/signup", "/auth"];
 
 // Machine-to-machine endpoints that authenticate themselves (webhook
 // shared-secret, cron Bearer/UA). They must NOT be redirected to /login
-// since the caller (Smartlead, Vercel Cron) has no Supabase session.
-const MACHINE_ROUTES = ["/api/smartlead/webhook", "/api/cron"];
+// since the caller (Smartlead, Vercel Cron, Telegram) has no Supabase session.
+const MACHINE_ROUTES = [
+  "/api/smartlead/webhook",
+  "/api/cron",
+  "/api/telegram",
+];
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });

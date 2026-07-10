@@ -72,6 +72,16 @@ export type Attachment = {
 
 export type ReviewCategory = "bug" | "design" | "text" | "other";
 
+/** A piece of media pulled from Telegram (stored in the order-previews
+ *  bucket). Shared by intake batches and review messages/suggestions. */
+export type TgMedia = {
+  id: string;
+  url: string;
+  name: string;
+  kind: "image" | "video" | "file";
+  size: number;
+};
+
 /** One concrete review point the engineer noted — the tech team ticks it off. */
 export type ReviewItem = {
   id: string;
@@ -215,6 +225,7 @@ export type Database = {
           cancellation_type: "permanent" | "temporary" | null;
           dev_items: DevItem[] | null;
           attachments: Attachment[] | null;
+          telegram_review_chat_id: number | null;
           position: number;
           created_at: string;
           updated_at: string;
@@ -244,6 +255,7 @@ export type Database = {
           cancellation_type?: "permanent" | "temporary" | null;
           dev_items?: DevItem[] | null;
           attachments?: Attachment[] | null;
+          telegram_review_chat_id?: number | null;
           position?: number;
           created_at?: string;
           updated_at?: string;
@@ -273,6 +285,7 @@ export type Database = {
           cancellation_type?: "permanent" | "temporary" | null;
           dev_items?: DevItem[] | null;
           attachments?: Attachment[] | null;
+          telegram_review_chat_id?: number | null;
           position?: number;
           created_at?: string;
           updated_at?: string;
@@ -338,6 +351,120 @@ export type Database = {
           from_status?: string | null;
           to_status?: string;
           actor_id?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      telegram_intake_batches: {
+        Row: {
+          id: string;
+          chat_id: number;
+          thread_id: number | null;
+          status: "collecting" | "processing" | "done" | "error";
+          media: TgMedia[];
+          maps_url: string | null;
+          note: string | null;
+          control_message_id: number | null;
+          order_id: string | null;
+          started_by: number | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          chat_id: number;
+          thread_id?: number | null;
+          status?: "collecting" | "processing" | "done" | "error";
+          media?: TgMedia[];
+          maps_url?: string | null;
+          note?: string | null;
+          control_message_id?: number | null;
+          order_id?: string | null;
+          started_by?: number | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          chat_id?: number;
+          thread_id?: number | null;
+          status?: "collecting" | "processing" | "done" | "error";
+          media?: TgMedia[];
+          maps_url?: string | null;
+          note?: string | null;
+          control_message_id?: number | null;
+          order_id?: string | null;
+          started_by?: number | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      telegram_review_messages: {
+        Row: {
+          id: string;
+          chat_id: number;
+          order_id: string | null;
+          tg_message_id: number | null;
+          from_name: string | null;
+          body: string | null;
+          media: TgMedia[];
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          chat_id: number;
+          order_id?: string | null;
+          tg_message_id?: number | null;
+          from_name?: string | null;
+          body?: string | null;
+          media?: TgMedia[];
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          chat_id?: number;
+          order_id?: string | null;
+          tg_message_id?: number | null;
+          from_name?: string | null;
+          body?: string | null;
+          media?: TgMedia[];
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      telegram_review_suggestions: {
+        Row: {
+          id: string;
+          order_id: string;
+          chat_id: number;
+          body: string;
+          category: ReviewCategory;
+          media: TgMedia[];
+          source_excerpt: string | null;
+          status: "pending" | "accepted" | "dismissed";
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          order_id: string;
+          chat_id: number;
+          body: string;
+          category?: ReviewCategory;
+          media?: TgMedia[];
+          source_excerpt?: string | null;
+          status?: "pending" | "accepted" | "dismissed";
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          order_id?: string;
+          chat_id?: number;
+          body?: string;
+          category?: ReviewCategory;
+          media?: TgMedia[];
+          source_excerpt?: string | null;
+          status?: "pending" | "accepted" | "dismissed";
           created_at?: string;
         };
         Relationships: [];
@@ -524,7 +651,31 @@ export type Database = {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      tg_intake_append: {
+        Args: {
+          p_chat_id: number;
+          p_thread_id: number | null;
+          p_media: Json;
+          p_maps_url: string | null;
+          p_started_by: number | null;
+        };
+        Returns: {
+          id: string;
+          chat_id: number;
+          thread_id: number | null;
+          status: "collecting" | "processing" | "done" | "error";
+          media: TgMedia[];
+          maps_url: string | null;
+          note: string | null;
+          control_message_id: number | null;
+          order_id: string | null;
+          started_by: number | null;
+          created_at: string;
+          updated_at: string;
+        };
+      };
+    };
     Enums: {
       user_role: UserRole;
       order_status: OrderStatus;
@@ -541,6 +692,12 @@ export type UserProfileRow = Database["public"]["Tables"]["user_profiles"]["Row"
 export type OrderRow = Database["public"]["Tables"]["orders"]["Row"];
 export type OrderTodoRow = Database["public"]["Tables"]["order_todos"]["Row"];
 export type OrderEventRow = Database["public"]["Tables"]["order_events"]["Row"];
+export type TelegramIntakeBatchRow =
+  Database["public"]["Tables"]["telegram_intake_batches"]["Row"];
+export type TelegramReviewMessageRow =
+  Database["public"]["Tables"]["telegram_review_messages"]["Row"];
+export type TelegramReviewSuggestionRow =
+  Database["public"]["Tables"]["telegram_review_suggestions"]["Row"];
 export type ContactRow = Database["public"]["Tables"]["contacts"]["Row"];
 export type GrowthTaskRow =
   Database["public"]["Tables"]["growth_tasks"]["Row"];

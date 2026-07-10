@@ -27,6 +27,7 @@ export default async function OrderDetailPage({
     { data: contacts },
     { data: events },
     { data: allOrders },
+    { data: reviewSuggestions },
   ] = await Promise.all([
     supabase.from("orders").select("*").eq("id", params.id).maybeSingle(),
     supabase.from("user_profiles").select("*").order("full_name"),
@@ -39,6 +40,12 @@ export default async function OrderDetailPage({
     supabase
       .from("orders")
       .select("created_at, updated_at, status, canceled_at"),
+    supabase
+      .from("telegram_review_suggestions")
+      .select("*")
+      .eq("order_id", params.id)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false }),
   ]);
 
   if (!order) notFound();
@@ -89,6 +96,7 @@ export default async function OrderDetailPage({
         deployment={deployment}
         events={events ?? []}
         avgLeadMs={avgLeadMs}
+        reviewSuggestions={reviewSuggestions ?? []}
         defaultTab={defaultTab}
       />
     </div>

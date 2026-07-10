@@ -56,8 +56,10 @@ import type {
   OrderEventRow,
   OrderRow,
   OrderStatus,
+  TelegramReviewSuggestionRow,
   UserProfileRow,
 } from "@/lib/types/database";
+import { ReviewSuggestions } from "@/components/orders/review-suggestions";
 import type { DeploymentStatus, DeploymentState } from "@/lib/orders/vercel";
 import { ORDER_TABS, statusToTab, type OrderTabKey } from "@/lib/orders/tabs";
 import { cn } from "@/lib/utils";
@@ -256,6 +258,7 @@ export function OrderDetail({
   deployment,
   events,
   avgLeadMs,
+  reviewSuggestions,
   defaultTab,
 }: {
   order: OrderRow;
@@ -264,6 +267,7 @@ export function OrderDetail({
   deployment?: DeploymentStatus | null;
   events: OrderEventRow[];
   avgLeadMs: number;
+  reviewSuggestions: TelegramReviewSuggestionRow[];
   defaultTab: OrderTabKey;
 }) {
   const router = useRouter();
@@ -735,10 +739,17 @@ export function OrderDetail({
 
         <TabsContent value="review" className="space-y-4">
           {previewArea(true)}
-          <ReviewPanel
-            orderId={order.id}
-            initialReview={order.review ?? null}
-          />
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <ReviewPanel
+              orderId={order.id}
+              initialReview={order.review ?? null}
+            />
+            <ReviewSuggestions
+              orderId={order.id}
+              suggestions={reviewSuggestions}
+              reviewChatId={order.telegram_review_chat_id}
+            />
+          </div>
         </TabsContent>
 
         <TabsContent value="geliefert" className="space-y-4">

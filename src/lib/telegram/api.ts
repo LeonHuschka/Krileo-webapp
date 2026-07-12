@@ -120,6 +120,36 @@ export function answerCallbackQuery(
   });
 }
 
+export function setWebhook(
+  token: string,
+  url: string,
+  secret: string,
+  allowedUpdates: string[],
+): Promise<unknown> {
+  return tg(token, "setWebhook", {
+    url,
+    secret_token: secret,
+    allowed_updates: allowedUpdates,
+    drop_pending_updates: true,
+  });
+}
+
+export function deleteWebhook(token: string): Promise<unknown> {
+  return tg(token, "deleteWebhook", { drop_pending_updates: false });
+}
+
+/** getMe → the bot's numeric id + @username. Validates a pasted token. */
+export async function getMe(
+  token: string,
+): Promise<{ id: number; username: string } | null> {
+  try {
+    const me = await tg<{ id: number; username?: string }>(token, "getMe", {});
+    return { id: me.id, username: me.username ?? "" };
+  } catch {
+    return null;
+  }
+}
+
 // --- Media -------------------------------------------------------------------
 
 export type MediaRef = {

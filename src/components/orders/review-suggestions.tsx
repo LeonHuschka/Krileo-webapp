@@ -47,6 +47,7 @@ export function ReviewSuggestions({
   const [chatInput, setChatInput] = useState(
     reviewChatId != null ? String(reviewChatId) : "",
   );
+  const [tokenInput, setTokenInput] = useState("");
   const [editingLink, setEditingLink] = useState(false);
 
   function act(id: string, fn: () => Promise<void>) {
@@ -66,9 +67,12 @@ export function ReviewSuggestions({
   function saveLink() {
     startTransition(async () => {
       try {
-        await linkReviewChat(orderId, chatInput);
+        await linkReviewChat(orderId, chatInput, tokenInput);
         setEditingLink(false);
-        toast.success(chatInput.trim() ? "Chat verknüpft" : "Verknüpfung entfernt");
+        setTokenInput("");
+        toast.success(
+          chatInput.trim() ? "Chat verknüpft + Webhook gesetzt" : "Verknüpfung entfernt",
+        );
         router.refresh();
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Fehler");
@@ -106,21 +110,33 @@ export function ReviewSuggestions({
 
       <CardContent className="space-y-3">
         {editingLink && (
-          <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-muted/10 p-2">
+          <div className="space-y-2 rounded-lg border border-border/60 bg-muted/10 p-2">
             <Input
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
-              placeholder="Telegram-Chat-ID (z.B. -5054735540)"
+              placeholder="Chat-ID der Kundengruppe (z.B. -5054735540)"
               className="h-8 text-sm"
             />
-            <Button
-              size="sm"
-              onClick={saveLink}
-              disabled={pending}
-              className="h-8 shrink-0"
-            >
-              Speichern
-            </Button>
+            <Input
+              value={tokenInput}
+              onChange={(e) => setTokenInput(e.target.value)}
+              placeholder="Bot-Token (eigener Bot für DIESE Gruppe)"
+              className="h-8 text-sm"
+            />
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[11px] text-muted-foreground">
+                Pro Projekt ein eigener Bot. Chat leer lassen = Verknüpfung
+                lösen.
+              </p>
+              <Button
+                size="sm"
+                onClick={saveLink}
+                disabled={pending}
+                className="h-8 shrink-0"
+              >
+                Speichern
+              </Button>
+            </div>
           </div>
         )}
 

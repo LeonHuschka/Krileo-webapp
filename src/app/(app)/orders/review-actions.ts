@@ -2,6 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { serviceClient } from "@/lib/supabase/service";
+import { TELEGRAM } from "@/lib/telegram/config";
+import { getMe, setWebhook, deleteWebhook } from "@/lib/telegram/api";
 import type {
   OrderReview,
   ReviewItem,
@@ -95,18 +98,80 @@ export async function dismissReviewSuggestion(suggestionId: string) {
   if (sug?.order_id) revalidatePath(`/orders/${sug.order_id}`);
 }
 
-/** Link (or unlink) the customer's Telegram feedback chat to this order. */
-export async function linkReviewChat(orderId: string, chatId: string) {
+/** Link the customer's feedback chat to this order using THIS project's own
+ *  dedicated bot. The token is stored service-side (never sent to the browser)
+ *  and its webhook is registered so its updates flow to /api/telegram/review.
+ *  Never reuse a bot across projects — set one fresh bot per group. */
+export async function linkReviewChat(
+  orderId: string,
+  chatId: string,
+  botToken: string,
+) {
   const { supabase } = await requireUser();
-  const trimmed = chatId.trim();
-  const parsed = trimmed === "" ? null : Number(trimmed);
-  if (parsed != null && !Number.isFinite(parsed)) {
-    throw new Error("Ungültige Chat-ID");
+  const svc = serviceClient();
+
+  const chat = chatId.trim();
+  const token = botToken.trim();
+
+  // Empty chat → unlink: release the old bot's webhook and forget the token.
+  if (chat === "") {
+    const { data: existing } = await svc
+      .from("telegram_review_bots")
+      .select("chat_id, token")
+      .eq("order_id", orderId);
+    for (const row of existing ?? []) {
+      await deleteWebhook(row.token).catch(() => {});
+    }
+    await svc.from("telegram_review_bots").delete().eq("order_id", orderId);
+    await supabase
+      .from("orders")
+      .update({ telegram_review_chat_id: null })
+      .eq("id", orderId);
+    revalidatePath(`/orders/${orderId}`);
+    return;
   }
+
+  const parsedChat = Number(chat);
+  if (!Number.isFinite(parsedChat)) throw new Error("Ungültige Chat-ID");
+  if (!token) throw new Error("Bot-Token fehlt");
+
+  // Validate the token and derive the bot id.
+  const me = await getMe(token);
+  if (!me) throw new Error("Bot-Token ungültig (getMe fehlgeschlagen)");
+
+  if (!TELEGRAM.webhookSecret) throw new Error("TELEGRAM_WEBHOOK_SECRET fehlt");
+  const base = (process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/$/, "");
+  if (!base) throw new Error("NEXT_PUBLIC_APP_URL fehlt");
+
+  // Release any previous bot for this order, then register the new one.
+  const { data: prev } = await svc
+    .from("telegram_review_bots")
+    .select("chat_id, token")
+    .eq("order_id", orderId);
+  for (const row of prev ?? []) {
+    if (row.token !== token) await deleteWebhook(row.token).catch(() => {});
+  }
+  await svc.from("telegram_review_bots").delete().eq("order_id", orderId);
+
+  await setWebhook(token, `${base}/api/telegram/review`, TELEGRAM.webhookSecret, [
+    "message",
+    "channel_post",
+  ]);
+
+  const { error: insErr } = await svc.from("telegram_review_bots").insert({
+    chat_id: parsedChat,
+    order_id: orderId,
+    bot_id: me.id,
+    token,
+    label: me.username ? `@${me.username}` : null,
+  });
+  if (insErr) throw new Error(insErr.message);
+
   const { error } = await supabase
     .from("orders")
-    .update({ telegram_review_chat_id: parsed })
+    .update({ telegram_review_chat_id: parsedChat })
     .eq("id", orderId);
   if (error) throw new Error(error.message);
+
   revalidatePath(`/orders/${orderId}`);
 }

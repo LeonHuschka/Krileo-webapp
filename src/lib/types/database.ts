@@ -469,6 +469,33 @@ export type Database = {
         };
         Relationships: [];
       };
+      telegram_review_bots: {
+        Row: {
+          chat_id: number;
+          order_id: string | null;
+          bot_id: number;
+          token: string;
+          label: string | null;
+          created_at: string;
+        };
+        Insert: {
+          chat_id: number;
+          order_id?: string | null;
+          bot_id: number;
+          token: string;
+          label?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          chat_id?: number;
+          order_id?: string | null;
+          bot_id?: number;
+          token?: string;
+          label?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       growth_tasks: {
         Row: {
           id: string;
@@ -698,6 +725,8 @@ export type TelegramReviewMessageRow =
   Database["public"]["Tables"]["telegram_review_messages"]["Row"];
 export type TelegramReviewSuggestionRow =
   Database["public"]["Tables"]["telegram_review_suggestions"]["Row"];
+export type TelegramReviewBotRow =
+  Database["public"]["Tables"]["telegram_review_bots"]["Row"];
 export type ContactRow = Database["public"]["Tables"]["contacts"]["Row"];
 export type GrowthTaskRow =
   Database["public"]["Tables"]["growth_tasks"]["Row"];

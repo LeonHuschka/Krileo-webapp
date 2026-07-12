@@ -2,7 +2,6 @@ import "server-only";
 
 import { claude } from "@/lib/lead-engine/claude";
 import { serviceClient } from "@/lib/supabase/service";
-import { TELEGRAM } from "@/lib/telegram/config";
 import {
   mediaRefsFromMessage,
   storeTelegramMedia,
@@ -24,16 +23,18 @@ function senderName(msg: TgMessage): string {
   return f.first_name || f.username || `#${f.id}`;
 }
 
-async function orderForChat(
+/** The dedicated bot registered for this customer chat. One bot per group —
+ *  the token lives in a service-only table, never on the client. */
+async function botForChat(
   chatId: number,
-): Promise<{ id: string } | null> {
+): Promise<{ token: string; orderId: string | null } | null> {
   const { data } = await serviceClient()
-    .from("orders")
-    .select("id")
-    .eq("telegram_review_chat_id", chatId)
-    .limit(1)
+    .from("telegram_review_bots")
+    .select("token, order_id")
+    .eq("chat_id", chatId)
     .maybeSingle();
-  return data ?? null;
+  if (!data) return null;
+  return { token: data.token, orderId: data.order_id };
 }
 
 // --- LLM ---------------------------------------------------------------------
@@ -126,26 +127,30 @@ export async function handleReviewMessage(msg: TgMessage): Promise<void> {
 
   if (!body && refs.length === 0) return; // nothing to record
 
-  const order = await orderForChat(chatId);
+  // Only chats with a registered dedicated bot are processed. Its token (this
+  // project's own bot) is used for media downloads — never a shared bot.
+  const bot = await botForChat(chatId);
+  if (!bot) return;
 
-  // Store inbound media.
+  // Store inbound media using this chat's own bot token.
   const media: TgMedia[] = [];
   for (const ref of refs) {
-    const m = await storeTelegramMedia(TELEGRAM.reviewToken, ref, `review/${chatId}`);
+    const m = await storeTelegramMedia(bot.token, ref, `review/${chatId}`);
     if (m) media.push(m);
   }
 
   await svc.from("telegram_review_messages").insert({
     chat_id: chatId,
-    order_id: order?.id ?? null,
+    order_id: bot.orderId,
     tg_message_id: msg.message_id,
     from_name: senderName(msg),
     body: body || null,
     media,
   });
 
-  // Not linked to an order yet → park the message, generate nothing.
-  if (!order) return;
+  // No order linked → park the message, generate nothing.
+  if (!bot.orderId) return;
+  const order = { id: bot.orderId };
 
   // Build a short transcript from recent messages for context.
   const { data: recent } = await svc

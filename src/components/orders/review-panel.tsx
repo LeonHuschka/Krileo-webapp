@@ -117,29 +117,37 @@ function ItemImage({
   busy,
   onUpload,
   onClear,
+  size = "lg",
 }: {
   url?: string | null;
   editable: boolean;
   busy?: boolean;
   onUpload?: (file: File) => void;
   onClear?: () => void;
+  size?: "lg" | "sm";
 }) {
+  const dims = size === "lg" ? "h-16 w-28" : "h-10 w-16";
   if (url) {
     return (
-      <span className="group/img relative shrink-0">
-        <a href={url} target="_blank" rel="noreferrer">
+      <span className={cn("group/img relative block shrink-0", dims)}>
+        <a
+          href={url}
+          target="_blank"
+          rel="noreferrer"
+          className="block h-full w-full"
+        >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={url}
             alt=""
-            className="h-8 w-8 rounded-md border border-border/60 object-cover"
+            className="h-full w-full rounded-md border border-border/60 object-cover"
           />
         </a>
         {editable && onClear && (
           <button
             type="button"
             onClick={onClear}
-            className="absolute -right-1 -top-1 hidden rounded-full bg-background text-muted-foreground shadow group-hover/img:block hover:text-destructive"
+            className="absolute right-1 top-1 hidden rounded-full bg-background/90 p-0.5 text-muted-foreground shadow group-hover/img:block hover:text-destructive"
             title="Bild entfernen"
           >
             <X className="h-3 w-3" />
@@ -151,13 +159,19 @@ function ItemImage({
   if (!editable) return null;
   return (
     <label
-      className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md border border-dashed border-border/70 text-muted-foreground hover:border-primary/50 hover:text-foreground"
-      title="Referenzbild anhängen"
+      className={cn(
+        "flex shrink-0 cursor-pointer flex-col items-center justify-center gap-0.5 rounded-md border border-dashed border-border/70 text-[10px] text-muted-foreground hover:border-primary/50 hover:text-foreground",
+        dims,
+      )}
+      title="Referenzbild anhängen oder mit Strg+V einfügen"
     >
       {busy ? (
-        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        <Loader2 className="h-4 w-4 animate-spin" />
       ) : (
-        <ImagePlus className="h-3.5 w-3.5" />
+        <>
+          <ImagePlus className="h-4 w-4" />
+          <span>Bild</span>
+        </>
       )}
       <input
         type="file"
@@ -414,10 +428,10 @@ export function ReviewPanel({
                             )}
                           />
                           <CatChip cat={it.category} />
-                          <span className={cn(it.done && "line-through")}>
+                          <span className={cn("flex-1", it.done && "line-through")}>
                             {it.text}
                           </span>
-                          <ItemImage url={it.image} editable={false} />
+                          <ItemImage url={it.image} editable={false} size="sm" />
                         </div>
                       ))}
                     </div>
@@ -436,11 +450,20 @@ export function ReviewPanel({
                       </span>
                     </div>
 
+                    {activeRound.items.length > 0 && (
+                      <div className="grid grid-cols-[1.25rem_minmax(0,1fr)_7rem_1.25rem] items-center gap-2 px-2.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
+                        <span />
+                        <span>Punkt</span>
+                        <span>Referenz</span>
+                        <span />
+                      </div>
+                    )}
+
                     <div className="space-y-1.5">
                       {activeRound.items.map((it) => (
                         <div
                           key={it.id}
-                          className="group flex items-center gap-2 rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5"
+                          className="group grid grid-cols-[1.25rem_minmax(0,1fr)_7rem_1.25rem] items-center gap-2 rounded-lg border border-border/50 bg-background/40 px-2.5 py-2"
                         >
                           <button
                             type="button"
@@ -452,7 +475,7 @@ export function ReviewPanel({
                               )
                             }
                             className={cn(
-                              "flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors",
+                              "flex h-5 w-5 items-center justify-center rounded-md border transition-colors",
                               it.done
                                 ? "border-emerald-500/60 bg-emerald-500/20 text-emerald-300"
                                 : "border-border bg-background text-transparent hover:border-primary/50",
@@ -460,41 +483,47 @@ export function ReviewPanel({
                           >
                             <Check className="h-3.5 w-3.5" />
                           </button>
-                          <CatChip
-                            cat={it.category}
-                            onClick={() =>
-                              editRound((items) =>
-                                items.map((x) =>
-                                  x.id === it.id
-                                    ? { ...x, category: NEXT_CAT[x.category] }
-                                    : x,
-                                ),
-                              )
-                            }
-                          />
-                          <Input
-                            defaultValue={it.text}
-                            onPaste={(e) => {
-                              const f = imageFileFromClipboard(e.clipboardData);
-                              if (f) {
-                                e.preventDefault();
-                                attachImage(it.id, f);
-                              }
-                            }}
-                            onBlur={(e) => {
-                              const v = e.target.value.trim();
-                              if (v && v !== it.text)
+
+                          <div className="flex min-w-0 items-center gap-2">
+                            <CatChip
+                              cat={it.category}
+                              onClick={() =>
                                 editRound((items) =>
                                   items.map((x) =>
-                                    x.id === it.id ? { ...x, text: v } : x,
+                                    x.id === it.id
+                                      ? { ...x, category: NEXT_CAT[x.category] }
+                                      : x,
                                   ),
+                                )
+                              }
+                            />
+                            <Input
+                              defaultValue={it.text}
+                              onPaste={(e) => {
+                                const f = imageFileFromClipboard(
+                                  e.clipboardData,
                                 );
-                            }}
-                            className={cn(
-                              "h-7 flex-1 border-none bg-transparent px-1 text-sm focus-visible:ring-0",
-                              it.done && "text-muted-foreground line-through",
-                            )}
-                          />
+                                if (f) {
+                                  e.preventDefault();
+                                  attachImage(it.id, f);
+                                }
+                              }}
+                              onBlur={(e) => {
+                                const v = e.target.value.trim();
+                                if (v && v !== it.text)
+                                  editRound((items) =>
+                                    items.map((x) =>
+                                      x.id === it.id ? { ...x, text: v } : x,
+                                    ),
+                                  );
+                              }}
+                              className={cn(
+                                "h-7 min-w-0 flex-1 border-none bg-transparent px-1 text-sm focus-visible:ring-0",
+                                it.done && "text-muted-foreground line-through",
+                              )}
+                            />
+                          </div>
+
                           <ItemImage
                             url={it.image}
                             editable
@@ -508,6 +537,7 @@ export function ReviewPanel({
                               )
                             }
                           />
+
                           <button
                             type="button"
                             onClick={() =>
@@ -515,7 +545,7 @@ export function ReviewPanel({
                                 items.filter((x) => x.id !== it.id),
                               )
                             }
-                            className="shrink-0 text-muted-foreground/40 hover:text-destructive"
+                            className="justify-self-center text-muted-foreground/40 hover:text-destructive"
                           >
                             <X className="h-3.5 w-3.5" />
                           </button>

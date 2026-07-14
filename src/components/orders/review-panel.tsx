@@ -168,7 +168,7 @@ function UploadDrop({
   busy?: boolean;
   size: "lg" | "sm";
 }) {
-  const dims = size === "lg" ? "h-28 w-40" : "h-6";
+  const dims = size === "lg" ? "h-44 w-40" : "h-6";
   return (
     <label
       className={cn(
@@ -701,47 +701,42 @@ export function ReviewPanel({
                         </span>
                       </div>
 
-                      {/* --- TABLE VIEW --- */}
-                      {view === "table" && activeRound.items.length > 0 && (
-                        <div className="overflow-hidden rounded-lg border border-border/50">
-                          <div className="grid grid-cols-[1.75rem_minmax(0,1fr)_13rem_1.5rem] items-center gap-3 border-b border-border/50 bg-muted/20 px-3 py-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                            <span />
-                            <span>Punkt</span>
-                            <span>Referenz</span>
-                            <span />
-                          </div>
-                          <div className="divide-y divide-border/40">
-                            {activeRound.items.map((it) => {
-                              const media = mediaOf(it);
-                              return (
-                                <div
-                                  key={it.id}
-                                  className="grid grid-cols-[1.75rem_minmax(0,1fr)_13rem_1.5rem] items-start gap-3 bg-background/30 px-3 py-2.5"
-                                >
+                      {/* --- TABLE VIEW (cards: text on top, big reference below) --- */}
+                      {view === "table" && (
+                        <div className="space-y-2">
+                          {activeRound.items.map((it) => {
+                            const media = mediaOf(it);
+                            return (
+                              <div
+                                key={it.id}
+                                className="rounded-lg border border-border/50 bg-background/30 p-2.5"
+                              >
+                                <div className="flex items-start gap-2">
                                   <div className="pt-0.5">{doneToggle(it)}</div>
-                                  <div className="flex min-w-0 items-start gap-2 pt-0.5">
-                                    {catToggle(it)}
-                                    <AutoTextarea
-                                      defaultValue={it.text}
-                                      onPaste={(e) => {
-                                        const f = imageFileFromClipboard(
-                                          e.clipboardData,
-                                        );
-                                        if (f) {
-                                          e.preventDefault();
-                                          attachImage(it.id, f);
-                                        }
-                                      }}
-                                      onBlur={(e) =>
-                                        commitText(it, e.target.value)
+                                  <div className="pt-0.5">{catToggle(it)}</div>
+                                  <AutoTextarea
+                                    defaultValue={it.text}
+                                    onPaste={(e) => {
+                                      const f = imageFileFromClipboard(
+                                        e.clipboardData,
+                                      );
+                                      if (f) {
+                                        e.preventDefault();
+                                        attachImage(it.id, f);
                                       }
-                                      className={cn(
-                                        it.done &&
-                                          "text-muted-foreground line-through",
-                                      )}
-                                    />
-                                  </div>
-                                  <div className="flex flex-wrap gap-1.5">
+                                    }}
+                                    onBlur={(e) => commitText(it, e.target.value)}
+                                    className={cn(
+                                      "min-w-0 flex-1",
+                                      it.done &&
+                                        "text-muted-foreground line-through",
+                                    )}
+                                  />
+                                  {deleteBtn(it)}
+                                </div>
+
+                                {media.length > 0 ? (
+                                  <div className="mt-2 flex flex-wrap gap-2 pl-7">
                                     {media.map((u, i) => (
                                       <span
                                         key={u}
@@ -756,7 +751,7 @@ export function ReviewPanel({
                                           <img
                                             src={u}
                                             alt=""
-                                            className="h-28 w-40 rounded-md border border-border/60 object-cover"
+                                            className="h-44 w-72 rounded-md border border-border/60 bg-black/20 object-contain"
                                           />
                                         </button>
                                         <button
@@ -765,7 +760,7 @@ export function ReviewPanel({
                                           className="absolute right-1 top-1 hidden rounded-full bg-background/90 p-0.5 text-muted-foreground shadow group-hover/mi:block hover:text-destructive"
                                           title="Bild entfernen"
                                         >
-                                          <X className="h-3 w-3" />
+                                          <X className="h-3.5 w-3.5" />
                                         </button>
                                       </span>
                                     ))}
@@ -775,11 +770,18 @@ export function ReviewPanel({
                                       onUpload={(f) => attachImage(it.id, f)}
                                     />
                                   </div>
-                                  <div className="pt-0.5">{deleteBtn(it)}</div>
-                                </div>
-                              );
-                            })}
-                          </div>
+                                ) : (
+                                  <div className="mt-1 pl-7">
+                                    <UploadDrop
+                                      size="sm"
+                                      busy={uploadingId === it.id}
+                                      onUpload={(f) => attachImage(it.id, f)}
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       )}
 

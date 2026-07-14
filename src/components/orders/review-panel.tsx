@@ -97,6 +97,18 @@ function normalize(r: OrderReview | null): OrderReview {
   };
 }
 
+/** First pasted image file from a clipboard, or null (e.g. a copied screenshot). */
+function imageFileFromClipboard(dt: DataTransfer | null): File | null {
+  if (!dt) return null;
+  for (const item of Array.from(dt.items)) {
+    if (item.kind === "file" && item.type.startsWith("image/")) {
+      const f = item.getAsFile();
+      if (f) return f;
+    }
+  }
+  return null;
+}
+
 /** Reference thumbnail for a review point. Editable rows can attach/clear an
  *  image; read-only rows just show it (or nothing). */
 function ItemImage({
@@ -260,6 +272,26 @@ export function ReviewPanel({
       editRound((items) =>
         items.map((x) => (x.id === itemId ? { ...x, image: url } : x)),
       );
+  }
+
+  // Paste a screenshot into the "new point" field → upload first, then add the
+  // point with its image in one write (avoids a stale-state clobber).
+  async function addItemFromImage(file: File) {
+    if (!activeRound) return;
+    const text = newText.trim();
+    setNewText("");
+    const id = newId();
+    setUploadingId(id);
+    const url = await uploadImage(file);
+    setUploadingId(null);
+    const item: ReviewItem = {
+      id,
+      text,
+      done: false,
+      category: "bug",
+      image: url,
+    };
+    persist(replaceActive((r) => ({ ...r, items: [...r.items, item] })));
   }
 
   function newRound() {
@@ -442,6 +474,13 @@ export function ReviewPanel({
                           />
                           <Input
                             defaultValue={it.text}
+                            onPaste={(e) => {
+                              const f = imageFileFromClipboard(e.clipboardData);
+                              if (f) {
+                                e.preventDefault();
+                                attachImage(it.id, f);
+                              }
+                            }}
                             onBlur={(e) => {
                               const v = e.target.value.trim();
                               if (v && v !== it.text)
@@ -494,7 +533,14 @@ export function ReviewPanel({
                             addItem();
                           }
                         }}
-                        placeholder="Review-Punkt hinzufügen… (z.B. Buttons reagieren nicht)"
+                        onPaste={(e) => {
+                          const f = imageFileFromClipboard(e.clipboardData);
+                          if (f) {
+                            e.preventDefault();
+                            addItemFromImage(f);
+                          }
+                        }}
+                        placeholder="Review-Punkt… (Text tippen oder Screenshot mit Strg+V einfügen)"
                         className="h-9 text-sm"
                       />
                       <Button

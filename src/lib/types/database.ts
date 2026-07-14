@@ -82,12 +82,16 @@ export type TgMedia = {
   size: number;
 };
 
-/** One concrete review point the engineer noted — the tech team ticks it off. */
+/** One concrete review point the engineer noted — the tech team ticks it off.
+ *  `image` is an optional reference screenshot (public URL) so the point is
+ *  visually clear — auto-filled from a Telegram suggestion's media, or attached
+ *  manually. */
 export type ReviewItem = {
   id: string;
   text: string;
   done: boolean;
   category: ReviewCategory;
+  image?: string | null;
 };
 
 /** A review loop: a batch of points found in one pass. The order stays in

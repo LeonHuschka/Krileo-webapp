@@ -11,11 +11,13 @@ import {
   ThumbsUp,
   Loader2,
   RefreshCw,
+  ImagePlus,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { createClient } from "@/lib/supabase/client";
 import { updateOrder } from "@/app/(app)/orders/actions";
 import type {
   OrderReview,
@@ -62,6 +64,7 @@ function normalize(r: OrderReview | null): OrderReview {
     )
       ? (x.category as ReviewCategory)
       : "other",
+    image: (x.image as string) ?? null,
   });
 
   if (Array.isArray(raw.rounds)) {
@@ -92,6 +95,70 @@ function normalize(r: OrderReview | null): OrderReview {
     decision: raw.decision === "approved" ? "approved" : null,
     approved_at: null,
   };
+}
+
+/** Reference thumbnail for a review point. Editable rows can attach/clear an
+ *  image; read-only rows just show it (or nothing). */
+function ItemImage({
+  url,
+  editable,
+  busy,
+  onUpload,
+  onClear,
+}: {
+  url?: string | null;
+  editable: boolean;
+  busy?: boolean;
+  onUpload?: (file: File) => void;
+  onClear?: () => void;
+}) {
+  if (url) {
+    return (
+      <span className="group/img relative shrink-0">
+        <a href={url} target="_blank" rel="noreferrer">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={url}
+            alt=""
+            className="h-8 w-8 rounded-md border border-border/60 object-cover"
+          />
+        </a>
+        {editable && onClear && (
+          <button
+            type="button"
+            onClick={onClear}
+            className="absolute -right-1 -top-1 hidden rounded-full bg-background text-muted-foreground shadow group-hover/img:block hover:text-destructive"
+            title="Bild entfernen"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        )}
+      </span>
+    );
+  }
+  if (!editable) return null;
+  return (
+    <label
+      className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md border border-dashed border-border/70 text-muted-foreground hover:border-primary/50 hover:text-foreground"
+      title="Referenzbild anhängen"
+    >
+      {busy ? (
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+      ) : (
+        <ImagePlus className="h-3.5 w-3.5" />
+      )}
+      <input
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f && onUpload) onUpload(f);
+          e.currentTarget.value = "";
+        }}
+      />
+    </label>
+  );
 }
 
 function CatChip({ cat, onClick }: { cat: ReviewCategory; onClick?: () => void }) {
@@ -167,6 +234,33 @@ export function ReviewPanel({
 
   const editRound = (fn: (items: ReviewItem[]) => ReviewItem[]) =>
     persist(replaceActive((r) => ({ ...r, items: fn(r.items) })));
+
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
+
+  async function uploadImage(file: File): Promise<string | null> {
+    const supabase = createClient();
+    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+    const path = `${orderId}/rev-${newId().slice(0, 8)}.${ext}`;
+    const { error } = await supabase.storage
+      .from("order-previews")
+      .upload(path, file, { contentType: file.type, upsert: false });
+    if (error) {
+      toast.error(error.message);
+      return null;
+    }
+    return supabase.storage.from("order-previews").getPublicUrl(path).data
+      .publicUrl;
+  }
+
+  async function attachImage(itemId: string, file: File) {
+    setUploadingId(itemId);
+    const url = await uploadImage(file);
+    setUploadingId(null);
+    if (url)
+      editRound((items) =>
+        items.map((x) => (x.id === itemId ? { ...x, image: url } : x)),
+      );
+  }
 
   function newRound() {
     persist({
@@ -291,6 +385,7 @@ export function ReviewPanel({
                           <span className={cn(it.done && "line-through")}>
                             {it.text}
                           </span>
+                          <ItemImage url={it.image} editable={false} />
                         </div>
                       ))}
                     </div>
@@ -360,6 +455,19 @@ export function ReviewPanel({
                               "h-7 flex-1 border-none bg-transparent px-1 text-sm focus-visible:ring-0",
                               it.done && "text-muted-foreground line-through",
                             )}
+                          />
+                          <ItemImage
+                            url={it.image}
+                            editable
+                            busy={uploadingId === it.id}
+                            onUpload={(f) => attachImage(it.id, f)}
+                            onClear={() =>
+                              editRound((items) =>
+                                items.map((x) =>
+                                  x.id === it.id ? { ...x, image: null } : x,
+                                ),
+                              )
+                            }
                           />
                           <button
                             type="button"

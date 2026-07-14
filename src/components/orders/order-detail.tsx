@@ -739,7 +739,7 @@ export function OrderDetail({
 
         <TabsContent value="review" className="space-y-4">
           {previewArea(true)}
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.7fr_1fr]">
             <ReviewPanel
               orderId={order.id}
               initialReview={order.review ?? null}

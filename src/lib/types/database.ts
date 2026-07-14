@@ -83,14 +83,16 @@ export type TgMedia = {
 };
 
 /** One concrete review point the engineer noted — the tech team ticks it off.
- *  `image` is an optional reference screenshot (public URL) so the point is
+ *  `images` are optional reference screenshots (public URLs) so the point is
  *  visually clear — auto-filled from a Telegram suggestion's media, or attached
- *  manually. */
+ *  manually (paste/upload). `image` is the legacy single-image field, folded
+ *  into `images` on read. */
 export type ReviewItem = {
   id: string;
   text: string;
   done: boolean;
   category: ReviewCategory;
+  images?: string[];
   image?: string | null;
 };
 

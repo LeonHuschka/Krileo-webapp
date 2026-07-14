@@ -17,6 +17,7 @@ import {
   List as ListIcon,
   ChevronLeft,
   ChevronRight,
+  Play,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -118,11 +119,19 @@ function normalize(r: OrderReview | null): OrderReview {
   };
 }
 
-/** First pasted image file from a clipboard, or null (e.g. a copied screenshot). */
-function imageFileFromClipboard(dt: DataTransfer | null): File | null {
+/** Whether a stored media URL points at a video (by file extension). */
+function isVideoUrl(url: string): boolean {
+  return /\.(mp4|mov|webm|m4v|avi|mkv|ogv|ogg)(\?|$)/i.test(url);
+}
+
+/** First pasted image/video file from a clipboard, or null (e.g. a screenshot). */
+function mediaFileFromClipboard(dt: DataTransfer | null): File | null {
   if (!dt) return null;
   for (const item of Array.from(dt.items)) {
-    if (item.kind === "file" && item.type.startsWith("image/")) {
+    if (
+      item.kind === "file" &&
+      (item.type.startsWith("image/") || item.type.startsWith("video/"))
+    ) {
       const f = item.getAsFile();
       if (f) return f;
     }
@@ -176,19 +185,19 @@ function UploadDrop({
         size === "lg" ? "flex-col" : "px-2",
         dims,
       )}
-      title="Bild anhängen (oder mit Strg+V ins Textfeld einfügen)"
+      title="Bild oder Video anhängen (oder mit Strg+V ins Textfeld einfügen)"
     >
       {busy ? (
         <Loader2 className="h-4 w-4 animate-spin" />
       ) : (
         <>
           <ImagePlus className="h-4 w-4" />
-          <span>Bild</span>
+          <span>Medium</span>
         </>
       )}
       <input
         type="file"
-        accept="image/*"
+        accept="image/*,video/*"
         className="hidden"
         onChange={(e) => {
           const f = e.target.files?.[0];
@@ -258,13 +267,23 @@ function Lightbox({
           </button>
         </>
       )}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={urls[index]}
-        alt=""
-        onClick={(e) => e.stopPropagation()}
-        className="max-h-[85vh] max-w-[85vw] rounded-lg object-contain shadow-2xl"
-      />
+      {isVideoUrl(urls[index]) ? (
+        <video
+          src={urls[index]}
+          controls
+          autoPlay
+          onClick={(e) => e.stopPropagation()}
+          className="max-h-[85vh] max-w-[85vw] rounded-lg shadow-2xl"
+        />
+      ) : (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
+          src={urls[index]}
+          alt=""
+          onClick={(e) => e.stopPropagation()}
+          className="max-h-[85vh] max-w-[85vw] rounded-lg object-contain shadow-2xl"
+        />
+      )}
       {urls.length > 1 && (
         <span className="absolute bottom-5 rounded-full bg-black/60 px-3 py-1 text-xs text-white">
           {index + 1} / {urls.length}
@@ -717,7 +736,7 @@ export function ReviewPanel({
                                   <AutoTextarea
                                     defaultValue={it.text}
                                     onPaste={(e) => {
-                                      const f = imageFileFromClipboard(
+                                      const f = mediaFileFromClipboard(
                                         e.clipboardData,
                                       );
                                       if (f) {
@@ -745,14 +764,31 @@ export function ReviewPanel({
                                         <button
                                           type="button"
                                           onClick={() => openLightbox(media, i)}
-                                          className="block"
+                                          className="relative block"
                                         >
-                                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                                          <img
-                                            src={u}
-                                            alt=""
-                                            className="h-44 w-72 rounded-md border border-border/60 bg-black/20 object-contain"
-                                          />
+                                          {isVideoUrl(u) ? (
+                                            <>
+                                              <video
+                                                src={u}
+                                                muted
+                                                playsInline
+                                                preload="metadata"
+                                                className="h-44 w-72 rounded-md border border-border/60 bg-black/40 object-contain"
+                                              />
+                                              <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                                                <span className="rounded-full bg-black/60 p-2 text-white">
+                                                  <Play className="h-5 w-5" />
+                                                </span>
+                                              </span>
+                                            </>
+                                          ) : (
+                                            /* eslint-disable-next-line @next/next/no-img-element */
+                                            <img
+                                              src={u}
+                                              alt=""
+                                              className="h-44 w-72 rounded-md border border-border/60 bg-black/20 object-contain"
+                                            />
+                                          )}
                                         </button>
                                         <button
                                           type="button"
@@ -801,7 +837,7 @@ export function ReviewPanel({
                                   <Input
                                     defaultValue={it.text}
                                     onPaste={(e) => {
-                                      const f = imageFileFromClipboard(
+                                      const f = mediaFileFromClipboard(
                                         e.clipboardData,
                                       );
                                       if (f) {
@@ -848,7 +884,7 @@ export function ReviewPanel({
                             }
                           }}
                           onPaste={(e) => {
-                            const f = imageFileFromClipboard(e.clipboardData);
+                            const f = mediaFileFromClipboard(e.clipboardData);
                             if (f) {
                               e.preventDefault();
                               addItemFromImage(f);

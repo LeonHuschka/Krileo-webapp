@@ -38,9 +38,9 @@ export async function acceptReviewSuggestion(suggestionId: string) {
   if (sErr || !sug) throw new Error("Vorschlag nicht gefunden");
   if (sug.status !== "pending") return; // already handled
 
-  // Carry all images from the chat as the review point's references.
+  // Carry all images/videos from the chat as the review point's references.
   const refImages = sug.media
-    .filter((m) => m.kind === "image")
+    .filter((m) => m.kind === "image" || m.kind === "video")
     .map((m) => m.url);
 
   const { data: order, error: oErr } = await supabase

@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
   },
 
   // Title
-  titleWrap: { paddingTop: 14, paddingBottom: 10 },
+  titleWrap: { paddingTop: 16, paddingBottom: 24 },
   kicker: {
     fontSize: 8.5,
     color: BRAND,
@@ -108,7 +108,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 22, color: FG, ...w(700) },
 
   // Parties
-  parties: { flexDirection: "row", gap: 28, marginBottom: 12 },
+  parties: { flexDirection: "row", gap: 28, marginBottom: 14 },
   party: { flex: 1 },
   partyHeader: {
     fontSize: 7.5,

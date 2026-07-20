@@ -3,14 +3,12 @@ import { promises as fs } from "fs";
 import path from "path";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { createClient } from "@/lib/supabase/server";
-import {
-  buildInvoiceItems,
-  computeInvoiceTotals,
-} from "@/lib/invoice/parse";
-import { generateInvoicePositionsLLM } from "@/lib/invoice/llm";
+import { loadIssuer } from "@/lib/invoice/issuer";
+import { invoiceTotalCents, type InvoiceState } from "@/lib/invoice/types";
 import { InvoiceDocument, type InvoiceData } from "@/lib/invoice/document";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 function shortId(uuid: string) {
   return uuid.replace(/-/g, "").slice(0, 8).toUpperCase();
@@ -27,8 +25,10 @@ async function loadLogoDataUrl(): Promise<string | undefined> {
   }
 }
 
-export async function GET(
-  _req: Request,
+/** Render a PDF from the invoice state posted by the editor (live preview +
+ *  download). Pure render — no DB writes. */
+export async function POST(
+  req: Request,
   { params }: { params: { id: string } },
 ) {
   const supabase = await createClient();
@@ -39,86 +39,60 @@ export async function GET(
     return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
   }
 
+  let body: { state?: InvoiceState };
+  try {
+    body = (await req.json()) as { state?: InvoiceState };
+  } catch {
+    return NextResponse.json({ error: "invalid json" }, { status: 400 });
+  }
+  const state = body.state;
+  if (!state) {
+    return NextResponse.json({ error: "missing state" }, { status: 400 });
+  }
+
   const { data: order } = await supabase
     .from("orders")
-    .select("*")
+    .select("title, id")
     .eq("id", params.id)
     .maybeSingle();
-
   if (!order) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
 
-  let recipientLines: string[] = [];
-  let recipientName = order.client_name ?? "Kunde";
-  let recipientEmail: string | undefined;
-  if (order.contact_id) {
-    const { data: contact } = await supabase
-      .from("contacts")
-      .select("name, company, email, location")
-      .eq("id", order.contact_id)
-      .maybeSingle();
-    if (contact) {
-      recipientName = contact.company || contact.name;
-      const lines: string[] = [];
-      if (contact.company && contact.name) lines.push(contact.name);
-      if (contact.location) lines.push(contact.location);
-      recipientLines = lines;
-      recipientEmail = contact.email ?? undefined;
-    }
-  }
-
-  const llmPositions = await generateInvoicePositionsLLM({
-    title: order.title,
-    orderType: order.order_type,
-    description: order.description,
-  });
-  const items = buildInvoiceItems(
-    order.description,
-    order.title,
-    order.value_cents ?? null,
-    order.order_type,
-    llmPositions,
-  );
-  const totals = computeInvoiceTotals(items);
-
-  const today = new Date();
-  const due = new Date(today);
-  due.setDate(due.getDate() + 14);
+  const issuer = await loadIssuer();
+  const items = state.items.map((li) => ({
+    description: li.description,
+    quantity: li.quantity,
+    unitCents: li.unitCents,
+    totalCents: Math.round(li.quantity * li.unitCents),
+  }));
+  const subtotal = invoiceTotalCents(state.items);
 
   const data: InvoiceData = {
-    invoiceNumber: `KR-${today.getFullYear()}-${shortId(order.id)}`,
-    invoiceDate: today.toISOString(),
-    dueDate: due.toISOString(),
-
-    sender: {
-      name: "Krileo",
-      addressLines: [],
-      email: "info@krileo.com",
-    },
-    recipient: {
-      name: recipientName,
-      addressLines: recipientLines,
-      email: recipientEmail,
-    },
-
+    invoiceNumber: state.number,
+    invoiceDate: state.date,
+    dueDate: state.dueDate,
+    currency: state.currency,
+    taglineRight: state.taglineRight,
+    issuer,
+    recipient: state.recipient,
     orderTitle: order.title,
     orderRef: shortId(order.id),
-
     items,
-    totalCents: totals.totalCents,
-
+    subtotalCents: subtotal,
+    totalCents: subtotal,
+    billingMode: state.billingMode,
+    notes: state.notes,
     logoSrc: await loadLogoDataUrl(),
   };
 
   const buffer = await renderToBuffer(InvoiceDocument({ data }));
-
-  const filename = `Krileo-Rechnung-${data.invoiceNumber}.pdf`;
+  const filename = `Krileo-Rechnung-${state.number}.pdf`;
   return new NextResponse(buffer as unknown as BodyInit, {
     status: 200,
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Content-Disposition": `inline; filename="${filename}"`,
       "Cache-Control": "no-store",
     },
   });

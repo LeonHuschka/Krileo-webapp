@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ProfileForm } from "@/components/settings/profile-form";
 import { GoogleIntegrationCard } from "@/components/settings/google-integration";
+import { IssuerForm } from "@/components/settings/issuer-form";
+import { loadIssuer } from "@/lib/invoice/issuer";
 import { loadGoogleConfig } from "@/lib/google/storage";
 import { listGoogleCalendars } from "@/lib/google/calendar";
 import type { GoogleCalendar } from "@/lib/google/calendar";
@@ -32,6 +34,7 @@ export default async function SettingsPage({
 
   if (!profile) redirect("/login");
 
+  const issuer = await loadIssuer();
   const google = await loadGoogleConfig();
   let calendars: GoogleCalendar[] = [];
   if (google) {
@@ -63,6 +66,8 @@ export default async function SettingsPage({
       )}
 
       <ProfileForm profile={profile} />
+
+      <IssuerForm initial={issuer} />
 
       <GoogleIntegrationCard
         connected={!!google}

@@ -232,6 +232,7 @@ export type Database = {
           dev_items: DevItem[] | null;
           attachments: Attachment[] | null;
           telegram_review_chat_id: number | null;
+          invoice: Json | null;
           position: number;
           created_at: string;
           updated_at: string;
@@ -262,6 +263,7 @@ export type Database = {
           dev_items?: DevItem[] | null;
           attachments?: Attachment[] | null;
           telegram_review_chat_id?: number | null;
+          invoice?: Json | null;
           position?: number;
           created_at?: string;
           updated_at?: string;
@@ -292,10 +294,23 @@ export type Database = {
           dev_items?: DevItem[] | null;
           attachments?: Attachment[] | null;
           telegram_review_chat_id?: number | null;
+          invoice?: Json | null;
           position?: number;
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
+      };
+      app_settings: {
+        Row: { key: string; value: Json; updated_at: string };
+        Insert: { key: string; value?: Json; updated_at?: string };
+        Update: { key?: string; value?: Json; updated_at?: string };
+        Relationships: [];
+      };
+      invoice_counters: {
+        Row: { year: number; next_seq: number };
+        Insert: { year: number; next_seq: number };
+        Update: { year?: number; next_seq?: number };
         Relationships: [];
       };
       order_todos: {
@@ -707,6 +722,10 @@ export type Database = {
           created_at: string;
           updated_at: string;
         };
+      };
+      next_invoice_number: {
+        Args: { p_year: number };
+        Returns: string;
       };
     };
     Enums: {

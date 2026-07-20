@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   Trash2,
-  FileDown,
   ExternalLink,
   GitCommit,
   RefreshCw,
@@ -60,6 +59,8 @@ import type {
   UserProfileRow,
 } from "@/lib/types/database";
 import { ReviewSuggestions } from "@/components/orders/review-suggestions";
+import { InvoiceButton } from "@/components/orders/invoice-editor";
+import type { InvoiceState } from "@/lib/invoice/types";
 import type { DeploymentStatus, DeploymentState } from "@/lib/orders/vercel";
 import { ORDER_TABS, statusToTab, type OrderTabKey } from "@/lib/orders/tabs";
 import { cn } from "@/lib/utils";
@@ -627,18 +628,13 @@ export function OrderDetail({
             </div>
           </div>
           <div className="flex items-center gap-1">
-            <Button
-              asChild
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              title="Rechnung als PDF herunterladen"
-            >
-              <a href={`/api/orders/${order.id}/invoice`} download>
-                <FileDown className="h-3.5 w-3.5" />
-                Rechnung
-              </a>
-            </Button>
+            <InvoiceButton
+              orderId={order.id}
+              orderType={order.order_type}
+              initialInvoice={
+                (order.invoice as unknown as InvoiceState | null) ?? null
+              }
+            />
             <Button
               variant="outline"
               size="sm"

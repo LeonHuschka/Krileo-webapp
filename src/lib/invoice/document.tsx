@@ -1,4 +1,6 @@
 /* eslint-disable jsx-a11y/alt-text */
+import fs from "fs";
+import path from "path";
 import {
   Document,
   Page,
@@ -6,83 +8,106 @@ import {
   View,
   Image,
   StyleSheet,
+  Font,
 } from "@react-pdf/renderer";
 import type { InvoiceItem } from "@/lib/invoice/parse";
+import {
+  fmtMoney,
+  billingClause,
+  type InvoiceBillingMode,
+  type IssuerSettings,
+} from "@/lib/invoice/types";
 
-const BRAND = "#2196F3"; // Krileo blue
+// ── Fonts: Poppins (rounded, matches the offer) with a Helvetica fallback ────
+function registerPoppins(): boolean {
+  try {
+    const dir = path.join(process.cwd(), "public", "fonts");
+    const reg = path.join(dir, "Poppins-Regular.ttf");
+    if (!fs.existsSync(reg)) return false;
+    Font.register({
+      family: "Poppins",
+      fonts: [
+        { src: reg, fontWeight: 400 },
+        { src: path.join(dir, "Poppins-Medium.ttf"), fontWeight: 500 },
+        { src: path.join(dir, "Poppins-SemiBold.ttf"), fontWeight: 600 },
+        { src: path.join(dir, "Poppins-Bold.ttf"), fontWeight: 700 },
+      ],
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+const HAS_POPPINS = registerPoppins();
+Font.registerHyphenationCallback((w) => [w]); // don't hyphenate
+
+/** Font style for a weight, working with Poppins or the Helvetica fallback. */
+function w(weight: 400 | 500 | 600 | 700) {
+  if (HAS_POPPINS) return { fontFamily: "Poppins", fontWeight: weight } as const;
+  return weight >= 600
+    ? ({ fontFamily: "Helvetica-Bold" } as const)
+    : ({ fontFamily: "Helvetica" } as const);
+}
+
+const NAVY = "#0C2340";
+const BRAND = "#2196F3";
 const FG = "#0F1729";
 const MUTED = "#6B7280";
 const FAINT = "#9CA3AF";
 const HAIRLINE = "#E5E7EB";
+const PAD = 48;
 
 const styles = StyleSheet.create({
   page: {
-    paddingTop: 56,
-    paddingBottom: 80,
-    paddingHorizontal: 56,
+    paddingBottom: 64,
     fontSize: 10,
-    fontFamily: "Helvetica",
     color: FG,
-    lineHeight: 1.5,
+    lineHeight: 1.45,
+    ...w(400),
   },
+  body: { paddingHorizontal: PAD },
 
-  // Header
-  header: {
+  // Header band (full-bleed navy)
+  headerBand: {
+    backgroundColor: NAVY,
+    paddingHorizontal: PAD,
+    paddingTop: 34,
+    paddingBottom: 28,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 48,
   },
   brandRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  logo: { width: 38, height: 38 },
-  brandName: {
-    fontSize: 18,
-    fontFamily: "Helvetica-Bold",
-    color: FG,
-    letterSpacing: 1.5,
-  },
+  logo: { width: 30, height: 30 },
+  brandName: { fontSize: 17, color: "#FFFFFF", letterSpacing: 1, ...w(700) },
   invoiceLabel: {
-    fontSize: 9,
-    fontFamily: "Helvetica-Bold",
+    fontSize: 8.5,
     color: BRAND,
-    letterSpacing: 2,
+    letterSpacing: 2.5,
     textAlign: "right",
+    ...w(600),
   },
   invoiceNumber: {
-    fontSize: 14,
-    fontFamily: "Helvetica-Bold",
-    color: FG,
-    marginTop: 2,
+    fontSize: 15,
+    color: "#FFFFFF",
+    marginTop: 3,
     textAlign: "right",
+    ...w(700),
   },
 
-  // Meta strip
-  meta: {
-    flexDirection: "row",
-    gap: 32,
-    paddingTop: 14,
-    paddingBottom: 14,
-    borderTopWidth: 0.75,
-    borderBottomWidth: 0.75,
-    borderColor: HAIRLINE,
-    marginBottom: 32,
+  // Title
+  titleWrap: { paddingTop: 16, paddingBottom: 18 },
+  kicker: {
+    fontSize: 8.5,
+    color: BRAND,
+    letterSpacing: 2,
+    marginBottom: 6,
+    ...w(600),
   },
-  metaCol: { flex: 1 },
-  metaLabel: {
-    fontSize: 7.5,
-    color: FAINT,
-    letterSpacing: 1.4,
-    textTransform: "uppercase",
-    marginBottom: 3,
-  },
-  metaValue: { fontSize: 10.5, color: FG, fontFamily: "Helvetica-Bold" },
+  title: { fontSize: 22, color: FG, ...w(700) },
 
   // Parties
-  parties: {
-    flexDirection: "row",
-    gap: 32,
-    marginBottom: 36,
-  },
+  parties: { flexDirection: "row", gap: 28, marginBottom: 16 },
   party: { flex: 1 },
   partyHeader: {
     fontSize: 7.5,
@@ -90,122 +115,126 @@ const styles = StyleSheet.create({
     letterSpacing: 1.4,
     textTransform: "uppercase",
     marginBottom: 6,
+    ...w(600),
   },
-  partyName: {
-    fontSize: 12,
-    fontFamily: "Helvetica-Bold",
-    color: FG,
-    marginBottom: 2,
-  },
-  partyLine: { fontSize: 10, color: MUTED, marginBottom: 1 },
+  partyName: { fontSize: 11.5, color: FG, marginBottom: 2, ...w(600) },
+  partyLine: { fontSize: 9.5, color: MUTED, marginBottom: 1 },
 
-  // Project subline
-  project: {
-    marginBottom: 24,
+  // Meta strip
+  meta: {
+    flexDirection: "row",
+    gap: 24,
+    paddingTop: 9,
+    paddingBottom: 9,
+    borderTopWidth: 0.75,
+    borderBottomWidth: 0.75,
+    borderColor: HAIRLINE,
+    marginBottom: 16,
   },
-  projectTitle: {
-    fontSize: 18,
-    fontFamily: "Helvetica-Bold",
-    color: FG,
-    letterSpacing: 0.2,
+  metaCol: { flex: 1 },
+  metaLabel: {
+    fontSize: 7,
+    color: FAINT,
+    letterSpacing: 1.3,
+    textTransform: "uppercase",
+    marginBottom: 3,
+    ...w(500),
   },
+  metaValue: { fontSize: 10, color: FG, ...w(600) },
 
-  // Items table
+  // Table
   itemsHead: {
     flexDirection: "row",
     paddingTop: 8,
     paddingBottom: 8,
-    borderTopWidth: 0.75,
-    borderBottomWidth: 0.75,
-    borderColor: HAIRLINE,
+    borderBottomWidth: 1,
+    borderColor: NAVY,
   },
   itemRow: {
     flexDirection: "row",
-    paddingVertical: 12,
+    paddingVertical: 8,
     borderBottomWidth: 0.5,
     borderBottomColor: HAIRLINE,
   },
   th: {
     fontSize: 7.5,
-    color: FAINT,
-    letterSpacing: 1.4,
+    color: NAVY,
+    letterSpacing: 1.2,
     textTransform: "uppercase",
-    fontFamily: "Helvetica-Bold",
+    ...w(600),
   },
-  td: { fontSize: 10.5, color: FG },
+  td: { fontSize: 10, color: FG },
   desc: { flex: 5, paddingRight: 12 },
   qty: { flex: 1, textAlign: "right", paddingRight: 12 },
-  unit: { flex: 1.5, textAlign: "right", paddingRight: 12 },
-  total: { flex: 1.5, textAlign: "right" },
+  unit: { flex: 1.6, textAlign: "right", paddingRight: 12 },
+  amount: { flex: 1.6, textAlign: "right" },
 
   // Totals
-  totals: {
+  totals: { flexDirection: "row", justifyContent: "flex-end", marginTop: 10 },
+  totalsBox: { width: 250 },
+  subRow: {
     flexDirection: "row",
-    justifyContent: "flex-end",
-    marginTop: 24,
+    justifyContent: "space-between",
+    paddingVertical: 3,
   },
-  totalsBox: {
-    width: 240,
-    paddingTop: 14,
+  subLabel: { fontSize: 9.5, color: MUTED },
+  subValue: { fontSize: 9.5, color: FG, ...w(500) },
+  grandRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    marginTop: 8,
+    paddingTop: 10,
     borderTopWidth: 1.5,
     borderTopColor: BRAND,
   },
   grandLabel: {
     fontSize: 8,
     color: FAINT,
-    letterSpacing: 1.4,
+    letterSpacing: 1.3,
     textTransform: "uppercase",
-    marginBottom: 4,
-    textAlign: "right",
+    ...w(600),
   },
-  grandValue: {
-    fontSize: 24,
-    fontFamily: "Helvetica-Bold",
-    color: FG,
-    textAlign: "right",
-  },
+  grandValue: { fontSize: 20, color: FG, ...w(700) },
 
   // Notes
   notes: {
-    marginTop: 56,
-    paddingTop: 16,
+    marginTop: 14,
+    paddingTop: 10,
     borderTopWidth: 0.5,
     borderTopColor: HAIRLINE,
-    fontSize: 9,
+    fontSize: 8,
     color: MUTED,
-    lineHeight: 1.6,
+    lineHeight: 1.45,
   },
   notesHeader: {
     fontSize: 7.5,
     color: FAINT,
     letterSpacing: 1.4,
     textTransform: "uppercase",
-    fontFamily: "Helvetica-Bold",
     marginBottom: 6,
+    ...w(600),
   },
 
-  // Footer
+  // Footer band (offer style)
   footer: {
     position: "absolute",
-    bottom: 32,
-    left: 56,
-    right: 56,
+    bottom: 22,
+    left: PAD,
+    right: PAD,
     flexDirection: "row",
+    alignItems: "flex-start",
     justifyContent: "space-between",
-    paddingTop: 10,
+    paddingTop: 12,
     borderTopWidth: 0.5,
     borderTopColor: HAIRLINE,
-    fontSize: 8,
-    color: FAINT,
   },
+  footCell: { flex: 1 },
+  footLine: { fontSize: 7.5, color: FAINT, marginBottom: 1 },
+  footStrong: { fontSize: 7.5, color: MUTED, ...w(600) },
+  footCenter: { fontSize: 7, color: FAINT, letterSpacing: 1, textAlign: "center" },
+  footRight: { textAlign: "right" },
 });
-
-const fmtEuro = (cents: number) =>
-  new Intl.NumberFormat("de-DE", {
-    style: "currency",
-    currency: "EUR",
-    minimumFractionDigits: 2,
-  }).format(cents / 100);
 
 const DE = (iso: string) =>
   new Date(iso).toLocaleDateString("de-DE", {
@@ -218,43 +247,47 @@ export type InvoiceData = {
   invoiceNumber: string;
   invoiceDate: string;
   dueDate: string;
+  currency: string;
+  taglineRight: string;
 
-  sender: {
-    name: string;
-    addressLines: string[];
-    email?: string;
-    phone?: string;
-    iban?: string;
-    bank?: string;
-  };
-
+  issuer: IssuerSettings;
   recipient: {
     name: string;
     addressLines: string[];
     email?: string;
+    taxId?: string;
   };
 
   orderTitle: string;
   orderRef?: string;
 
   items: InvoiceItem[];
+  subtotalCents: number;
   totalCents: number;
+
+  billingMode: InvoiceBillingMode | null;
+  notes: string;
 
   logoSrc?: string;
 };
 
 export function InvoiceDocument({ data }: { data: InvoiceData }) {
+  const money = (c: number) => fmtMoney(c, data.currency);
+  const category =
+    data.taglineRight.split("·").pop()?.trim().toUpperCase() ?? "";
+  const clause = billingClause(data.billingMode);
+  const stateSuffix = data.issuer.stateOfFormation
+    ? ` formed in ${data.issuer.stateOfFormation}`
+    : "";
+
   return (
-    <Document
-      title={`Rechnung ${data.invoiceNumber}`}
-      author={data.sender.name}
-    >
+    <Document title={`Rechnung ${data.invoiceNumber}`} author={data.issuer.legalName}>
       <Page size="A4" style={styles.page}>
-        {/* Header */}
-        <View style={styles.header}>
+        {/* Header band */}
+        <View style={styles.headerBand}>
           <View style={styles.brandRow}>
             {data.logoSrc && <Image src={data.logoSrc} style={styles.logo} />}
-            <Text style={styles.brandName}>KRILEO</Text>
+            <Text style={styles.brandName}>{data.issuer.brandName.toUpperCase()}</Text>
           </View>
           <View>
             <Text style={styles.invoiceLabel}>RECHNUNG</Text>
@@ -262,117 +295,158 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
           </View>
         </View>
 
-        {/* Meta strip */}
-        <View style={styles.meta}>
-          <View style={styles.metaCol}>
-            <Text style={styles.metaLabel}>Rechnungsdatum</Text>
-            <Text style={styles.metaValue}>{DE(data.invoiceDate)}</Text>
+        <View style={styles.body}>
+          {/* Title */}
+          <View style={styles.titleWrap}>
+            <Text style={styles.kicker}>
+              RECHNUNG{category ? ` · ${category}` : ""}
+            </Text>
+            <Text style={styles.title}>{data.orderTitle}</Text>
           </View>
-          <View style={styles.metaCol}>
-            <Text style={styles.metaLabel}>Fällig am</Text>
-            <Text style={styles.metaValue}>{DE(data.dueDate)}</Text>
-          </View>
-          <View style={styles.metaCol}>
-            <Text style={styles.metaLabel}>Auftragsnummer</Text>
-            <Text style={styles.metaValue}>{data.orderRef ?? "—"}</Text>
-          </View>
-        </View>
 
-        {/* Parties */}
-        <View style={styles.parties}>
-          <View style={styles.party}>
-            <Text style={styles.partyHeader}>Absender</Text>
-            <Text style={styles.partyName}>{data.sender.name}</Text>
-            {data.sender.addressLines.map((l, i) => (
-              <Text key={i} style={styles.partyLine}>
-                {l}
+          {/* Parties */}
+          <View style={styles.parties}>
+            <View style={styles.party}>
+              <Text style={styles.partyHeader}>Rechnungssteller</Text>
+              <Text style={styles.partyName}>{data.issuer.legalName}</Text>
+              {data.issuer.addressLines.map((l, i) => (
+                <Text key={i} style={styles.partyLine}>
+                  {l}
+                </Text>
+              ))}
+              {data.issuer.ein ? (
+                <Text style={styles.partyLine}>EIN: {data.issuer.ein}</Text>
+              ) : null}
+              {data.issuer.email ? (
+                <Text style={styles.partyLine}>{data.issuer.email}</Text>
+              ) : null}
+              {data.issuer.phone ? (
+                <Text style={styles.partyLine}>{data.issuer.phone}</Text>
+              ) : null}
+            </View>
+            <View style={styles.party}>
+              <Text style={styles.partyHeader}>Rechnung an</Text>
+              <Text style={styles.partyName}>{data.recipient.name}</Text>
+              {data.recipient.addressLines.map((l, i) => (
+                <Text key={i} style={styles.partyLine}>
+                  {l}
+                </Text>
+              ))}
+              {data.recipient.taxId ? (
+                <Text style={styles.partyLine}>USt-IdNr.: {data.recipient.taxId}</Text>
+              ) : null}
+              {data.recipient.email ? (
+                <Text style={styles.partyLine}>{data.recipient.email}</Text>
+              ) : null}
+            </View>
+          </View>
+
+          {/* Meta strip */}
+          <View style={styles.meta}>
+            <View style={styles.metaCol}>
+              <Text style={styles.metaLabel}>Rechnungsdatum</Text>
+              <Text style={styles.metaValue}>{DE(data.invoiceDate)}</Text>
+            </View>
+            <View style={styles.metaCol}>
+              <Text style={styles.metaLabel}>Fällig am</Text>
+              <Text style={styles.metaValue}>{DE(data.dueDate)}</Text>
+            </View>
+            <View style={styles.metaCol}>
+              <Text style={styles.metaLabel}>Auftrag</Text>
+              <Text style={styles.metaValue}>{data.orderRef ?? "—"}</Text>
+            </View>
+            <View style={styles.metaCol}>
+              <Text style={styles.metaLabel}>Währung</Text>
+              <Text style={styles.metaValue}>{data.currency}</Text>
+            </View>
+          </View>
+
+          {/* Table */}
+          <View style={styles.itemsHead}>
+            <Text style={[styles.th, styles.desc]}>Leistung</Text>
+            <Text style={[styles.th, styles.qty]}>Menge</Text>
+            <Text style={[styles.th, styles.unit]}>Einzelpreis</Text>
+            <Text style={[styles.th, styles.amount]}>Betrag</Text>
+          </View>
+          {data.items.map((it, i) => (
+            <View key={i} style={styles.itemRow} wrap={false}>
+              <Text style={[styles.td, styles.desc]}>{it.description}</Text>
+              <Text style={[styles.td, styles.qty]}>{it.quantity}</Text>
+              <Text style={[styles.td, styles.unit]}>{money(it.unitCents)}</Text>
+              <Text style={[styles.td, styles.amount]}>{money(it.totalCents)}</Text>
+            </View>
+          ))}
+
+          {/* Totals */}
+          <View style={styles.totals}>
+            <View style={styles.totalsBox}>
+              <View style={styles.subRow}>
+                <Text style={styles.subLabel}>Zwischensumme</Text>
+                <Text style={styles.subValue}>{money(data.subtotalCents)}</Text>
+              </View>
+              <View style={styles.subRow}>
+                <Text style={styles.subLabel}>USt / VAT</Text>
+                <Text style={styles.subValue}>{money(0)}</Text>
+              </View>
+              <View style={styles.grandRow}>
+                <Text style={styles.grandLabel}>Gesamtbetrag</Text>
+                <Text style={styles.grandValue}>{money(data.totalCents)}</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Notes */}
+          <View style={styles.notes}>
+            <Text style={styles.notesHeader}>Zahlung & Hinweise</Text>
+            <Text>
+              Bitte begleiche den Gesamtbetrag von{" "}
+              <Text style={{ ...w(600), color: FG }}>{money(data.totalCents)}</Text>{" "}
+              innerhalb von 14 Tagen (NET 14, fällig am {DE(data.dueDate)}) unter
+              Angabe der Rechnungsnummer{" "}
+              <Text style={{ ...w(600), color: FG }}>{data.invoiceNumber}</Text>.
+            </Text>
+            {data.issuer.paymentLines.length > 0 ? (
+              <Text style={{ marginTop: 3 }}>
+                Zahlung per {data.issuer.paymentMethod}:{" "}
+                {data.issuer.paymentLines.join("  ·  ")}
               </Text>
-            ))}
-            {data.sender.email && (
-              <Text style={styles.partyLine}>{data.sender.email}</Text>
-            )}
-            {data.sender.phone && (
-              <Text style={styles.partyLine}>{data.sender.phone}</Text>
-            )}
-          </View>
-          <View style={styles.party}>
-            <Text style={styles.partyHeader}>Empfänger</Text>
-            <Text style={styles.partyName}>{data.recipient.name}</Text>
-            {data.recipient.addressLines.map((l, i) => (
-              <Text key={i} style={styles.partyLine}>
-                {l}
-              </Text>
-            ))}
-            {data.recipient.email && (
-              <Text style={styles.partyLine}>{data.recipient.email}</Text>
-            )}
-          </View>
-        </View>
-
-        {/* Project headline */}
-        <View style={styles.project}>
-          <Text style={styles.partyHeader}>Projekt</Text>
-          <Text style={styles.projectTitle}>{data.orderTitle}</Text>
-        </View>
-
-        {/* Items table */}
-        <View style={styles.itemsHead}>
-          <Text style={[styles.th, styles.desc]}>Leistung</Text>
-          <Text style={[styles.th, styles.qty]}>Menge</Text>
-          <Text style={[styles.th, styles.unit]}>Einzelpreis</Text>
-          <Text style={[styles.th, styles.total]}>Betrag</Text>
-        </View>
-        {data.items.map((it, i) => (
-          <View key={i} style={styles.itemRow}>
-            <Text style={[styles.td, styles.desc]}>{it.description}</Text>
-            <Text style={[styles.td, styles.qty]}>{it.quantity}</Text>
-            <Text style={[styles.td, styles.unit]}>
-              {fmtEuro(it.unitCents)}
+            ) : null}
+            <Text style={{ marginTop: 6 }}>
+              {data.issuer.legalName} is a U.S. LLC{stateSuffix}, not
+              registered for VAT — no VAT is charged and no U.S. sales tax
+              applies to the services rendered. For EU B2B clients this supply
+              may fall under the reverse-charge mechanism (Directive
+              2006/112/EC). All amounts in {data.currency}.
             </Text>
-            <Text style={[styles.td, styles.total]}>
-              {fmtEuro(it.totalCents)}
+            {clause ? <Text style={{ marginTop: 6 }}>{clause}</Text> : null}
+            {data.notes.trim() ? (
+              <Text style={{ marginTop: 8 }}>{data.notes.trim()}</Text>
+            ) : null}
+            <Text style={{ marginTop: 10, color: FG }}>
+              Vielen Dank für die Zusammenarbeit.
             </Text>
           </View>
-        ))}
-
-        {/* Total */}
-        <View style={styles.totals}>
-          <View style={styles.totalsBox}>
-            <Text style={styles.grandLabel}>Gesamtbetrag</Text>
-            <Text style={styles.grandValue}>{fmtEuro(data.totalCents)}</Text>
-          </View>
         </View>
 
-        {/* Notes */}
-        <View style={styles.notes}>
-          <Text style={styles.notesHeader}>Zahlungsinformationen</Text>
-          <Text>
-            Bitte überweise den Gesamtbetrag innerhalb von 14 Tagen unter
-            Angabe der Rechnungsnummer{" "}
-            <Text style={{ fontFamily: "Helvetica-Bold", color: FG }}>
-              {data.invoiceNumber}
-            </Text>
-            .
-          </Text>
-          {data.sender.iban && (
-            <Text style={{ marginTop: 4 }}>
-              IBAN: {data.sender.iban}
-              {data.sender.bank ? `  ·  ${data.sender.bank}` : ""}
-            </Text>
-          )}
-          <Text style={{ marginTop: 8 }}>
-            Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.
-          </Text>
-          <Text style={{ marginTop: 14, color: FG }}>
-            Vielen Dank für deinen Auftrag.
-          </Text>
-        </View>
-
-        {/* Footer */}
+        {/* Footer band */}
         <View style={styles.footer} fixed>
-          <Text>{data.sender.name}</Text>
-          {data.sender.email ? <Text>{data.sender.email}</Text> : <Text> </Text>}
-          <Text>krileo.de</Text>
+          <View style={styles.footCell}>
+            <Text style={styles.footStrong}>GF {data.issuer.gf}</Text>
+            <Text style={styles.footLine}>{data.issuer.email}</Text>
+          </View>
+          <View style={styles.footCell}>
+            <Text style={styles.footCenter}>
+              PART OF {data.issuer.legalName.toUpperCase()}
+            </Text>
+          </View>
+          <View style={styles.footCell}>
+            <Text style={[styles.footStrong, styles.footRight]}>
+              {data.taglineRight}
+            </Text>
+            <Text style={[styles.footLine, styles.footRight]}>
+              {data.issuer.phone}
+            </Text>
+          </View>
         </View>
       </Page>
     </Document>

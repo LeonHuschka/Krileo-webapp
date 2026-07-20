@@ -6,6 +6,7 @@ const nextConfig = {
       "/api/orders/[id]/invoice": [
         "./public/fonts/**",
         "./public/krileo-icon.png",
+        "./public/duraska-logo.png",
       ],
     },
   },

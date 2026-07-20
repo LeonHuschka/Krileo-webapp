@@ -266,6 +266,15 @@ export function InvoiceButton({
                   </Field>
                 </div>
 
+                <Field label="Ansprechpartner (Rechnungssteller)">
+                  <Input
+                    defaultValue={state.issuerContact}
+                    onBlur={(e) => patch({ issuerContact: e.target.value })}
+                    placeholder="z.B. Leon Huschka (optional)"
+                    className="h-8"
+                  />
+                </Field>
+
                 {/* Recipient */}
                 <div className="space-y-2">
                   <SectionLabel>Rechnung an</SectionLabel>

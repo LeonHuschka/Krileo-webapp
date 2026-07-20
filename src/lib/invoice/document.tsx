@@ -59,7 +59,7 @@ const PAD = 48;
 
 const styles = StyleSheet.create({
   page: {
-    paddingBottom: 64,
+    paddingBottom: 50,
     fontSize: 10,
     color: FG,
     lineHeight: 1.45,
@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
   },
 
   // Title
-  titleWrap: { paddingTop: 16, paddingBottom: 18 },
+  titleWrap: { paddingTop: 14, paddingBottom: 10 },
   kicker: {
     fontSize: 8.5,
     color: BRAND,
@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 22, color: FG, ...w(700) },
 
   // Parties
-  parties: { flexDirection: "row", gap: 28, marginBottom: 16 },
+  parties: { flexDirection: "row", gap: 28, marginBottom: 12 },
   party: { flex: 1 },
   partyHeader: {
     fontSize: 7.5,
@@ -117,19 +117,20 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     ...w(600),
   },
-  partyName: { fontSize: 11.5, color: FG, marginBottom: 2, ...w(600) },
+  partyName: { fontSize: 11.5, color: FG, marginBottom: 1, ...w(600) },
+  partySub: { fontSize: 8.5, color: FAINT, marginBottom: 4, ...w(500) },
   partyLine: { fontSize: 9.5, color: MUTED, marginBottom: 1 },
 
   // Meta strip
   meta: {
     flexDirection: "row",
     gap: 24,
-    paddingTop: 9,
-    paddingBottom: 9,
+    paddingTop: 7,
+    paddingBottom: 7,
     borderTopWidth: 0.75,
     borderBottomWidth: 0.75,
     borderColor: HAIRLINE,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   metaCol: { flex: 1 },
   metaLabel: {
@@ -152,7 +153,7 @@ const styles = StyleSheet.create({
   },
   itemRow: {
     flexDirection: "row",
-    paddingVertical: 8,
+    paddingVertical: 7,
     borderBottomWidth: 0.5,
     borderBottomColor: HAIRLINE,
   },
@@ -170,7 +171,7 @@ const styles = StyleSheet.create({
   amount: { flex: 1.6, textAlign: "right" },
 
   // Totals
-  totals: { flexDirection: "row", justifyContent: "flex-end", marginTop: 10 },
+  totals: { flexDirection: "row", justifyContent: "flex-end", marginTop: 8 },
   totalsBox: { width: 250 },
   subRow: {
     flexDirection: "row",
@@ -183,8 +184,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-end",
-    marginTop: 8,
-    paddingTop: 10,
+    marginTop: 6,
+    paddingTop: 8,
     borderTopWidth: 1.5,
     borderTopColor: BRAND,
   },
@@ -199,8 +200,8 @@ const styles = StyleSheet.create({
 
   // Notes
   notes: {
-    marginTop: 14,
-    paddingTop: 10,
+    marginTop: 10,
+    paddingTop: 9,
     borderTopWidth: 0.5,
     borderTopColor: HAIRLINE,
     fontSize: 8,
@@ -232,7 +233,9 @@ const styles = StyleSheet.create({
   footCell: { flex: 1 },
   footLine: { fontSize: 7.5, color: FAINT, marginBottom: 1 },
   footStrong: { fontSize: 7.5, color: MUTED, ...w(600) },
-  footCenter: { fontSize: 7, color: FAINT, letterSpacing: 1, textAlign: "center" },
+  footCenter: { fontSize: 6.5, color: FAINT, letterSpacing: 1, textAlign: "center", marginTop: 3 },
+  footCenterCell: { flex: 1, alignItems: "center" },
+  duraskaLogo: { width: 74, height: 22 },
   footRight: { textAlign: "right" },
 });
 
@@ -249,6 +252,7 @@ export type InvoiceData = {
   dueDate: string;
   currency: string;
   taglineRight: string;
+  issuerContact?: string;
 
   issuer: IssuerSettings;
   recipient: {
@@ -269,6 +273,7 @@ export type InvoiceData = {
   notes: string;
 
   logoSrc?: string;
+  duraskaLogoSrc?: string;
 };
 
 export function InvoiceDocument({ data }: { data: InvoiceData }) {
@@ -276,9 +281,6 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
   const category =
     data.taglineRight.split("·").pop()?.trim().toUpperCase() ?? "";
   const clause = billingClause(data.billingMode);
-  const stateSuffix = data.issuer.stateOfFormation
-    ? ` formed in ${data.issuer.stateOfFormation}`
-    : "";
 
   return (
     <Document title={`Rechnung ${data.invoiceNumber}`} author={data.issuer.legalName}>
@@ -308,7 +310,11 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
           <View style={styles.parties}>
             <View style={styles.party}>
               <Text style={styles.partyHeader}>Rechnungssteller</Text>
-              <Text style={styles.partyName}>{data.issuer.legalName}</Text>
+              <Text style={styles.partyName}>{data.issuer.brandName}</Text>
+              <Text style={styles.partySub}>{data.issuer.legalName}</Text>
+              {data.issuerContact ? (
+                <Text style={styles.partyLine}>{data.issuerContact}</Text>
+              ) : null}
               {data.issuer.addressLines.map((l, i) => (
                 <Text key={i} style={styles.partyLine}>
                   {l}
@@ -381,11 +387,11 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
           <View style={styles.totals}>
             <View style={styles.totalsBox}>
               <View style={styles.subRow}>
-                <Text style={styles.subLabel}>Zwischensumme</Text>
+                <Text style={styles.subLabel}>Nettobetrag</Text>
                 <Text style={styles.subValue}>{money(data.subtotalCents)}</Text>
               </View>
               <View style={styles.subRow}>
-                <Text style={styles.subLabel}>USt / VAT</Text>
+                <Text style={styles.subLabel}>USt · Reverse Charge</Text>
                 <Text style={styles.subValue}>{money(0)}</Text>
               </View>
               <View style={styles.grandRow}>
@@ -411,12 +417,16 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
                 {data.issuer.paymentLines.join("  ·  ")}
               </Text>
             ) : null}
-            <Text style={{ marginTop: 6 }}>
-              {data.issuer.legalName} is a U.S. LLC{stateSuffix}, not
-              registered for VAT — no VAT is charged and no U.S. sales tax
-              applies to the services rendered. For EU B2B clients this supply
-              may fall under the reverse-charge mechanism (Directive
-              2006/112/EC). All amounts in {data.currency}.
+            <Text style={{ marginTop: 6, color: FG, ...w(600) }}>
+              Steuerschuldnerschaft des Leistungsempfängers · Reverse Charge
+            </Text>
+            <Text style={{ marginTop: 1 }}>
+              Die Umsatzsteuer wird nicht von {data.issuer.legalName}{" "}
+              ausgewiesen, sondern ist gemäß Reverse-Charge-Verfahren vom
+              Leistungsempfänger im Bestimmungsland selbst abzuführen (§ 13b
+              UStG bzw. Art. 196 RL 2006/112/EG). {data.issuer.legalName} ist
+              eine US-Gesellschaft und nicht in der EU umsatzsteuerlich
+              registriert. Alle Beträge in {data.currency}.
             </Text>
             {clause ? <Text style={{ marginTop: 6 }}>{clause}</Text> : null}
             {data.notes.trim() ? (
@@ -434,7 +444,10 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
             <Text style={styles.footStrong}>GF {data.issuer.gf}</Text>
             <Text style={styles.footLine}>{data.issuer.email}</Text>
           </View>
-          <View style={styles.footCell}>
+          <View style={styles.footCenterCell}>
+            {data.duraskaLogoSrc ? (
+              <Image src={data.duraskaLogoSrc} style={styles.duraskaLogo} />
+            ) : null}
             <Text style={styles.footCenter}>
               PART OF {data.issuer.legalName.toUpperCase()}
             </Text>

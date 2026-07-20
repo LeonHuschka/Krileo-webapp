@@ -86,6 +86,7 @@ export async function initInvoiceDraft(orderId: string): Promise<InvoiceState> {
     date: nowIso,
     dueDate: due.toISOString(),
     currency: "EUR",
+    issuerContact: "",
     taglineRight: defaultTagline(order.order_type),
     recipient,
     items,

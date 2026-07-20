@@ -16,6 +16,7 @@ export type InvoiceState = {
   date: string; // ISO
   dueDate: string; // ISO
   currency: string; // ISO 4217, e.g. "EUR", "USD"
+  issuerContact: string; // editable person on the sender block (Leon / Kristian)
   taglineRight: string; // dynamic footer-right, e.g. "Krileo · Webdesign"
   recipient: {
     name: string;

@@ -14,11 +14,9 @@ function shortId(uuid: string) {
   return uuid.replace(/-/g, "").slice(0, 8).toUpperCase();
 }
 
-async function loadLogoDataUrl(): Promise<string | undefined> {
+async function loadPng(name: string): Promise<string | undefined> {
   try {
-    const file = await fs.readFile(
-      path.join(process.cwd(), "public", "krileo-icon.png"),
-    );
+    const file = await fs.readFile(path.join(process.cwd(), "public", name));
     return `data:image/png;base64,${file.toString("base64")}`;
   } catch {
     return undefined;
@@ -74,6 +72,7 @@ export async function POST(
     dueDate: state.dueDate,
     currency: state.currency,
     taglineRight: state.taglineRight,
+    issuerContact: state.issuerContact ?? "",
     issuer,
     recipient: state.recipient,
     orderTitle: order.title,
@@ -83,7 +82,8 @@ export async function POST(
     totalCents: subtotal,
     billingMode: state.billingMode,
     notes: state.notes,
-    logoSrc: await loadLogoDataUrl(),
+    logoSrc: await loadPng("krileo-icon.png"),
+    duraskaLogoSrc: await loadPng("duraska-logo.png"),
   };
 
   const buffer = await renderToBuffer(InvoiceDocument({ data }));

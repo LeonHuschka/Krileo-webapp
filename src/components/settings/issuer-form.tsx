@@ -52,6 +52,15 @@ export function IssuerForm({ initial }: { initial: IssuerSettings }) {
             <Input
               value={s.brandName}
               onChange={(e) => set({ brandName: e.target.value })}
+              placeholder="Krileo"
+              className="h-9"
+            />
+          </F>
+          <F label="Rechnungssteller-Name (auf der Rechnung)">
+            <Input
+              value={s.senderName}
+              onChange={(e) => set({ senderName: e.target.value })}
+              placeholder="Krileo Agentur"
               className="h-9"
             />
           </F>

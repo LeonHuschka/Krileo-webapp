@@ -31,6 +31,7 @@ import {
 import {
   fmtMoney,
   invoiceTotalCents,
+  vatCentsOf,
   defaultTagline,
   type InvoiceState,
   type InvoiceBillingMode,
@@ -162,7 +163,9 @@ export function InvoiceButton({
       s ? { ...s, items: s.items.filter((it) => it.id !== id) } : s,
     );
 
-  const total = state ? invoiceTotalCents(state.items) : 0;
+  const net = state ? invoiceTotalCents(state.items) : 0;
+  const vat = state ? vatCentsOf(net, state.showVat, state.vatRate) : 0;
+  const gross = net + vat;
 
   return (
     <>
@@ -398,11 +401,66 @@ export function InvoiceButton({
                       </button>
                     </div>
                   ))}
-                  <div className="flex justify-between border-t border-border/60 pt-2 text-sm">
-                    <span className="text-muted-foreground">Gesamt</span>
-                    <span className="font-semibold">
-                      {fmtMoney(total, state.currency)}
-                    </span>
+                  <div className="space-y-1 border-t border-border/60 pt-2 text-sm">
+                    {state.showVat && (
+                      <>
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>Netto</span>
+                          <span>{fmtMoney(net, state.currency)}</span>
+                        </div>
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>USt {state.vatRate}%</span>
+                          <span>{fmtMoney(vat, state.currency)}</span>
+                        </div>
+                      </>
+                    )}
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Gesamt</span>
+                      <span className="font-semibold">
+                        {fmtMoney(gross, state.currency)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* VAT display */}
+                <div className="flex items-center justify-between gap-2 rounded-lg border border-border/60 bg-muted/10 p-2.5">
+                  <div className="min-w-0">
+                    <div className="text-sm">USt ausweisen</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      Zeigt eine USt-Zeile & Bruttosumme; der Reverse-Charge-Vermerk
+                      bleibt unten.
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    {state.showVat && (
+                      <div className="flex items-center gap-1">
+                        <Input
+                          type="number"
+                          value={state.vatRate}
+                          onChange={(e) =>
+                            patch({ vatRate: Number(e.target.value) || 0 })
+                          }
+                          className="h-8 w-14 px-1 text-right text-sm"
+                        />
+                        <span className="text-xs text-muted-foreground">%</span>
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => patch({ showVat: !state.showVat })}
+                      className={cn(
+                        "relative h-5 w-9 rounded-full transition-colors",
+                        state.showVat ? "bg-primary" : "bg-muted-foreground/30",
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all",
+                          state.showVat ? "left-4" : "left-0.5",
+                        )}
+                      />
+                    </button>
                   </div>
                 </div>
 

@@ -17,6 +17,8 @@ export type InvoiceState = {
   dueDate: string; // ISO
   currency: string; // ISO 4217, e.g. "EUR", "USD"
   issuerContact: string; // editable person on the sender block (Leon / Kristian)
+  showVat: boolean; // show a VAT line + gross total (still reverse-charge below)
+  vatRate: number; // percent, e.g. 19
   taglineRight: string; // dynamic footer-right, e.g. "Krileo · Webdesign"
   recipient: {
     name: string;
@@ -34,8 +36,9 @@ export type InvoiceState = {
 
 /** Invoice issuer (the US LLC) — managed in Settings, stored in app_settings. */
 export type IssuerSettings = {
-  legalName: string; // "Duraska Studios LLC"
-  brandName: string; // "Krileo"
+  legalName: string; // "Duraska Studios LLC" (legal entity)
+  brandName: string; // "Krileo" — header wordmark
+  senderName: string; // "Krileo Agentur" — bold name on the sender block
   addressLines: string[]; // US registered address
   ein: string; // "XX-XXXXXXX"
   stateOfFormation: string; // e.g. "Wyoming"
@@ -53,14 +56,19 @@ export const ISSUER_KEY = "invoice_issuer";
 export const DEFAULT_ISSUER: IssuerSettings = {
   legalName: "Duraska Studios LLC",
   brandName: "Krileo",
+  senderName: "Krileo Agentur",
   addressLines: [],
   ein: "",
   stateOfFormation: "",
   email: "krileoworks@gmail.com",
   phone: "+49 152 33511785",
   gf: "Leon Huschka & Kristian Durasin",
-  paymentMethod: "Wise",
-  paymentLines: [],
+  paymentMethod: "Banküberweisung",
+  paymentLines: [
+    "Empfänger: Leon Huschka",
+    "IBAN: DE97 1001 0178 1317 0826 67",
+    "BIC: REVODEB2",
+  ],
 };
 
 /** Right-side footer tagline suggested from the order type (editable). */
@@ -104,4 +112,13 @@ export function invoiceTotalCents(items: InvoiceLineItem[]): number {
     (s, it) => s + Math.round(it.quantity * it.unitCents),
     0,
   );
+}
+
+/** VAT amount in cents for a net subtotal (0 when VAT is not shown). */
+export function vatCentsOf(
+  subtotalCents: number,
+  showVat: boolean,
+  vatRate: number,
+): number {
+  return showVat ? Math.round((subtotalCents * vatRate) / 100) : 0;
 }

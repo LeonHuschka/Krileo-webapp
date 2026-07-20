@@ -73,6 +73,8 @@ export async function POST(
     currency: state.currency,
     taglineRight: state.taglineRight,
     issuerContact: state.issuerContact ?? "",
+    showVat: state.showVat ?? false,
+    vatRate: state.vatRate ?? 19,
     issuer,
     recipient: state.recipient,
     orderTitle: order.title,

@@ -14,6 +14,7 @@ import type { InvoiceItem } from "@/lib/invoice/parse";
 import {
   fmtMoney,
   billingClause,
+  vatCentsOf,
   type InvoiceBillingMode,
   type IssuerSettings,
 } from "@/lib/invoice/types";
@@ -253,6 +254,8 @@ export type InvoiceData = {
   currency: string;
   taglineRight: string;
   issuerContact?: string;
+  showVat: boolean;
+  vatRate: number;
 
   issuer: IssuerSettings;
   recipient: {
@@ -281,6 +284,8 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
   const category =
     data.taglineRight.split("·").pop()?.trim().toUpperCase() ?? "";
   const clause = billingClause(data.billingMode);
+  const vat = vatCentsOf(data.subtotalCents, data.showVat, data.vatRate);
+  const grand = data.subtotalCents + vat;
 
   return (
     <Document title={`Rechnung ${data.invoiceNumber}`} author={data.issuer.legalName}>
@@ -289,7 +294,7 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
         <View style={styles.headerBand}>
           <View style={styles.brandRow}>
             {data.logoSrc && <Image src={data.logoSrc} style={styles.logo} />}
-            <Text style={styles.brandName}>{data.issuer.brandName.toUpperCase()}</Text>
+            <Text style={styles.brandName}>{data.issuer.brandName}</Text>
           </View>
           <View>
             <Text style={styles.invoiceLabel}>RECHNUNG</Text>
@@ -310,8 +315,7 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
           <View style={styles.parties}>
             <View style={styles.party}>
               <Text style={styles.partyHeader}>Rechnungssteller</Text>
-              <Text style={styles.partyName}>{data.issuer.brandName}</Text>
-              <Text style={styles.partySub}>{data.issuer.legalName}</Text>
+              <Text style={styles.partyName}>{data.issuer.senderName}</Text>
               {data.issuerContact ? (
                 <Text style={styles.partyLine}>{data.issuerContact}</Text>
               ) : null}
@@ -320,9 +324,10 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
                   {l}
                 </Text>
               ))}
-              {data.issuer.ein ? (
-                <Text style={styles.partyLine}>EIN: {data.issuer.ein}</Text>
-              ) : null}
+              <Text style={styles.partySub}>
+                {data.issuer.legalName}
+                {data.issuer.ein ? ` · EIN ${data.issuer.ein}` : ""}
+              </Text>
               {data.issuer.email ? (
                 <Text style={styles.partyLine}>{data.issuer.email}</Text>
               ) : null}
@@ -391,12 +396,14 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
                 <Text style={styles.subValue}>{money(data.subtotalCents)}</Text>
               </View>
               <View style={styles.subRow}>
-                <Text style={styles.subLabel}>USt · Reverse Charge</Text>
-                <Text style={styles.subValue}>{money(0)}</Text>
+                <Text style={styles.subLabel}>
+                  USt / VAT{data.showVat ? ` (${data.vatRate} %)` : ""}
+                </Text>
+                <Text style={styles.subValue}>{money(vat)}</Text>
               </View>
               <View style={styles.grandRow}>
                 <Text style={styles.grandLabel}>Gesamtbetrag</Text>
-                <Text style={styles.grandValue}>{money(data.totalCents)}</Text>
+                <Text style={styles.grandValue}>{money(grand)}</Text>
               </View>
             </View>
           </View>
@@ -406,7 +413,7 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
             <Text style={styles.notesHeader}>Zahlung & Hinweise</Text>
             <Text>
               Bitte begleiche den Gesamtbetrag von{" "}
-              <Text style={{ ...w(600), color: FG }}>{money(data.totalCents)}</Text>{" "}
+              <Text style={{ ...w(600), color: FG }}>{money(grand)}</Text>{" "}
               innerhalb von 14 Tagen (NET 14, fällig am {DE(data.dueDate)}) unter
               Angabe der Rechnungsnummer{" "}
               <Text style={{ ...w(600), color: FG }}>{data.invoiceNumber}</Text>.
@@ -417,16 +424,9 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
                 {data.issuer.paymentLines.join("  ·  ")}
               </Text>
             ) : null}
-            <Text style={{ marginTop: 6, color: FG, ...w(600) }}>
-              Steuerschuldnerschaft des Leistungsempfängers · Reverse Charge
-            </Text>
-            <Text style={{ marginTop: 1 }}>
-              Die Umsatzsteuer wird nicht von {data.issuer.legalName}{" "}
-              ausgewiesen, sondern ist gemäß Reverse-Charge-Verfahren vom
-              Leistungsempfänger im Bestimmungsland selbst abzuführen (§ 13b
-              UStG bzw. Art. 196 RL 2006/112/EG). {data.issuer.legalName} ist
-              eine US-Gesellschaft und nicht in der EU umsatzsteuerlich
-              registriert. Alle Beträge in {data.currency}.
+            <Text style={{ marginTop: 6 }}>
+              Reverse-Charge-Verfahren: Die Umsatzsteuer schuldet der
+              Leistungsempfänger (§ 13b UStG). Alle Beträge in {data.currency}.
             </Text>
             {clause ? <Text style={{ marginTop: 6 }}>{clause}</Text> : null}
             {data.notes.trim() ? (

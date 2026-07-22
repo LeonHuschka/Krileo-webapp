@@ -57,7 +57,20 @@ export async function POST(
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
 
-  const issuer = await loadIssuer();
+  const base = await loadIssuer();
+  // Per-invoice issuer identity (editor) layered over the Settings defaults.
+  const name = state.issuerName?.trim() || base.senderName;
+  const degree = (state.issuerDegree ?? base.degree ?? "").trim();
+  const addressLines =
+    state.issuerAddressLines && state.issuerAddressLines.length > 0
+      ? state.issuerAddressLines
+      : base.addressLines;
+  const issuer = {
+    ...base,
+    senderName: degree ? `${name}, ${degree}` : name,
+    addressLines,
+  };
+
   const items = state.items.map((li) => ({
     description: li.description,
     quantity: li.quantity,

@@ -16,7 +16,11 @@ export type InvoiceState = {
   date: string; // ISO
   dueDate: string; // ISO
   currency: string; // ISO 4217, e.g. "EUR", "USD"
-  issuerContact: string; // editable person on the sender block (Leon / Kristian)
+  issuerContact: string; // legacy single contact line (kept for old drafts)
+  // Per-invoice issuer identity, seeded from Settings and editable in the editor.
+  issuerName?: string; // sender name, e.g. "Leon Huschka"
+  issuerDegree?: string; // academic degree, e.g. "M. Sc."
+  issuerAddressLines?: string[]; // correspondence (c/o) address
   showVat: boolean; // show a VAT line + gross total (still reverse-charge below)
   vatRate: number; // percent, e.g. 19
   taglineRight: string; // dynamic footer-right, e.g. "Krileo · Webdesign"
@@ -39,6 +43,7 @@ export type InvoiceState = {
 export type IssuerSettings = {
   brandName: string; // "Krileo" — header wordmark + footer mark
   senderName: string; // legal person on the sender block, "Leon Huschka"
+  degree: string; // academic degree appended to the name, e.g. "M. Sc."
   addressLines: string[]; // correspondence address (required)
   email: string;
   phone: string;
@@ -54,6 +59,7 @@ export const ISSUER_KEY = "invoice_issuer";
 export const DEFAULT_ISSUER: IssuerSettings = {
   brandName: "Krileo",
   senderName: "Leon Huschka",
+  degree: "M. Sc.",
   addressLines: [],
   email: "krileoworks@gmail.com",
   phone: "+49 152 33511785",

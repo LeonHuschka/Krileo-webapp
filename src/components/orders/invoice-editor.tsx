@@ -303,71 +303,108 @@ export function InvoiceButton({
                   </Field>
                 </div>
 
-                <Field label="Ansprechpartner (Rechnungssteller)">
-                  <Input
-                    defaultValue={state.issuerContact}
-                    onBlur={(e) => patch({ issuerContact: e.target.value })}
-                    placeholder="z.B. Leon Huschka (optional)"
-                    className="h-8"
-                  />
-                </Field>
-
-                {/* Recipient */}
+                {/* Issuer (per invoice, seeded from settings) */}
                 <div className="space-y-2">
-                  <SectionLabel>Rechnung an</SectionLabel>
-                  <Input
-                    defaultValue={state.recipient.name}
-                    onBlur={(e) =>
-                      patch({
-                        recipient: { ...state.recipient, name: e.target.value },
-                      })
-                    }
-                    placeholder="Kunde / Firma"
-                    className="h-8"
-                  />
-                  <Textarea
-                    defaultValue={state.recipient.addressLines.join("\n")}
-                    onBlur={(e) =>
-                      patch({
-                        recipient: {
-                          ...state.recipient,
-                          addressLines: e.target.value
+                  <SectionLabel>Rechnungssteller</SectionLabel>
+                  <div className="grid grid-cols-[1fr_7rem] gap-2">
+                    <Field label="Name">
+                      <Input
+                        defaultValue={state.issuerName ?? ""}
+                        onBlur={(e) => patch({ issuerName: e.target.value })}
+                        placeholder="Leon Huschka"
+                        className="h-8"
+                      />
+                    </Field>
+                    <Field label="Akad. Grad">
+                      <Input
+                        defaultValue={state.issuerDegree ?? ""}
+                        onBlur={(e) => patch({ issuerDegree: e.target.value })}
+                        placeholder="M. Sc."
+                        className="h-8"
+                      />
+                    </Field>
+                  </div>
+                  <Field label="Anschrift (c/o Korrespondenzadresse)">
+                    <Textarea
+                      defaultValue={(state.issuerAddressLines ?? []).join("\n")}
+                      onBlur={(e) =>
+                        patch({
+                          issuerAddressLines: e.target.value
                             .split("\n")
                             .map((l) => l.trim())
                             .filter(Boolean),
-                        },
-                      })
-                    }
-                    placeholder="Straße&#10;PLZ Ort&#10;Land"
-                    className="min-h-[64px] text-sm"
-                  />
+                        })
+                      }
+                      placeholder="c/o Max Mustermann&#10;Musterstraße 12&#10;80331 München"
+                      className="min-h-[60px] text-sm"
+                    />
+                  </Field>
+                </div>
+
+                {/* Recipient */}
+                <div className="space-y-2">
+                  <SectionLabel>Rechnungsempfänger</SectionLabel>
+                  <Field label="Name / Firma">
+                    <Input
+                      defaultValue={state.recipient.name}
+                      onBlur={(e) =>
+                        patch({
+                          recipient: { ...state.recipient, name: e.target.value },
+                        })
+                      }
+                      placeholder="Kunde / Firma"
+                      className="h-8"
+                    />
+                  </Field>
+                  <Field label="Anschrift">
+                    <Textarea
+                      defaultValue={state.recipient.addressLines.join("\n")}
+                      onBlur={(e) =>
+                        patch({
+                          recipient: {
+                            ...state.recipient,
+                            addressLines: e.target.value
+                              .split("\n")
+                              .map((l) => l.trim())
+                              .filter(Boolean),
+                          },
+                        })
+                      }
+                      placeholder="Ansprechpartner&#10;Straße&#10;PLZ Ort"
+                      className="min-h-[64px] text-sm"
+                    />
+                  </Field>
                   <div className="grid grid-cols-2 gap-2">
-                    <Input
-                      defaultValue={state.recipient.email ?? ""}
-                      onBlur={(e) =>
-                        patch({
-                          recipient: {
-                            ...state.recipient,
-                            email: e.target.value.trim() || undefined,
-                          },
-                        })
-                      }
-                      placeholder="E-Mail"
-                      className="h-8"
-                    />
-                    <Input
-                      defaultValue={state.recipient.taxId ?? ""}
-                      onBlur={(e) =>
-                        patch({
-                          recipient: {
-                            ...state.recipient,
-                            taxId: e.target.value.trim() || undefined,
-                          },
-                        })
-                      }
-                      placeholder="USt-IdNr. (optional)"
-                      className="h-8"
-                    />
+                    <Field label="E-Mail">
+                      <Input
+                        defaultValue={state.recipient.email ?? ""}
+                        onBlur={(e) =>
+                          patch({
+                            recipient: {
+                              ...state.recipient,
+                              email: e.target.value.trim() || undefined,
+                            },
+                          })
+                        }
+                        placeholder="optional"
+                        className="h-8"
+                      />
+                    </Field>
+                    <Field label="USt-IdNr.">
+                      <Input
+                        defaultValue={state.recipient.taxId ?? ""}
+                        onBlur={(e) =>
+                          patch({
+                            recipient: {
+                              ...state.recipient,
+                              taxId: e.target.value.trim() || undefined,
+                            },
+                          })
+                        }
+                        placeholder="optional"
+                        className="h-8"
+                      />
+                    </Field>
                   </div>
                 </div>
 

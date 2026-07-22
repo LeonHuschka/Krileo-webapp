@@ -57,6 +57,14 @@ export function IssuerForm({ initial }: { initial: IssuerSettings }) {
               className="h-9"
             />
           </F>
+          <F label="Akad. Grad (optional)">
+            <Input
+              value={s.degree}
+              onChange={(e) => set({ degree: e.target.value })}
+              placeholder="M. Sc."
+              className="h-9"
+            />
+          </F>
           <F label="Fußzeilen-Zusatz">
             <Input
               value={s.footerNote}

@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { generateInvoicePositionsLLM } from "@/lib/invoice/llm";
 import { buildInvoiceItems } from "@/lib/invoice/parse";
 import { defaultTagline, type InvoiceState } from "@/lib/invoice/types";
+import { loadIssuer } from "@/lib/invoice/issuer";
 import type { Json, OrderType } from "@/lib/types/database";
 
 async function requireUser() {
@@ -87,12 +88,18 @@ async function buildFreshDraft(
   due.setDate(due.getDate() + 14);
   const nowIso = now.toISOString();
 
+  // Seed the editable issuer identity from Settings (name, degree, c/o address).
+  const issuer = await loadIssuer();
+
   return {
     number,
     date: nowIso,
     dueDate: due.toISOString(),
     currency: "EUR",
     issuerContact: "",
+    issuerName: issuer.senderName,
+    issuerDegree: issuer.degree,
+    issuerAddressLines: issuer.addressLines,
     showVat: false,
     vatRate: 19,
     taglineRight: defaultTagline(order.order_type),

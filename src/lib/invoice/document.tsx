@@ -58,24 +58,20 @@ const FAINT = "#9CA3AF";
 const HAIRLINE = "#E5E7EB";
 const PAD = 48;
 
-// DIN 5008 (Form B) window-envelope geometry, in points (1mm ≈ 2.835pt).
+// DIN 5008 (Form B) window-envelope geometry, in points (1mm ≈ 2.835pt). The
+// letter head is a FIXED-height zone with the recipient pinned to the window
+// position, so the fold always lands the recipient in the envelope window —
+// no matter how many address lines are present.
 const MM = 2.83465;
-const WINDOW_LEFT = 25 * MM; // recipient address ~25mm from the left edge
-const WINDOW_NAME_TOP = 45 * MM; // recipient name line ~45mm from the top edge
-// Header band height: paddingTop + tallest column (the invoice-number stack is
-// taller than the logo) + paddingBottom.
+// Header band height: paddingTop + tallest column (invoice-number stack) + paddingBottom.
 const HEADER_H = 30 + (8.5 * 1.45 + 3 + 15 * 1.45) + 24;
-// Return-sender line block above the recipient name.
-const RETURN_BLOCK = 6.5 * 1.45 + 2 + 7;
-// Top margin that drops the recipient name onto the ~45mm window line.
-const RECIPIENT_MARGIN_TOP = Math.max(
-  0,
-  WINDOW_NAME_TOP - HEADER_H - RETURN_BLOCK,
-);
+const RECIP_TOP = 45 * MM - HEADER_H; // recipient name ~45mm from the page top
+const RECIP_LEFT = 25 * MM - PAD; // recipient ~25mm from the page left
+const LETTER_ZONE_H = 90 * MM - HEADER_H; // subject/title starts ~90mm from top
 
 const styles = StyleSheet.create({
   page: {
-    paddingBottom: 50,
+    paddingBottom: 46,
     fontSize: 10,
     color: FG,
     lineHeight: 1.45,
@@ -93,9 +89,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
-  brandRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  logo: { width: 28, height: 28 },
-  brandName: { fontSize: 17, color: "#FFFFFF", letterSpacing: 1, ...w(700) },
+  brandRow: { flexDirection: "row", alignItems: "center", gap: 11 },
+  logo: { width: 32, height: 32 },
+  brandName: { fontSize: 18, color: "#FFFFFF", letterSpacing: 1, ...w(700) },
   invoiceLabel: {
     fontSize: 8.5,
     color: BRAND,
@@ -111,23 +107,24 @@ const styles = StyleSheet.create({
     ...w(700),
   },
 
-  // Letter head: recipient window (left) + issuer legal block (right)
-  letterRow: { flexDirection: "row", marginBottom: 26 },
-  recipientCol: { width: 250 },
-  returnLine: {
-    fontSize: 6.5,
-    color: FAINT,
-    letterSpacing: 0.3,
-    borderBottomWidth: 0.5,
-    borderBottomColor: HAIRLINE,
-    paddingBottom: 2,
-    marginBottom: 7,
-    ...w(500),
+  // Letter head — fixed zone, recipient pinned to the window position
+  letterZone: { height: LETTER_ZONE_H, position: "relative", marginBottom: 6 },
+  recipientBox: {
+    position: "absolute",
+    top: RECIP_TOP,
+    left: RECIP_LEFT,
+    width: 85 * MM,
   },
   recipientName: { fontSize: 11.5, color: FG, marginBottom: 2, ...w(600) },
-  recipientLine: { fontSize: 10, color: FG, marginBottom: 1 },
+  recipientLine: { fontSize: 10.5, color: FG, marginBottom: 1 },
 
-  issuerCol: { flex: 1, alignItems: "flex-end", paddingTop: 2 },
+  issuerBox: {
+    position: "absolute",
+    top: RECIP_TOP,
+    right: 0,
+    width: 210,
+    alignItems: "flex-end",
+  },
   issuerHeader: {
     fontSize: 7.5,
     color: FAINT,
@@ -246,6 +243,22 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     ...w(600),
   },
+  bankBlock: {
+    marginTop: 7,
+    marginBottom: 1,
+    paddingLeft: 9,
+    borderLeftWidth: 1.5,
+    borderLeftColor: BRAND,
+  },
+  bankLabel: {
+    fontSize: 7,
+    color: FAINT,
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+    marginBottom: 3,
+    ...w(600),
+  },
+  bankLine: { fontSize: 9, color: FG, marginBottom: 1.5, ...w(500) },
 
   // Footer band
   footer: {
@@ -264,7 +277,7 @@ const styles = StyleSheet.create({
   footLine: { fontSize: 7.5, color: FAINT, marginBottom: 1 },
   footStrong: { fontSize: 7.5, color: MUTED, ...w(600) },
   footCenterCell: { flex: 1, alignItems: "center" },
-  footLogo: { width: 18, height: 18, marginBottom: 3 },
+  footLogo: { width: 20, height: 20, marginBottom: 3 },
   footCenter: { fontSize: 6.5, color: FAINT, letterSpacing: 1, textAlign: "center" },
   footRight: { textAlign: "right" },
 });
@@ -315,11 +328,6 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
   const vat = vatCentsOf(data.subtotalCents, data.showVat, data.vatRate);
   const grand = data.subtotalCents + vat;
 
-  // Small return-sender line above the recipient (visible in the envelope window).
-  const returnLine = [data.issuer.senderName, ...data.issuer.addressLines]
-    .filter(Boolean)
-    .join(" · ");
-
   return (
     <Document title={`Rechnung ${data.invoiceNumber}`} author={data.issuer.senderName}>
       <Page size="A4" style={styles.page}>
@@ -336,12 +344,11 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
         </View>
 
         <View style={styles.body}>
-          {/* Letter head: recipient in the envelope window + issuer legal block */}
-          <View style={[styles.letterRow, { marginTop: RECIPIENT_MARGIN_TOP }]}>
-            <View style={[styles.recipientCol, { marginLeft: WINDOW_LEFT - PAD }]}>
-              {returnLine ? (
-                <Text style={styles.returnLine}>{returnLine}</Text>
-              ) : null}
+          {/* Letter head: fixed-height zone. Recipient is pinned to the DIN
+              window position; issuer sits opposite. Reserving the space keeps
+              the fold aligned even when the recipient has few/no address lines. */}
+          <View style={styles.letterZone}>
+            <View style={styles.recipientBox}>
               <Text style={styles.recipientName}>{data.recipient.name}</Text>
               {data.recipient.addressLines.map((l, i) => (
                 <Text key={i} style={styles.recipientLine}>
@@ -355,7 +362,7 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
               ) : null}
             </View>
 
-            <View style={styles.issuerCol}>
+            <View style={styles.issuerBox}>
               <Text style={styles.issuerHeader}>Rechnungssteller</Text>
               <Text style={styles.issuerName}>{data.issuer.senderName}</Text>
               {data.issuerContact ? (
@@ -447,10 +454,16 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
               <Text style={{ ...w(600), color: FG }}>{data.invoiceNumber}</Text>.
             </Text>
             {data.issuer.paymentLines.length > 0 ? (
-              <Text style={{ marginTop: 3 }}>
-                Zahlung per {data.issuer.paymentMethod}:{" "}
-                {data.issuer.paymentLines.join("  ·  ")}
-              </Text>
+              <View style={styles.bankBlock}>
+                <Text style={styles.bankLabel}>
+                  Bankverbindung · {data.issuer.paymentMethod}
+                </Text>
+                {data.issuer.paymentLines.map((l, i) => (
+                  <Text key={i} style={styles.bankLine}>
+                    {l}
+                  </Text>
+                ))}
+              </View>
             ) : null}
             <Text style={{ marginTop: 6 }}>
               Reverse-Charge-Verfahren: Die Umsatzsteuer schuldet der

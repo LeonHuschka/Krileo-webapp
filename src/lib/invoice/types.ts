@@ -64,7 +64,7 @@ export const DEFAULT_ISSUER: IssuerSettings = {
   paymentMethod: "Banküberweisung",
   paymentLines: [
     "Empfänger: Leon Huschka",
-    "IBAN: DE97 1001 0178 1317 0826 67",
+    "IBAN: DE07 1001 0178 3002 7856 92",
     "BIC: REVODEB2",
   ],
 };

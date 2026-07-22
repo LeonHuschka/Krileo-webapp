@@ -10,7 +10,10 @@ import {
   StyleSheet,
   Font,
   Svg,
-  Polygon,
+  Path,
+  Defs,
+  LinearGradient,
+  Stop,
 } from "@react-pdf/renderer";
 import type { InvoiceItem } from "@/lib/invoice/parse";
 import {
@@ -53,38 +56,38 @@ function w(weight: 400 | 500 | 600 | 700) {
 }
 
 const NAVY = "#0C2340";
-const NAVY2 = "#16406E"; // lighter navy-blue for the header's diagonal two-tone
 const BRAND = "#2196F3";
 const FG = "#0F1729";
 const MUTED = "#6B7280";
 const FAINT = "#9CA3AF";
 const HAIRLINE = "#E5E7EB";
-const PAD = 44; // content horizontal margin (print-safe inset)
+const PAD = 44; // content horizontal margin
 
-// Print-safe layout: nothing bleeds to the paper edge (home/office printers
-// can't print a full-bleed band, and clip a footer that sits too low). The
-// header is a rounded navy card inside the margins; the footer sits well
-// within the printable area. DIN 5008 (Form B) window geometry preserved.
+// Text colours on top of the dark gradient header.
+const ON_DARK_LABEL = "#8CA2C4"; // uppercase labels
+const ON_DARK_TEXT = "#D3DEEE"; // address / secondary lines
+const ON_DARK_KICK = "#7CC0FF"; // kicker
+const WHITE = "#FFFFFF";
+
+// Angebot-style header: a full-width navy→blue gradient with a diagonal
+// bottom cut just below the title. Everything above the cut sits on the
+// gradient (light text); the meta strip and table start below it on white.
 const MM = 2.83465;
-const MTOP = 32; // white margin above the header card
 const MBOTTOM = 30; // margin below the footer
-const HB_MX = 22; // header card outer horizontal margin
-const HB_PV = 16; // header card vertical padding
-const HB_PH = PAD - HB_MX; // header text lines up with the body content
-const HB_H = HB_PV * 2 + (8.5 * 1.45 + 3 + 15 * 1.45); // header card height
-const HEADER_BOTTOM = MTOP + HB_H; // header bottom from the paper top
-// "Rechnungsempfänger" label block above the recipient name.
-const RECIP_LABEL_H = 7.5 * 1.45 + 6;
-const RECIP_TOP = 45 * MM - HEADER_BOTTOM - RECIP_LABEL_H; // name ~45mm from top
-const RECIP_LEFT = 25 * MM - PAD; // recipient ~25mm from the page left
-const LETTER_ZONE_H = 90 * MM - HEADER_BOTTOM; // subject/title starts ~90mm from top
-// DIN 5008 fold marks (Form B), inset so they stay printable.
+const PAGE_W = 595.28; // A4 width in pt
+const GX = 18; // gradient inset from the left/right paper edges
+const GY = 18; // gradient inset from the top edge
+const G_RADIUS = 14; // rounded top corners of the gradient block
+const CUT_LEFT = 284; // gradient bottom edge on the left (lower)
+const CUT_RIGHT = 246; // gradient bottom edge on the right (higher)
+const HEADER_SPACE = CUT_LEFT + 14; // where flow content clears the gradient
+// DIN fold marks (inset so they stay printable).
 const FOLD_1 = 105 * MM;
 const FOLD_2 = 210 * MM;
 
 const styles = StyleSheet.create({
   page: {
-    paddingBottom: 74,
+    paddingBottom: 88,
     fontSize: 10,
     color: FG,
     lineHeight: 1.45,
@@ -92,104 +95,105 @@ const styles = StyleSheet.create({
   },
   body: { paddingHorizontal: PAD, flexGrow: 1 },
 
-  // Header card (rounded navy with a diagonal blue gradient, inset from edges)
-  headerBand: {
-    position: "relative",
-    overflow: "hidden",
-    backgroundColor: NAVY,
-    marginTop: MTOP,
-    marginHorizontal: HB_MX,
-    borderRadius: 8,
-    paddingHorizontal: HB_PH,
-    paddingTop: HB_PV,
-    paddingBottom: HB_PV,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+  // Gradient header (navy→blue, diagonal bottom cut). Absolute layer that the
+  // flow content clears via a spacer of HEADER_SPACE height.
+  gradientLayer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: HEADER_SPACE,
   },
-  headerSvg: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
-  brandRow: { flexDirection: "row", alignItems: "center", gap: 11 },
-  logo: { width: 32, height: 32 },
-  brandName: {
-    fontSize: 18,
-    color: "#FFFFFF",
-    letterSpacing: 1,
-    lineHeight: 1,
-    ...w(700),
+  gradientSvg: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: PAGE_W,
+    height: HEADER_SPACE,
   },
+  logoStack: { position: "absolute", left: PAD, top: 24, width: 46, height: 54 },
+
+  headBox: { position: "absolute", right: PAD, top: 34, alignItems: "flex-end" },
   invoiceLabel: {
     fontSize: 8.5,
-    color: BRAND,
+    color: ON_DARK_KICK,
     letterSpacing: 2.5,
     textAlign: "right",
     ...w(600),
   },
   invoiceNumber: {
     fontSize: 15,
-    color: "#FFFFFF",
+    color: WHITE,
     marginTop: 3,
     textAlign: "right",
     ...w(700),
   },
 
-  // Letter head — fixed zone, recipient pinned to the window position
-  letterZone: { height: LETTER_ZONE_H, position: "relative", marginBottom: 6 },
-  recipientBox: {
-    position: "absolute",
-    top: RECIP_TOP,
-    left: RECIP_LEFT,
-    width: 85 * MM,
-  },
+  // Recipient / issuer, now sitting on the gradient (light text)
+  recipientBox: { position: "absolute", left: PAD, top: 96, width: 250 },
   recipientHeader: {
     fontSize: 7.5,
-    color: FAINT,
+    color: ON_DARK_LABEL,
     letterSpacing: 1.4,
     textTransform: "uppercase",
     marginBottom: 6,
     ...w(600),
   },
-  recipientName: { fontSize: 11.5, color: FG, marginBottom: 2, ...w(600) },
-  recipientCompany: { fontSize: 10.5, color: FG, marginBottom: 2, ...w(500) },
-  recipientLine: { fontSize: 10.5, color: FG, marginBottom: 1 },
-
-  // DIN fold marks (inset so they stay inside the printable area)
-  foldMark: {
-    position: "absolute",
-    left: HB_MX,
-    width: 14,
-    height: 0.8,
-    backgroundColor: "#B4BCC8",
+  recipientName: { fontSize: 11.5, color: WHITE, marginBottom: 2, ...w(600) },
+  recipientCompany: {
+    fontSize: 10.5,
+    color: ON_DARK_TEXT,
+    marginBottom: 2,
+    ...w(500),
   },
+  recipientLine: { fontSize: 10.5, color: ON_DARK_TEXT, marginBottom: 1 },
 
   issuerBox: {
     position: "absolute",
-    top: RECIP_TOP,
-    right: RECIP_LEFT, // mirror the recipient's 25mm inset for symmetry
-    width: 210,
+    right: PAD,
+    top: 96,
+    width: 220,
     alignItems: "flex-end",
   },
   issuerHeader: {
     fontSize: 7.5,
-    color: FAINT,
+    color: ON_DARK_LABEL,
     letterSpacing: 1.4,
     textTransform: "uppercase",
     marginBottom: 6,
     textAlign: "right",
     ...w(600),
   },
-  issuerName: { fontSize: 10.5, color: FG, marginBottom: 1, textAlign: "right", ...w(600) },
-  issuerLine: { fontSize: 9, color: MUTED, marginBottom: 1, textAlign: "right" },
+  issuerName: {
+    fontSize: 10.5,
+    color: WHITE,
+    marginBottom: 1,
+    textAlign: "right",
+    ...w(600),
+  },
+  issuerLine: { fontSize: 9, color: ON_DARK_TEXT, marginBottom: 1, textAlign: "right" },
 
-  // Subject / title
-  titleWrap: { marginBottom: 20 },
+  // Kicker + title (inside the gradient, above the cut)
+  titleBox: { position: "absolute", left: PAD, top: 206, right: PAD },
+
+  // DIN fold marks (inset so they stay inside the printable area)
+  foldMark: {
+    position: "absolute",
+    left: GX,
+    width: 14,
+    height: 0.8,
+    backgroundColor: "#B4BCC8",
+  },
+
+  // Subject / title (on the gradient)
   kicker: {
     fontSize: 8.5,
-    color: BRAND,
+    color: ON_DARK_KICK,
     letterSpacing: 2,
     marginBottom: 6,
     ...w(600),
   },
-  title: { fontSize: 22, color: FG, ...w(700) },
+  title: { fontSize: 22, color: WHITE, ...w(700) },
 
   // Meta strip
   meta: {
@@ -368,7 +372,8 @@ export type InvoiceData = {
   billingMode: InvoiceBillingMode | null;
   notes: string;
 
-  logoSrc?: string;
+  logoSrc?: string; // small icon for the footer
+  logoStackSrc?: string; // stacked wordmark for the header
 };
 
 export function InvoiceDocument({ data }: { data: InvoiceData }) {
@@ -381,6 +386,17 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
   const vat = vatCentsOf(netCents, data.showVat, data.vatRate);
   const grand = netCents + vat;
 
+  // Header gradient shape: rounded top, diagonal bottom cut (left lower).
+  const gradVB = `0 0 ${PAGE_W} ${HEADER_SPACE}`;
+  const gradPath =
+    `M ${GX + G_RADIUS},${GY} ` +
+    `L ${PAGE_W - GX - G_RADIUS},${GY} ` +
+    `Q ${PAGE_W - GX},${GY} ${PAGE_W - GX},${GY + G_RADIUS} ` +
+    `L ${PAGE_W - GX},${CUT_RIGHT} ` +
+    `L ${GX},${CUT_LEFT} ` +
+    `L ${GX},${GY + G_RADIUS} ` +
+    `Q ${GX},${GY} ${GX + G_RADIUS},${GY} Z`;
+
   return (
     <Document title={`Rechnung ${data.invoiceNumber}`} author={data.issuer.senderName}>
       <Page size="A4" style={styles.page}>
@@ -388,77 +404,81 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
         <View style={[styles.foldMark, { top: FOLD_1 }]} fixed />
         <View style={[styles.foldMark, { top: FOLD_2 }]} fixed />
 
-        {/* Header band: navy card with a diagonal blue gradient behind the
-            wordmark. Print-safe (inset, no full bleed). */}
-        <View style={styles.headerBand}>
-          <Svg style={styles.headerSvg} viewBox="0 0 800 100" preserveAspectRatio="none">
-            {/* lighter navy slab on the logo side */}
-            <Polygon points="0,0 400,0 320,100 0,100" fill={NAVY2} />
-            {/* bright brand stripe along the diagonal */}
-            <Polygon points="400,0 428,0 348,100 320,100" fill={BRAND} />
-            {/* faint second stripe for depth */}
-            <Polygon
-              points="150,0 174,0 94,100 70,100"
-              fill={BRAND}
-              fillOpacity={0.2}
-            />
+        {/* Gradient header (Angebot-style): navy→blue with a diagonal bottom
+            cut just below the title. Logo, recipient/issuer and title sit on
+            the gradient; the meta strip and table start below it on white. */}
+        <View style={styles.gradientLayer}>
+          <Svg style={styles.gradientSvg} viewBox={gradVB}>
+            <Defs>
+              <LinearGradient
+                id="hdr"
+                x1="0"
+                y1="0"
+                x2={PAGE_W}
+                y2={HEADER_SPACE}
+                gradientUnits="userSpaceOnUse"
+              >
+                <Stop offset="0" stopColor="#0A1D39" />
+                <Stop offset="0.55" stopColor="#123B6E" />
+                <Stop offset="1" stopColor="#1E5EA6" />
+              </LinearGradient>
+            </Defs>
+            <Path d={gradPath} fill="url(#hdr)" />
           </Svg>
-          <View style={styles.brandRow}>
-            {data.logoSrc && <Image src={data.logoSrc} style={styles.logo} />}
-            <Text style={styles.brandName}>{data.issuer.brandName}</Text>
-          </View>
-          <View>
+
+          {data.logoStackSrc ? (
+            <Image src={data.logoStackSrc} style={styles.logoStack} />
+          ) : null}
+
+          <View style={styles.headBox}>
             <Text style={styles.invoiceLabel}>RECHNUNG</Text>
             <Text style={styles.invoiceNumber}>{data.invoiceNumber}</Text>
           </View>
-        </View>
 
-        <View style={styles.body}>
-          {/* Letter head: fixed-height zone. Recipient is pinned to the DIN
-              window position; issuer sits opposite. Reserving the space keeps
-              the fold aligned even when the recipient has few/no address lines. */}
-          <View style={styles.letterZone}>
-            <View style={styles.recipientBox}>
-              <Text style={styles.recipientHeader}>Rechnungsempfänger</Text>
-              <Text style={styles.recipientName}>{data.recipient.name}</Text>
-              {data.recipient.company ? (
-                <Text style={styles.recipientCompany}>
-                  {data.recipient.company}
-                </Text>
-              ) : null}
-              {data.recipient.addressLines.map((l, i) => (
-                <Text key={i} style={styles.recipientLine}>
-                  {l}
-                </Text>
-              ))}
-              {data.recipient.taxId ? (
-                <Text style={styles.recipientLine}>
-                  USt-IdNr.: {data.recipient.taxId}
-                </Text>
-              ) : null}
-            </View>
-
-            <View style={styles.issuerBox}>
-              <Text style={styles.issuerHeader}>Rechnungssteller</Text>
-              <Text style={styles.issuerName}>{data.issuer.senderName}</Text>
-              {data.issuerContact ? (
-                <Text style={styles.issuerLine}>{data.issuerContact}</Text>
-              ) : null}
-              {data.issuerAddressLines.map((l, i) => (
-                <Text key={i} style={styles.issuerLine}>
-                  {l}
-                </Text>
-              ))}
-            </View>
+          <View style={styles.recipientBox}>
+            <Text style={styles.recipientHeader}>Rechnungsempfänger</Text>
+            <Text style={styles.recipientName}>{data.recipient.name}</Text>
+            {data.recipient.company ? (
+              <Text style={styles.recipientCompany}>
+                {data.recipient.company}
+              </Text>
+            ) : null}
+            {data.recipient.addressLines.map((l, i) => (
+              <Text key={i} style={styles.recipientLine}>
+                {l}
+              </Text>
+            ))}
+            {data.recipient.taxId ? (
+              <Text style={styles.recipientLine}>
+                USt-IdNr.: {data.recipient.taxId}
+              </Text>
+            ) : null}
           </View>
 
-          {/* Subject / title */}
-          <View style={styles.titleWrap}>
+          <View style={styles.issuerBox}>
+            <Text style={styles.issuerHeader}>Rechnungssteller</Text>
+            <Text style={styles.issuerName}>{data.issuer.senderName}</Text>
+            {data.issuerContact ? (
+              <Text style={styles.issuerLine}>{data.issuerContact}</Text>
+            ) : null}
+            {data.issuerAddressLines.map((l, i) => (
+              <Text key={i} style={styles.issuerLine}>
+                {l}
+              </Text>
+            ))}
+          </View>
+
+          <View style={styles.titleBox}>
             <Text style={styles.kicker}>
               RECHNUNG{category ? ` · ${category}` : ""}
             </Text>
             <Text style={styles.title}>{data.orderTitle}</Text>
           </View>
+        </View>
+
+        <View style={styles.body}>
+          {/* Spacer that clears the absolute gradient header */}
+          <View style={{ height: HEADER_SPACE }} />
 
           {/* Meta strip */}
           <View style={styles.meta}>

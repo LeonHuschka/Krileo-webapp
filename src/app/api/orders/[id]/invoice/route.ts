@@ -138,6 +138,7 @@ export async function POST(
     billingMode: state.billingMode,
     notes: state.notes,
     logoSrc: await loadPng("krileo-icon.png"),
+    logoStackSrc: await loadPng("krileo-logo.png"),
   };
 
   const buffer = await renderToBuffer(InvoiceDocument({ data }));

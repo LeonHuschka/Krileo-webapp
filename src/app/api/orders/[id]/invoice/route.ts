@@ -105,6 +105,7 @@ export async function POST(
     quantity: li.quantity,
     unitCents: li.unitCents,
     totalCents: Math.round(li.quantity * li.unitCents),
+    kind: li.kind,
   }));
   const subtotal = invoiceTotalCents(state.items);
 

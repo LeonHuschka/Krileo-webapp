@@ -133,6 +133,24 @@ export function IssuerForm({ initial }: { initial: IssuerSettings }) {
               className="h-9"
             />
           </F>
+          <F label="Standard-Stundensatz (€)">
+            <Input
+              type="number"
+              min={0}
+              step="1"
+              value={(s.hourlyRateCents / 100).toString()}
+              onChange={(e) =>
+                set({
+                  hourlyRateCents: Math.max(
+                    0,
+                    Math.round((Number(e.target.value) || 0) * 100),
+                  ),
+                })
+              }
+              placeholder="90"
+              className="h-9"
+            />
+          </F>
         </div>
 
         <F label="Zahlungsdaten (eine Zeile pro Angabe)">

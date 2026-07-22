@@ -319,6 +319,9 @@ const DE = (iso: string) =>
     year: "numeric",
   });
 
+const fmtQty = (n: number) =>
+  new Intl.NumberFormat("de-DE", { maximumFractionDigits: 2 }).format(n);
+
 export type InvoiceData = {
   invoiceNumber: string;
   invoiceDate: string;
@@ -450,7 +453,11 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
           {data.items.map((it, i) => (
             <View key={i} style={styles.itemRow} wrap={false}>
               <Text style={[styles.td, styles.desc]}>{it.description}</Text>
-              <Text style={[styles.td, styles.qty]}>{it.quantity}</Text>
+              <Text style={[styles.td, styles.qty]}>
+                {it.kind === "hourly"
+                  ? `${fmtQty(it.quantity)} Std.`
+                  : it.quantity}
+              </Text>
               <Text style={[styles.td, styles.unit]}>{money(it.unitCents)}</Text>
               <Text style={[styles.td, styles.amount]}>{money(it.totalCents)}</Text>
             </View>

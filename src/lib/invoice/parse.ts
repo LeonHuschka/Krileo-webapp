@@ -20,6 +20,7 @@ export type InvoiceItem = {
   quantity: number;
   unitCents: number;
   totalCents: number;
+  kind?: "fixed" | "hourly"; // hourly rows print the quantity as "X Std."
 };
 
 export type WeightedPosition = { label: string; weight: number };

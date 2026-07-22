@@ -13,6 +13,7 @@ import {
   Circle,
   CheckCircle2,
   RotateCcw,
+  Clock,
 } from "lucide-react";
 import {
   Dialog,
@@ -176,6 +177,24 @@ export function InvoiceButton({
             items: [
               ...s.items,
               { id: uid(), description: "", quantity: 1, unitCents: 0 },
+            ],
+          }
+        : s,
+    );
+  const addHourly = () =>
+    setState((s) =>
+      s
+        ? {
+            ...s,
+            items: [
+              ...s.items,
+              {
+                id: uid(),
+                kind: "hourly",
+                description: "Arbeitszeit",
+                quantity: 1,
+                unitCents: s.hourlyRateCents ?? 0,
+              },
             ],
           }
         : s,
@@ -446,14 +465,25 @@ export function InvoiceButton({
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <SectionLabel>Positionen</SectionLabel>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={addItem}
-                      className="h-7 gap-1"
-                    >
-                      <Plus className="h-3.5 w-3.5" /> Position
-                    </Button>
+                    <div className="flex gap-1.5">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={addHourly}
+                        className="h-7 gap-1"
+                        title="Arbeitszeit (Stunden × Stundensatz)"
+                      >
+                        <Clock className="h-3.5 w-3.5" /> Arbeitszeit
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={addItem}
+                        className="h-7 gap-1"
+                      >
+                        <Plus className="h-3.5 w-3.5" /> Position
+                      </Button>
+                    </div>
                   </div>
                   <div className="grid grid-cols-[1fr_3rem_5rem_1.25rem] gap-2 px-1 text-[10px] uppercase tracking-wide text-muted-foreground">
                     <span>Leistung</span>
@@ -461,6 +491,9 @@ export function InvoiceButton({
                     <span className="text-right">Einzel</span>
                     <span />
                   </div>
+                  <p className="px-1 text-[10px] text-muted-foreground/70">
+                    {'„Arbeitszeit“ rechnet Stunden × Stundensatz (Menge = Std.).'}
+                  </p>
                   {state.items.map((it) => (
                     <div
                       key={it.id}
@@ -475,13 +508,17 @@ export function InvoiceButton({
                       />
                       <Input
                         type="number"
-                        min={1}
+                        min={it.kind === "hourly" ? 0 : 1}
+                        step={it.kind === "hourly" ? "0.25" : "1"}
                         defaultValue={it.quantity}
-                        onBlur={(e) =>
+                        title={it.kind === "hourly" ? "Stunden" : "Menge"}
+                        onBlur={(e) => {
+                          const min = it.kind === "hourly" ? 0 : 1;
+                          const n = Number(e.target.value);
                           setItem(it.id, {
-                            quantity: Math.max(1, Number(e.target.value) || 1),
-                          })
-                        }
+                            quantity: Number.isFinite(n) ? Math.max(min, n) : min,
+                          });
+                        }}
                         className="h-8 px-1 text-right text-sm"
                       />
                       <Input

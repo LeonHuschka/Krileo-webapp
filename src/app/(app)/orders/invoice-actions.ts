@@ -99,6 +99,7 @@ async function buildFreshDraft(
     issuerStreet: issuer.street,
     issuerCity: issuer.city,
     issuerCountry: issuer.country,
+    hourlyRateCents: issuer.hourlyRateCents,
     showVat: false,
     vatRate: 19,
     taglineRight: defaultTagline(order.order_type),

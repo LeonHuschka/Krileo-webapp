@@ -1,11 +1,13 @@
 import type { OrderType } from "@/lib/types/database";
 
-/** One editable line on the invoice. `totalCents` is derived (qty * unit). */
+/** One editable line on the invoice. `totalCents` is derived (qty * unit).
+ *  `hourly` items bill working time: quantity = hours, unitCents = hourly rate. */
 export type InvoiceLineItem = {
   id: string;
   description: string;
   quantity: number;
   unitCents: number;
+  kind?: "fixed" | "hourly";
 };
 
 export type InvoiceBillingMode = "fixed" | "service";
@@ -23,6 +25,7 @@ export type InvoiceState = {
   issuerStreet?: string; // Straße & Hausnummer
   issuerCity?: string; // PLZ & Ort
   issuerCountry?: string; // Land
+  hourlyRateCents?: number; // default rate for new "Arbeitszeit" positions
   showVat: boolean; // show a VAT line + gross total (still reverse-charge below)
   vatRate: number; // percent, e.g. 19
   taglineRight: string; // dynamic footer-right, e.g. "Krileo · Webdesign"
@@ -56,6 +59,7 @@ export type IssuerSettings = {
   phone: string;
   gf: string; // name shown in the footer, "Leon Huschka"
   footerNote: string; // footer mark caption, "Freiberufliche Agentur"
+  hourlyRateCents: number; // default hourly rate for "Arbeitszeit" positions
   paymentMethod: string; // "Banküberweisung", …
   paymentLines: string[]; // account details printed in the payment note
 };
@@ -83,6 +87,7 @@ export const DEFAULT_ISSUER: IssuerSettings = {
   phone: "+49 152 33511785",
   gf: "Leon Huschka",
   footerNote: "Freiberufliche Agentur",
+  hourlyRateCents: 9000,
   paymentMethod: "Banküberweisung",
   paymentLines: [
     "Empfänger: Leon Huschka",

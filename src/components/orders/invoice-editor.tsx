@@ -374,7 +374,7 @@ export function InvoiceButton({
                 {/* Recipient */}
                 <div className="space-y-2">
                   <SectionLabel>Rechnungsempfänger</SectionLabel>
-                  <Field label="Name / Firma">
+                  <Field label="Name">
                     <Input
                       defaultValue={state.recipient.name}
                       onBlur={(e) =>
@@ -382,7 +382,22 @@ export function InvoiceButton({
                           recipient: { ...state.recipient, name: e.target.value },
                         })
                       }
-                      placeholder="Kunde / Firma"
+                      placeholder="Paola Arlotta"
+                      className="h-8"
+                    />
+                  </Field>
+                  <Field label="Firma">
+                    <Input
+                      defaultValue={state.recipient.company ?? ""}
+                      onBlur={(e) =>
+                        patch({
+                          recipient: {
+                            ...state.recipient,
+                            company: e.target.value.trim() || undefined,
+                          },
+                        })
+                      }
+                      placeholder="Ristorante Da Paola"
                       className="h-8"
                     />
                   </Field>

@@ -143,6 +143,7 @@ const styles = StyleSheet.create({
     ...w(600),
   },
   recipientName: { fontSize: 11.5, color: FG, marginBottom: 2, ...w(600) },
+  recipientCompany: { fontSize: 10.5, color: FG, marginBottom: 2, ...w(500) },
   recipientLine: { fontSize: 10.5, color: FG, marginBottom: 1 },
 
   // DIN fold marks (inset so they stay inside the printable area)
@@ -342,6 +343,7 @@ export type InvoiceData = {
   issuerAddressLines: string[];
   recipient: {
     name: string;
+    company?: string;
     addressLines: string[];
     email?: string;
     taxId?: string;
@@ -395,6 +397,11 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
             <View style={styles.recipientBox}>
               <Text style={styles.recipientHeader}>Rechnungsempfänger</Text>
               <Text style={styles.recipientName}>{data.recipient.name}</Text>
+              {data.recipient.company ? (
+                <Text style={styles.recipientCompany}>
+                  {data.recipient.company}
+                </Text>
+              ) : null}
               {data.recipient.addressLines.map((l, i) => (
                 <Text key={i} style={styles.recipientLine}>
                   {l}

@@ -47,7 +47,9 @@ async function buildFreshDraft(
       .eq("id", order.contact_id)
       .maybeSingle();
     if (c) {
-      recipient.name = c.company || c.name;
+      // Person on the name line, company on its own line beneath it.
+      recipient.name = c.name || c.company || "Kunde";
+      if (c.company && c.company !== recipient.name) recipient.company = c.company;
       if (c.location) recipient.city = c.location;
       if (c.email) recipient.email = c.email;
     }

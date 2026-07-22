@@ -31,6 +31,7 @@ export type InvoiceState = {
   taglineRight: string; // dynamic footer-right, e.g. "Krileo · Webdesign"
   recipient: {
     name: string;
+    company?: string; // Firma, printed on its own line under the name
     addressLines: string[]; // legacy / derived at render time
     street?: string; // Straße & Hausnummer
     city?: string; // PLZ & Ort

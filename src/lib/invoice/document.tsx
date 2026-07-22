@@ -56,29 +56,32 @@ const FG = "#0F1729";
 const MUTED = "#6B7280";
 const FAINT = "#9CA3AF";
 const HAIRLINE = "#E5E7EB";
-const PAD = 48;
+const PAD = 44; // content horizontal margin (print-safe inset)
 
-// DIN 5008 (Form B) window-envelope geometry, in points (1mm ≈ 2.835pt). The
-// letter head is a FIXED-height zone with the recipient pinned to the window
-// position, so the fold always lands the recipient in the envelope window —
-// no matter how many address lines are present.
+// Print-safe layout: nothing bleeds to the paper edge (home/office printers
+// can't print a full-bleed band, and clip a footer that sits too low). The
+// header is a rounded navy card inside the margins; the footer sits well
+// within the printable area. DIN 5008 (Form B) window geometry preserved.
 const MM = 2.83465;
-// Header band: equal top/bottom padding so the content sits optically centred
-// in the navy band. Height = padding + tallest column (invoice-number stack).
-const HEADER_PAD = 28;
-const HEADER_H = HEADER_PAD + (8.5 * 1.45 + 3 + 15 * 1.45) + HEADER_PAD;
+const MTOP = 32; // white margin above the header card
+const MBOTTOM = 30; // margin below the footer
+const HB_MX = 22; // header card outer horizontal margin
+const HB_PV = 16; // header card vertical padding
+const HB_PH = PAD - HB_MX; // header text lines up with the body content
+const HB_H = HB_PV * 2 + (8.5 * 1.45 + 3 + 15 * 1.45); // header card height
+const HEADER_BOTTOM = MTOP + HB_H; // header bottom from the paper top
 // "Rechnungsempfänger" label block above the recipient name.
 const RECIP_LABEL_H = 7.5 * 1.45 + 6;
-const RECIP_TOP = 45 * MM - HEADER_H - RECIP_LABEL_H; // name lands ~45mm from top
+const RECIP_TOP = 45 * MM - HEADER_BOTTOM - RECIP_LABEL_H; // name ~45mm from top
 const RECIP_LEFT = 25 * MM - PAD; // recipient ~25mm from the page left
-const LETTER_ZONE_H = 90 * MM - HEADER_H; // subject/title starts ~90mm from top
-// DIN 5008 fold marks (Form B) on the left edge, from the page top.
+const LETTER_ZONE_H = 90 * MM - HEADER_BOTTOM; // subject/title starts ~90mm from top
+// DIN 5008 fold marks (Form B), inset so they stay printable.
 const FOLD_1 = 105 * MM;
 const FOLD_2 = 210 * MM;
 
 const styles = StyleSheet.create({
   page: {
-    paddingBottom: 46,
+    paddingBottom: 74,
     fontSize: 10,
     color: FG,
     lineHeight: 1.45,
@@ -86,12 +89,15 @@ const styles = StyleSheet.create({
   },
   body: { paddingHorizontal: PAD },
 
-  // Header band (full-bleed navy)
+  // Header card (rounded navy, inset from the paper edges)
   headerBand: {
     backgroundColor: NAVY,
-    paddingHorizontal: PAD,
-    paddingTop: HEADER_PAD,
-    paddingBottom: HEADER_PAD,
+    marginTop: MTOP,
+    marginHorizontal: HB_MX,
+    borderRadius: 8,
+    paddingHorizontal: HB_PH,
+    paddingTop: HB_PV,
+    paddingBottom: HB_PV,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -139,10 +145,10 @@ const styles = StyleSheet.create({
   recipientName: { fontSize: 11.5, color: FG, marginBottom: 2, ...w(600) },
   recipientLine: { fontSize: 10.5, color: FG, marginBottom: 1 },
 
-  // DIN fold marks on the left page edge
+  // DIN fold marks (inset so they stay inside the printable area)
   foldMark: {
     position: "absolute",
-    left: 0,
+    left: HB_MX,
     width: 14,
     height: 0.8,
     backgroundColor: "#B4BCC8",
@@ -182,12 +188,12 @@ const styles = StyleSheet.create({
   meta: {
     flexDirection: "row",
     gap: 24,
-    paddingTop: 6,
-    paddingBottom: 6,
+    paddingTop: 5,
+    paddingBottom: 5,
     borderTopWidth: 0.75,
     borderBottomWidth: 0.75,
     borderColor: HAIRLINE,
-    marginBottom: 10,
+    marginBottom: 8,
   },
   metaCol: { flex: 1 },
   metaLabel: {
@@ -203,14 +209,14 @@ const styles = StyleSheet.create({
   // Table
   itemsHead: {
     flexDirection: "row",
-    paddingTop: 8,
-    paddingBottom: 8,
+    paddingTop: 7,
+    paddingBottom: 7,
     borderBottomWidth: 1,
     borderColor: NAVY,
   },
   itemRow: {
     flexDirection: "row",
-    paddingVertical: 6,
+    paddingVertical: 5,
     borderBottomWidth: 0.5,
     borderBottomColor: HAIRLINE,
   },
@@ -228,12 +234,12 @@ const styles = StyleSheet.create({
   amount: { flex: 1.6, textAlign: "right" },
 
   // Totals
-  totals: { flexDirection: "row", justifyContent: "flex-end", marginTop: 6 },
+  totals: { flexDirection: "row", justifyContent: "flex-end", marginTop: 5 },
   totalsBox: { width: 250 },
   subRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingVertical: 3,
+    paddingVertical: 2,
   },
   subLabel: { fontSize: 9.5, color: MUTED },
   subValue: { fontSize: 9.5, color: FG, ...w(500) },
@@ -241,8 +247,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-end",
-    marginTop: 6,
-    paddingTop: 8,
+    marginTop: 5,
+    paddingTop: 6,
     borderTopWidth: 1.5,
     borderTopColor: BRAND,
   },
@@ -257,8 +263,8 @@ const styles = StyleSheet.create({
 
   // Notes
   notes: {
-    marginTop: 8,
-    paddingTop: 8,
+    marginTop: 6,
+    paddingTop: 7,
     borderTopWidth: 0.5,
     borderTopColor: HAIRLINE,
     fontSize: 8,
@@ -274,7 +280,7 @@ const styles = StyleSheet.create({
     ...w(600),
   },
   bankBlock: {
-    marginTop: 7,
+    marginTop: 5,
     marginBottom: 1,
     paddingLeft: 9,
     borderLeftWidth: 1.5,
@@ -293,7 +299,7 @@ const styles = StyleSheet.create({
   // Footer band
   footer: {
     position: "absolute",
-    bottom: 20,
+    bottom: MBOTTOM,
     left: PAD,
     right: PAD,
     flexDirection: "row",
@@ -505,15 +511,15 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
                 ))}
               </View>
             ) : null}
-            <Text style={{ marginTop: 5 }}>
+            <Text style={{ marginTop: 4 }}>
               Reverse-Charge-Verfahren: Die Umsatzsteuer schuldet der
               Leistungsempfänger (§ 13b UStG). Alle Beträge in {data.currency}.
             </Text>
-            {clause ? <Text style={{ marginTop: 5 }}>{clause}</Text> : null}
+            {clause ? <Text style={{ marginTop: 4 }}>{clause}</Text> : null}
             {data.notes.trim() ? (
-              <Text style={{ marginTop: 6 }}>{data.notes.trim()}</Text>
+              <Text style={{ marginTop: 5 }}>{data.notes.trim()}</Text>
             ) : null}
-            <Text style={{ marginTop: 6, color: FG }}>
+            <Text style={{ marginTop: 5, color: FG }}>
               Vielen Dank für die Zusammenarbeit.
             </Text>
           </View>

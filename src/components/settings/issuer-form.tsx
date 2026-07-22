@@ -32,23 +32,16 @@ export function IssuerForm({ initial }: { initial: IssuerSettings }) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <Building2 className="h-4 w-4 text-primary" />
-          Rechnungs-Aussteller (US LLC)
+          Rechnungs-Aussteller
         </CardTitle>
         <p className="text-sm text-muted-foreground">
-          Diese Daten erscheinen auf jeder Rechnung. EIN, US-Adresse und
-          Zahlungsdaten bitte vollständig eintragen.
+          Diese Daten erscheinen auf jeder Rechnung. Name, Adresse und – falls
+          vorhanden – die USt-IdNr. sind rechtlich verpflichtend.
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <F label="Rechtlicher Firmenname">
-            <Input
-              value={s.legalName}
-              onChange={(e) => set({ legalName: e.target.value })}
-              className="h-9"
-            />
-          </F>
-          <F label="Marke (Header/Fußzeile)">
+          <F label="Marke (Kopf- & Fußzeile)">
             <Input
               value={s.brandName}
               onChange={(e) => set({ brandName: e.target.value })}
@@ -56,33 +49,33 @@ export function IssuerForm({ initial }: { initial: IssuerSettings }) {
               className="h-9"
             />
           </F>
-          <F label="Rechnungssteller-Name (auf der Rechnung)">
+          <F label="Rechnungssteller (Name, rechtlich)">
             <Input
               value={s.senderName}
               onChange={(e) => set({ senderName: e.target.value })}
-              placeholder="Krileo Agentur"
+              placeholder="Leon Huschka"
               className="h-9"
             />
           </F>
-          <F label="EIN (XX-XXXXXXX)">
+          <F label="USt-IdNr. / Steuernummer">
             <Input
-              value={s.ein}
-              onChange={(e) => set({ ein: e.target.value })}
-              placeholder="12-3456789"
+              value={s.vatId}
+              onChange={(e) => set({ vatId: e.target.value })}
+              placeholder="DE123456789"
               className="h-9"
             />
           </F>
-          <F label="State of Formation">
+          <F label="Fußzeilen-Zusatz">
             <Input
-              value={s.stateOfFormation}
-              onChange={(e) => set({ stateOfFormation: e.target.value })}
-              placeholder="z.B. Wyoming"
+              value={s.footerNote}
+              onChange={(e) => set({ footerNote: e.target.value })}
+              placeholder="Freiberufliche Agentur"
               className="h-9"
             />
           </F>
         </div>
 
-        <F label="US-Adresse (eine Zeile pro Feld)">
+        <F label="Adresse (eine Zeile pro Feld)">
           <Textarea
             value={s.addressLines.join("\n")}
             onChange={(e) =>
@@ -93,7 +86,7 @@ export function IssuerForm({ initial }: { initial: IssuerSettings }) {
                   .filter(Boolean),
               })
             }
-            placeholder="123 Main St, Suite 100&#10;Sheridan, WY 82801&#10;United States"
+            placeholder="Musterstraße 1&#10;1010 Wien&#10;Österreich"
             className="min-h-[72px] text-sm"
           />
         </F>
@@ -113,10 +106,11 @@ export function IssuerForm({ initial }: { initial: IssuerSettings }) {
               className="h-9"
             />
           </F>
-          <F label="Geschäftsführung (Fußzeile)">
+          <F label="Name (Fußzeile)">
             <Input
               value={s.gf}
               onChange={(e) => set({ gf: e.target.value })}
+              placeholder="Leon Huschka"
               className="h-9"
             />
           </F>

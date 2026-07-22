@@ -34,35 +34,33 @@ export type InvoiceState = {
   downloadedAt: string | null;
 };
 
-/** Invoice issuer (the US LLC) — managed in Settings, stored in app_settings. */
+/** Invoice issuer (freelance setup) — managed in Settings, stored in
+ *  app_settings. Only what an invoice legally needs: name, address, tax id. */
 export type IssuerSettings = {
-  legalName: string; // "Duraska Studios LLC" (legal entity)
-  brandName: string; // "Krileo" — header wordmark
-  senderName: string; // "Krileo Agentur" — bold name on the sender block
-  addressLines: string[]; // US registered address
-  ein: string; // "XX-XXXXXXX"
-  stateOfFormation: string; // e.g. "Wyoming"
+  brandName: string; // "Krileo" — header wordmark + footer mark
+  senderName: string; // legal person on the sender block, "Leon Huschka"
+  addressLines: string[]; // current legal address (required)
+  vatId: string; // USt-IdNr. / Steuernummer (printed if set)
   email: string;
   phone: string;
-  gf: string; // "Leon Huschka & Kristian Durasin"
-  paymentMethod: string; // "Wise", "Bank transfer", …
+  gf: string; // name shown in the footer, "Leon Huschka"
+  footerNote: string; // footer mark caption, "Freiberufliche Agentur"
+  paymentMethod: string; // "Banküberweisung", …
   paymentLines: string[]; // account details printed in the payment note
 };
 
 export const ISSUER_KEY = "invoice_issuer";
 
-/** Seed values known from the offer PDF. Address/EIN/payment are filled in
- *  Settings by the user. */
+/** Seed values. Address and tax id are filled in Settings by the user. */
 export const DEFAULT_ISSUER: IssuerSettings = {
-  legalName: "Duraska Studios LLC",
   brandName: "Krileo",
-  senderName: "Krileo Agentur",
+  senderName: "Leon Huschka",
   addressLines: [],
-  ein: "",
-  stateOfFormation: "",
+  vatId: "",
   email: "krileoworks@gmail.com",
   phone: "+49 152 33511785",
-  gf: "Leon Huschka & Kristian Durasin",
+  gf: "Leon Huschka",
+  footerNote: "Freiberufliche Agentur",
   paymentMethod: "Banküberweisung",
   paymentLines: [
     "Empfänger: Leon Huschka",

@@ -75,21 +75,32 @@ export function IssuerForm({ initial }: { initial: IssuerSettings }) {
           </F>
         </div>
 
-        <F label="Adresse (eine Zeile pro Feld)">
-          <Textarea
-            value={s.addressLines.join("\n")}
-            onChange={(e) =>
-              set({
-                addressLines: e.target.value
-                  .split("\n")
-                  .map((l) => l.trim())
-                  .filter(Boolean),
-              })
-            }
-            placeholder="Musterstraße 1&#10;1010 Wien&#10;Österreich"
-            className="min-h-[72px] text-sm"
-          />
-        </F>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <F label="Straße & Hausnummer">
+            <Input
+              value={s.street}
+              onChange={(e) => set({ street: e.target.value })}
+              placeholder="Hölderlinstraße 02"
+              className="h-9"
+            />
+          </F>
+          <F label="PLZ & Ort">
+            <Input
+              value={s.city}
+              onChange={(e) => set({ city: e.target.value })}
+              placeholder="72631 Aichtal"
+              className="h-9"
+            />
+          </F>
+          <F label="Land">
+            <Input
+              value={s.country}
+              onChange={(e) => set({ country: e.target.value })}
+              placeholder="Deutschland"
+              className="h-9"
+            />
+          </F>
+        </div>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <F label="E-Mail">

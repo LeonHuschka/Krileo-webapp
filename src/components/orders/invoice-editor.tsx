@@ -324,21 +324,32 @@ export function InvoiceButton({
                       />
                     </Field>
                   </div>
-                  <Field label="Anschrift (c/o Korrespondenzadresse)">
-                    <Textarea
-                      defaultValue={(state.issuerAddressLines ?? []).join("\n")}
-                      onBlur={(e) =>
-                        patch({
-                          issuerAddressLines: e.target.value
-                            .split("\n")
-                            .map((l) => l.trim())
-                            .filter(Boolean),
-                        })
-                      }
-                      placeholder="c/o Max Mustermann&#10;Musterstraße 12&#10;80331 München"
-                      className="min-h-[60px] text-sm"
+                  <Field label="Straße & Hausnummer">
+                    <Input
+                      defaultValue={state.issuerStreet ?? ""}
+                      onBlur={(e) => patch({ issuerStreet: e.target.value })}
+                      placeholder="Hölderlinstraße 02"
+                      className="h-8"
                     />
                   </Field>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Field label="PLZ & Ort">
+                      <Input
+                        defaultValue={state.issuerCity ?? ""}
+                        onBlur={(e) => patch({ issuerCity: e.target.value })}
+                        placeholder="72631 Aichtal"
+                        className="h-8"
+                      />
+                    </Field>
+                    <Field label="Land">
+                      <Input
+                        defaultValue={state.issuerCountry ?? ""}
+                        onBlur={(e) => patch({ issuerCountry: e.target.value })}
+                        placeholder="Deutschland"
+                        className="h-8"
+                      />
+                    </Field>
+                  </div>
                 </div>
 
                 {/* Recipient */}
@@ -356,24 +367,47 @@ export function InvoiceButton({
                       className="h-8"
                     />
                   </Field>
-                  <Field label="Anschrift">
-                    <Textarea
-                      defaultValue={state.recipient.addressLines.join("\n")}
+                  <Field label="Straße & Hausnummer">
+                    <Input
+                      defaultValue={state.recipient.street ?? ""}
                       onBlur={(e) =>
                         patch({
-                          recipient: {
-                            ...state.recipient,
-                            addressLines: e.target.value
-                              .split("\n")
-                              .map((l) => l.trim())
-                              .filter(Boolean),
-                          },
+                          recipient: { ...state.recipient, street: e.target.value },
                         })
                       }
-                      placeholder="Ansprechpartner&#10;Straße&#10;PLZ Ort"
-                      className="min-h-[64px] text-sm"
+                      placeholder="Musterstraße 12"
+                      className="h-8"
                     />
                   </Field>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Field label="PLZ & Ort">
+                      <Input
+                        defaultValue={state.recipient.city ?? ""}
+                        onBlur={(e) =>
+                          patch({
+                            recipient: { ...state.recipient, city: e.target.value },
+                          })
+                        }
+                        placeholder="80331 München"
+                        className="h-8"
+                      />
+                    </Field>
+                    <Field label="Land">
+                      <Input
+                        defaultValue={state.recipient.country ?? ""}
+                        onBlur={(e) =>
+                          patch({
+                            recipient: {
+                              ...state.recipient,
+                              country: e.target.value,
+                            },
+                          })
+                        }
+                        placeholder="Deutschland"
+                        className="h-8"
+                      />
+                    </Field>
+                  </div>
                   <div className="grid grid-cols-2 gap-2">
                     <Field label="E-Mail">
                       <Input

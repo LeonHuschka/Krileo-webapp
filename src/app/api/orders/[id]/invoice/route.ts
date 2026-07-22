@@ -4,7 +4,11 @@ import path from "path";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { createClient } from "@/lib/supabase/server";
 import { loadIssuer } from "@/lib/invoice/issuer";
-import { invoiceTotalCents, type InvoiceState } from "@/lib/invoice/types";
+import {
+  invoiceTotalCents,
+  issuerAddress,
+  type InvoiceState,
+} from "@/lib/invoice/types";
 import { InvoiceDocument, type InvoiceData } from "@/lib/invoice/document";
 
 export const dynamic = "force-dynamic";
@@ -13,6 +17,12 @@ export const runtime = "nodejs";
 function shortId(uuid: string) {
   return uuid.replace(/-/g, "").slice(0, 8).toUpperCase();
 }
+
+const hasAny = (...vals: (string | undefined)[]) =>
+  vals.some((v) => v && v.trim());
+
+const cleanLines = (...vals: (string | undefined)[]) =>
+  vals.map((v) => (v ?? "").trim()).filter(Boolean);
 
 async function loadPng(name: string): Promise<string | undefined> {
   try {
@@ -61,14 +71,33 @@ export async function POST(
   // Per-invoice issuer identity (editor) layered over the Settings defaults.
   const name = state.issuerName?.trim() || base.senderName;
   const degree = (state.issuerDegree ?? base.degree ?? "").trim();
-  const addressLines =
-    state.issuerAddressLines && state.issuerAddressLines.length > 0
-      ? state.issuerAddressLines
-      : base.addressLines;
+  // Master/Bachelor grades follow the name (DIN 5008), no comma.
   const issuer = {
     ...base,
-    senderName: degree ? `${name}, ${degree}` : name,
-    addressLines,
+    senderName: degree ? `${name} ${degree}` : name,
+  };
+  const issuerAddressLines = hasAny(
+    state.issuerStreet,
+    state.issuerCity,
+    state.issuerCountry,
+  )
+    ? cleanLines(state.issuerStreet, state.issuerCity, state.issuerCountry)
+    : issuerAddress(base);
+
+  // Recipient address: structured fields if present, else legacy lines.
+  const recipient = {
+    ...state.recipient,
+    addressLines: hasAny(
+      state.recipient.street,
+      state.recipient.city,
+      state.recipient.country,
+    )
+      ? cleanLines(
+          state.recipient.street,
+          state.recipient.city,
+          state.recipient.country,
+        )
+      : state.recipient.addressLines,
   };
 
   const items = state.items.map((li) => ({
@@ -89,7 +118,8 @@ export async function POST(
     showVat: state.showVat ?? false,
     vatRate: state.vatRate ?? 19,
     issuer,
-    recipient: state.recipient,
+    issuerAddressLines,
+    recipient,
     orderTitle: order.title,
     orderRef: shortId(order.id),
     items,

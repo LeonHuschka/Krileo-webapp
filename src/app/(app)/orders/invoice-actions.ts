@@ -48,10 +48,7 @@ async function buildFreshDraft(
       .maybeSingle();
     if (c) {
       recipient.name = c.company || c.name;
-      const lines: string[] = [];
-      if (c.company && c.name) lines.push(c.name);
-      if (c.location) lines.push(c.location);
-      recipient.addressLines = lines;
+      if (c.location) recipient.city = c.location;
       if (c.email) recipient.email = c.email;
     }
   }
@@ -99,7 +96,9 @@ async function buildFreshDraft(
     issuerContact: "",
     issuerName: issuer.senderName,
     issuerDegree: issuer.degree,
-    issuerAddressLines: issuer.addressLines,
+    issuerStreet: issuer.street,
+    issuerCity: issuer.city,
+    issuerCountry: issuer.country,
     showVat: false,
     vatRate: 19,
     taglineRight: defaultTagline(order.order_type),

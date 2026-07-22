@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
   issuerLine: { fontSize: 9, color: MUTED, marginBottom: 1, textAlign: "right" },
 
   // Subject / title
-  titleWrap: { marginBottom: 12 },
+  titleWrap: { marginBottom: 20 },
   kicker: {
     fontSize: 8.5,
     color: BRAND,
@@ -330,6 +330,7 @@ export type InvoiceData = {
   vatRate: number;
 
   issuer: IssuerSettings;
+  issuerAddressLines: string[];
   recipient: {
     name: string;
     addressLines: string[];
@@ -403,7 +404,7 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
               {data.issuerContact ? (
                 <Text style={styles.issuerLine}>{data.issuerContact}</Text>
               ) : null}
-              {data.issuer.addressLines.map((l, i) => (
+              {data.issuerAddressLines.map((l, i) => (
                 <Text key={i} style={styles.issuerLine}>
                   {l}
                 </Text>

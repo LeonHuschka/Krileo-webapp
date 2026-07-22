@@ -19,14 +19,19 @@ export type InvoiceState = {
   issuerContact: string; // legacy single contact line (kept for old drafts)
   // Per-invoice issuer identity, seeded from Settings and editable in the editor.
   issuerName?: string; // sender name, e.g. "Leon Huschka"
-  issuerDegree?: string; // academic degree, e.g. "M. Sc."
-  issuerAddressLines?: string[]; // correspondence (c/o) address
+  issuerDegree?: string; // academic degree, e.g. "M.Sc."
+  issuerStreet?: string; // Straße & Hausnummer
+  issuerCity?: string; // PLZ & Ort
+  issuerCountry?: string; // Land
   showVat: boolean; // show a VAT line + gross total (still reverse-charge below)
   vatRate: number; // percent, e.g. 19
   taglineRight: string; // dynamic footer-right, e.g. "Krileo · Webdesign"
   recipient: {
     name: string;
-    addressLines: string[];
+    addressLines: string[]; // legacy / derived at render time
+    street?: string; // Straße & Hausnummer
+    city?: string; // PLZ & Ort
+    country?: string; // Land
     email?: string;
     taxId?: string;
   };
@@ -43,8 +48,10 @@ export type InvoiceState = {
 export type IssuerSettings = {
   brandName: string; // "Krileo" — header wordmark + footer mark
   senderName: string; // legal person on the sender block, "Leon Huschka"
-  degree: string; // academic degree appended to the name, e.g. "M. Sc."
-  addressLines: string[]; // correspondence address (required)
+  degree: string; // academic degree after the name, e.g. "M.Sc."
+  street: string; // Straße & Hausnummer (correspondence address)
+  city: string; // PLZ & Ort
+  country: string; // Land
   email: string;
   phone: string;
   gf: string; // name shown in the footer, "Leon Huschka"
@@ -53,14 +60,25 @@ export type IssuerSettings = {
   paymentLines: string[]; // account details printed in the payment note
 };
 
+/** The issuer address as printable lines (Straße / Ort / Land). */
+export function issuerAddress(i: {
+  street: string;
+  city: string;
+  country: string;
+}): string[] {
+  return [i.street, i.city, i.country].map((s) => s.trim()).filter(Boolean);
+}
+
 export const ISSUER_KEY = "invoice_issuer";
 
 /** Seed values. Address and tax id are filled in Settings by the user. */
 export const DEFAULT_ISSUER: IssuerSettings = {
   brandName: "Krileo",
   senderName: "Leon Huschka",
-  degree: "M. Sc.",
-  addressLines: [],
+  degree: "M.Sc.",
+  street: "Hölderlinstraße 02",
+  city: "72631 Aichtal",
+  country: "Deutschland",
   email: "krileoworks@gmail.com",
   phone: "+49 152 33511785",
   gf: "Leon Huschka",

@@ -75,9 +75,9 @@ const WHITE = "#FFFFFF";
 const MM = 2.83465;
 const MBOTTOM = 30; // margin below the footer
 const PAGE_W = 595.28; // A4 width in pt
-const GX = 18; // gradient inset from the left/right paper edges
-const GY = 18; // gradient inset from the top edge
-const G_RADIUS = 14; // rounded top corners of the gradient block
+const GX = 0; // full-bleed: gradient touches the left/right paper edges
+const GY = 0; // full-bleed: gradient touches the top edge
+const G_RADIUS = 0; // square corners for the full-bleed band
 const CUT_LEFT = 284; // gradient bottom edge on the left (lower)
 const CUT_RIGHT = 246; // gradient bottom edge on the right (higher)
 const HEADER_SPACE = CUT_LEFT + 14; // where flow content clears the gradient
@@ -111,7 +111,14 @@ const styles = StyleSheet.create({
     width: PAGE_W,
     height: HEADER_SPACE,
   },
-  logoStack: { position: "absolute", left: PAD, top: 24, width: 46, height: 54 },
+  logoWrap: {
+    position: "absolute",
+    top: 20,
+    left: 0,
+    right: 0,
+    alignItems: "center",
+  },
+  logoStack: { width: 50, height: 59 },
 
   headBox: { position: "absolute", right: PAD, top: 34, alignItems: "flex-end" },
   invoiceLabel: {
@@ -179,7 +186,7 @@ const styles = StyleSheet.create({
   // DIN fold marks (inset so they stay inside the printable area)
   foldMark: {
     position: "absolute",
-    left: GX,
+    left: 16,
     width: 14,
     height: 0.8,
     backgroundColor: "#B4BCC8",
@@ -427,7 +434,9 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
           </Svg>
 
           {data.logoStackSrc ? (
-            <Image src={data.logoStackSrc} style={styles.logoStack} />
+            <View style={styles.logoWrap}>
+              <Image src={data.logoStackSrc} style={styles.logoStack} />
+            </View>
           ) : null}
 
           <View style={styles.headBox}>

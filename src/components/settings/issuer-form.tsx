@@ -35,8 +35,8 @@ export function IssuerForm({ initial }: { initial: IssuerSettings }) {
           Rechnungs-Aussteller
         </CardTitle>
         <p className="text-sm text-muted-foreground">
-          Diese Daten erscheinen auf jeder Rechnung. Name, Adresse und – falls
-          vorhanden – die USt-IdNr. sind rechtlich verpflichtend.
+          Diese Daten erscheinen auf jeder Rechnung. Name und (Korrespondenz-)
+          Adresse sind rechtlich verpflichtend.
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -54,14 +54,6 @@ export function IssuerForm({ initial }: { initial: IssuerSettings }) {
               value={s.senderName}
               onChange={(e) => set({ senderName: e.target.value })}
               placeholder="Leon Huschka"
-              className="h-9"
-            />
-          </F>
-          <F label="USt-IdNr. / Steuernummer">
-            <Input
-              value={s.vatId}
-              onChange={(e) => set({ vatId: e.target.value })}
-              placeholder="DE123456789"
               className="h-9"
             />
           </F>

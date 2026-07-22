@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { generateInvoicePositionsLLM } from "@/lib/invoice/llm";
 import { buildInvoiceItems } from "@/lib/invoice/parse";
 import { defaultTagline, type InvoiceState } from "@/lib/invoice/types";
-import type { Json } from "@/lib/types/database";
+import type { Json, OrderType } from "@/lib/types/database";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -18,17 +18,22 @@ async function requireUser() {
 
 const asJson = (s: InvoiceState) => s as unknown as Json;
 
-/** Return the saved invoice draft, or generate + persist a first draft. */
-export async function initInvoiceDraft(orderId: string): Promise<InvoiceState> {
-  const { supabase } = await requireUser();
-  const { data: order } = await supabase
-    .from("orders")
-    .select("*")
-    .eq("id", orderId)
-    .maybeSingle();
-  if (!order) throw new Error("Auftrag nicht gefunden");
-  if (order.invoice) return order.invoice as unknown as InvoiceState;
+type OrderRow = {
+  title: string;
+  order_type: OrderType;
+  description: string | null;
+  client_name: string | null;
+  contact_id: string | null;
+  value_cents: number | null;
+};
 
+/** Build a fresh draft for an order (recipient, LLM line items, defaults).
+ *  Reuses `keepNumber` if given, else allocates the next sequential number. */
+async function buildFreshDraft(
+  supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
+  order: OrderRow,
+  keepNumber: string | null,
+): Promise<InvoiceState> {
   // Recipient from the linked contact, else the order's client name.
   const recipient: InvoiceState["recipient"] = {
     name: order.client_name ?? "Kunde",
@@ -70,19 +75,20 @@ export async function initInvoiceDraft(orderId: string): Promise<InvoiceState> {
     unitCents: b.unitCents,
   }));
 
-  // Sequential number, allocated once.
   const year = new Date().getFullYear();
-  const { data: number } = await supabase.rpc("next_invoice_number", {
-    p_year: year,
-  });
+  let number = keepNumber;
+  if (!number) {
+    const { data } = await supabase.rpc("next_invoice_number", { p_year: year });
+    number = data ?? `KRL-${year}-0104`;
+  }
 
   const now = new Date();
   const due = new Date(now);
   due.setDate(due.getDate() + 14);
   const nowIso = now.toISOString();
 
-  const state: InvoiceState = {
-    number: number ?? `KRL-${year}-0104`,
+  return {
+    number,
     date: nowIso,
     dueDate: due.toISOString(),
     currency: "EUR",
@@ -98,7 +104,40 @@ export async function initInvoiceDraft(orderId: string): Promise<InvoiceState> {
     updatedAt: nowIso,
     downloadedAt: null,
   };
+}
 
+/** Return the saved invoice draft, or generate + persist a first draft. */
+export async function initInvoiceDraft(orderId: string): Promise<InvoiceState> {
+  const { supabase } = await requireUser();
+  const { data: order } = await supabase
+    .from("orders")
+    .select("*")
+    .eq("id", orderId)
+    .maybeSingle();
+  if (!order) throw new Error("Auftrag nicht gefunden");
+  if (order.invoice) return order.invoice as unknown as InvoiceState;
+
+  const state = await buildFreshDraft(supabase, order, null);
+  await supabase.from("orders").update({ invoice: asJson(state) }).eq("id", orderId);
+  revalidatePath(`/orders/${orderId}`);
+  return state;
+}
+
+/** Discard the current draft and rebuild it from scratch. Keeps the existing
+ *  invoice number so the sequence stays gap-free. */
+export async function regenerateInvoiceDraft(
+  orderId: string,
+): Promise<InvoiceState> {
+  const { supabase } = await requireUser();
+  const { data: order } = await supabase
+    .from("orders")
+    .select("*")
+    .eq("id", orderId)
+    .maybeSingle();
+  if (!order) throw new Error("Auftrag nicht gefunden");
+
+  const prev = order.invoice as unknown as InvoiceState | null;
+  const state = await buildFreshDraft(supabase, order, prev?.number ?? null);
   await supabase.from("orders").update({ invoice: asJson(state) }).eq("id", orderId);
   revalidatePath(`/orders/${orderId}`);
   return state;

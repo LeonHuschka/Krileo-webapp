@@ -63,11 +63,18 @@ const PAD = 48;
 // position, so the fold always lands the recipient in the envelope window —
 // no matter how many address lines are present.
 const MM = 2.83465;
-// Header band height: paddingTop + tallest column (invoice-number stack) + paddingBottom.
-const HEADER_H = 30 + (8.5 * 1.45 + 3 + 15 * 1.45) + 24;
-const RECIP_TOP = 45 * MM - HEADER_H; // recipient name ~45mm from the page top
+// Header band: equal top/bottom padding so the content sits optically centred
+// in the navy band. Height = padding + tallest column (invoice-number stack).
+const HEADER_PAD = 28;
+const HEADER_H = HEADER_PAD + (8.5 * 1.45 + 3 + 15 * 1.45) + HEADER_PAD;
+// "Rechnungsempfänger" label block above the recipient name.
+const RECIP_LABEL_H = 7.5 * 1.45 + 6;
+const RECIP_TOP = 45 * MM - HEADER_H - RECIP_LABEL_H; // name lands ~45mm from top
 const RECIP_LEFT = 25 * MM - PAD; // recipient ~25mm from the page left
 const LETTER_ZONE_H = 90 * MM - HEADER_H; // subject/title starts ~90mm from top
+// DIN 5008 fold marks (Form B) on the left edge, from the page top.
+const FOLD_1 = 105 * MM;
+const FOLD_2 = 210 * MM;
 
 const styles = StyleSheet.create({
   page: {
@@ -83,15 +90,21 @@ const styles = StyleSheet.create({
   headerBand: {
     backgroundColor: NAVY,
     paddingHorizontal: PAD,
-    paddingTop: 30,
-    paddingBottom: 24,
+    paddingTop: HEADER_PAD,
+    paddingBottom: HEADER_PAD,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
   brandRow: { flexDirection: "row", alignItems: "center", gap: 11 },
   logo: { width: 32, height: 32 },
-  brandName: { fontSize: 18, color: "#FFFFFF", letterSpacing: 1, ...w(700) },
+  brandName: {
+    fontSize: 18,
+    color: "#FFFFFF",
+    letterSpacing: 1,
+    lineHeight: 1,
+    ...w(700),
+  },
   invoiceLabel: {
     fontSize: 8.5,
     color: BRAND,
@@ -115,8 +128,25 @@ const styles = StyleSheet.create({
     left: RECIP_LEFT,
     width: 85 * MM,
   },
+  recipientHeader: {
+    fontSize: 7.5,
+    color: FAINT,
+    letterSpacing: 1.4,
+    textTransform: "uppercase",
+    marginBottom: 6,
+    ...w(600),
+  },
   recipientName: { fontSize: 11.5, color: FG, marginBottom: 2, ...w(600) },
   recipientLine: { fontSize: 10.5, color: FG, marginBottom: 1 },
+
+  // DIN fold marks on the left page edge
+  foldMark: {
+    position: "absolute",
+    left: 0,
+    width: 14,
+    height: 0.8,
+    backgroundColor: "#B4BCC8",
+  },
 
   issuerBox: {
     position: "absolute",
@@ -138,7 +168,7 @@ const styles = StyleSheet.create({
   issuerLine: { fontSize: 9, color: MUTED, marginBottom: 1, textAlign: "right" },
 
   // Subject / title
-  titleWrap: { marginBottom: 16 },
+  titleWrap: { marginBottom: 12 },
   kicker: {
     fontSize: 8.5,
     color: BRAND,
@@ -152,12 +182,12 @@ const styles = StyleSheet.create({
   meta: {
     flexDirection: "row",
     gap: 24,
-    paddingTop: 7,
-    paddingBottom: 7,
+    paddingTop: 6,
+    paddingBottom: 6,
     borderTopWidth: 0.75,
     borderBottomWidth: 0.75,
     borderColor: HAIRLINE,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   metaCol: { flex: 1 },
   metaLabel: {
@@ -180,7 +210,7 @@ const styles = StyleSheet.create({
   },
   itemRow: {
     flexDirection: "row",
-    paddingVertical: 7,
+    paddingVertical: 6,
     borderBottomWidth: 0.5,
     borderBottomColor: HAIRLINE,
   },
@@ -198,7 +228,7 @@ const styles = StyleSheet.create({
   amount: { flex: 1.6, textAlign: "right" },
 
   // Totals
-  totals: { flexDirection: "row", justifyContent: "flex-end", marginTop: 8 },
+  totals: { flexDirection: "row", justifyContent: "flex-end", marginTop: 6 },
   totalsBox: { width: 250 },
   subRow: {
     flexDirection: "row",
@@ -227,13 +257,13 @@ const styles = StyleSheet.create({
 
   // Notes
   notes: {
-    marginTop: 10,
-    paddingTop: 9,
+    marginTop: 8,
+    paddingTop: 8,
     borderTopWidth: 0.5,
     borderTopColor: HAIRLINE,
     fontSize: 8,
     color: MUTED,
-    lineHeight: 1.45,
+    lineHeight: 1.4,
   },
   notesHeader: {
     fontSize: 7.5,
@@ -263,13 +293,13 @@ const styles = StyleSheet.create({
   // Footer band
   footer: {
     position: "absolute",
-    bottom: 22,
+    bottom: 20,
     left: PAD,
     right: PAD,
     flexDirection: "row",
     alignItems: "flex-start",
     justifyContent: "space-between",
-    paddingTop: 12,
+    paddingTop: 10,
     borderTopWidth: 0.5,
     borderTopColor: HAIRLINE,
   },
@@ -331,6 +361,10 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
   return (
     <Document title={`Rechnung ${data.invoiceNumber}`} author={data.issuer.senderName}>
       <Page size="A4" style={styles.page}>
+        {/* Fold marks (DIN 5008, Form B) for a windowed envelope */}
+        <View style={[styles.foldMark, { top: FOLD_1 }]} fixed />
+        <View style={[styles.foldMark, { top: FOLD_2 }]} fixed />
+
         {/* Header band */}
         <View style={styles.headerBand}>
           <View style={styles.brandRow}>
@@ -349,6 +383,7 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
               the fold aligned even when the recipient has few/no address lines. */}
           <View style={styles.letterZone}>
             <View style={styles.recipientBox}>
+              <Text style={styles.recipientHeader}>Rechnungsempfänger</Text>
               <Text style={styles.recipientName}>{data.recipient.name}</Text>
               {data.recipient.addressLines.map((l, i) => (
                 <Text key={i} style={styles.recipientLine}>
@@ -373,9 +408,6 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
                   {l}
                 </Text>
               ))}
-              {data.issuer.vatId ? (
-                <Text style={styles.issuerLine}>USt-IdNr.: {data.issuer.vatId}</Text>
-              ) : null}
             </View>
           </View>
 
@@ -465,15 +497,15 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
                 ))}
               </View>
             ) : null}
-            <Text style={{ marginTop: 6 }}>
+            <Text style={{ marginTop: 5 }}>
               Reverse-Charge-Verfahren: Die Umsatzsteuer schuldet der
               Leistungsempfänger (§ 13b UStG). Alle Beträge in {data.currency}.
             </Text>
-            {clause ? <Text style={{ marginTop: 6 }}>{clause}</Text> : null}
+            {clause ? <Text style={{ marginTop: 5 }}>{clause}</Text> : null}
             {data.notes.trim() ? (
-              <Text style={{ marginTop: 8 }}>{data.notes.trim()}</Text>
+              <Text style={{ marginTop: 6 }}>{data.notes.trim()}</Text>
             ) : null}
-            <Text style={{ marginTop: 10, color: FG }}>
+            <Text style={{ marginTop: 6, color: FG }}>
               Vielen Dank für die Zusammenarbeit.
             </Text>
           </View>

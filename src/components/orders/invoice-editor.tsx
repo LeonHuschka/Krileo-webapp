@@ -12,6 +12,7 @@ import {
   Wand2,
   Circle,
   CheckCircle2,
+  RotateCcw,
 } from "lucide-react";
 import {
   Dialog,
@@ -25,6 +26,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
   initInvoiceDraft,
+  regenerateInvoiceDraft,
   saveInvoiceDraft,
   markInvoiceDownloaded,
 } from "@/app/(app)/orders/invoice-actions";
@@ -111,6 +113,26 @@ export function InvoiceButton({
       } finally {
         setLoading(false);
       }
+    }
+  }
+
+  async function resetDraft() {
+    if (
+      !window.confirm(
+        "Entwurf verwerfen und komplett neu aufbauen? Positionen, Empfänger und Einstellungen werden zurückgesetzt (die Rechnungsnummer bleibt).",
+      )
+    )
+      return;
+    setLoading(true);
+    try {
+      const fresh = await regenerateInvoiceDraft(orderId);
+      setState(fresh);
+      router.refresh();
+      toast.success("Entwurf zurückgesetzt");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Fehler");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -202,14 +224,26 @@ export function InvoiceButton({
                 <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
               )}
             </DialogTitle>
-            <Button
-              size="sm"
-              onClick={download}
-              disabled={!state}
-              className="gap-1.5"
-            >
-              <Download className="h-4 w-4" /> PDF herunterladen
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={resetDraft}
+                disabled={!state || loading}
+                className="gap-1.5 text-muted-foreground hover:text-destructive"
+                title="Entwurf verwerfen und neu aufbauen"
+              >
+                <RotateCcw className="h-3.5 w-3.5" /> Zurücksetzen
+              </Button>
+              <Button
+                size="sm"
+                onClick={download}
+                disabled={!state}
+                className="gap-1.5"
+              >
+                <Download className="h-4 w-4" /> PDF herunterladen
+              </Button>
+            </div>
           </DialogHeader>
 
           {loading || !state ? (

@@ -39,8 +39,7 @@ export type InvoiceState = {
 export type IssuerSettings = {
   brandName: string; // "Krileo" — header wordmark + footer mark
   senderName: string; // legal person on the sender block, "Leon Huschka"
-  addressLines: string[]; // current legal address (required)
-  vatId: string; // USt-IdNr. / Steuernummer (printed if set)
+  addressLines: string[]; // correspondence address (required)
   email: string;
   phone: string;
   gf: string; // name shown in the footer, "Leon Huschka"
@@ -56,7 +55,6 @@ export const DEFAULT_ISSUER: IssuerSettings = {
   brandName: "Krileo",
   senderName: "Leon Huschka",
   addressLines: [],
-  vatId: "",
   email: "krileoworks@gmail.com",
   phone: "+49 152 33511785",
   gf: "Leon Huschka",
@@ -86,9 +84,9 @@ export function defaultTagline(orderType: OrderType): string {
 /** The billing-mode clause printed on the invoice. */
 export function billingClause(mode: InvoiceBillingMode | null): string | null {
   if (mode === "fixed")
-    return "Fixpreis-Projekt. Änderungen und Anpassungen innerhalb des vereinbarten Projektumfangs sind über die gesamte Laufzeit der Website kostenfrei. Leistungen, die den vereinbarten Umfang überschreiten, werden nach Aufwand gesondert nach Honorar vergütet.";
+    return "Fixpreis-Projekt: Anpassungen im vereinbarten Umfang sind inklusive; Mehraufwand wird nach Absprache gesondert berechnet.";
   if (mode === "service")
-    return "Abrechnung im Rahmen des vereinbarten Service-Vertrags. Der zugehörige Service-Vertrag ist Bestandteil dieser Vereinbarung.";
+    return "Abrechnung im Rahmen des vereinbarten Service-Vertrags.";
   return null;
 }
 

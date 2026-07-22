@@ -12,6 +12,13 @@ export type InvoiceLineItem = {
 
 export type InvoiceBillingMode = "fixed" | "service";
 
+/** Invoice-level discount applied after the subtotal ("Rabatt"). */
+export type InvoiceDiscount = {
+  kind: "percent" | "amount"; // percent of subtotal, or a fixed cents amount
+  value: number; // percent points (e.g. 10) or cents (e.g. 15000), per kind
+  label?: string; // caption override, defaults to "Rabatt"
+};
+
 /** The full editable invoice draft, stored on `orders.invoice`. */
 export type InvoiceState = {
   number: string;
@@ -40,6 +47,7 @@ export type InvoiceState = {
     taxId?: string;
   };
   items: InvoiceLineItem[];
+  discount?: InvoiceDiscount | null; // optional Rabatt after the subtotal
   billingMode: InvoiceBillingMode | null;
   notes: string; // extra free-text note printed under the table
   createdAt: string;
@@ -138,6 +146,21 @@ export function invoiceTotalCents(items: InvoiceLineItem[]): number {
     (s, it) => s + Math.round(it.quantity * it.unitCents),
     0,
   );
+}
+
+/** Discount amount in cents for a subtotal (0 when no discount is set).
+ *  Percent discounts round to the nearest cent; fixed discounts are capped
+ *  at the subtotal so the net never goes negative. */
+export function discountCentsOf(
+  subtotalCents: number,
+  discount?: InvoiceDiscount | null,
+): number {
+  if (!discount || !discount.value || discount.value <= 0) return 0;
+  const raw =
+    discount.kind === "percent"
+      ? Math.round((subtotalCents * discount.value) / 100)
+      : Math.round(discount.value);
+  return Math.min(subtotalCents, Math.max(0, raw));
 }
 
 /** VAT amount in cents for a net subtotal (0 when VAT is not shown). */

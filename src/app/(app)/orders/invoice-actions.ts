@@ -107,6 +107,7 @@ async function buildFreshDraft(
     taglineRight: defaultTagline(order.order_type),
     recipient,
     items,
+    discount: null,
     billingMode: null,
     notes: "",
     createdAt: nowIso,

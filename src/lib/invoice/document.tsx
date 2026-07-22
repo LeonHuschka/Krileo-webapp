@@ -9,6 +9,8 @@ import {
   Image,
   StyleSheet,
   Font,
+  Svg,
+  Polygon,
 } from "@react-pdf/renderer";
 import type { InvoiceItem } from "@/lib/invoice/parse";
 import {
@@ -51,6 +53,7 @@ function w(weight: 400 | 500 | 600 | 700) {
 }
 
 const NAVY = "#0C2340";
+const NAVY2 = "#16406E"; // lighter navy-blue for the header's diagonal two-tone
 const BRAND = "#2196F3";
 const FG = "#0F1729";
 const MUTED = "#6B7280";
@@ -87,10 +90,12 @@ const styles = StyleSheet.create({
     lineHeight: 1.45,
     ...w(400),
   },
-  body: { paddingHorizontal: PAD },
+  body: { paddingHorizontal: PAD, flexGrow: 1 },
 
-  // Header card (rounded navy, inset from the paper edges)
+  // Header card (rounded navy with a diagonal blue gradient, inset from edges)
   headerBand: {
+    position: "relative",
+    overflow: "hidden",
     backgroundColor: NAVY,
     marginTop: MTOP,
     marginHorizontal: HB_MX,
@@ -102,6 +107,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
+  headerSvg: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
   brandRow: { flexDirection: "row", alignItems: "center", gap: 11 },
   logo: { width: 32, height: 32 },
   brandName: {
@@ -158,7 +164,7 @@ const styles = StyleSheet.create({
   issuerBox: {
     position: "absolute",
     top: RECIP_TOP,
-    right: 0,
+    right: RECIP_LEFT, // mirror the recipient's 25mm inset for symmetry
     width: 210,
     alignItems: "flex-end",
   },
@@ -196,16 +202,17 @@ const styles = StyleSheet.create({
     borderColor: HAIRLINE,
     marginBottom: 8,
   },
-  metaCol: { flex: 1 },
+  metaCol: { flex: 1, alignItems: "center" },
   metaLabel: {
     fontSize: 7,
     color: FAINT,
     letterSpacing: 1.3,
     textTransform: "uppercase",
     marginBottom: 3,
+    textAlign: "center",
     ...w(500),
   },
-  metaValue: { fontSize: 10, color: FG, ...w(600) },
+  metaValue: { fontSize: 10, color: FG, textAlign: "center", ...w(600) },
 
   // Table
   itemsHead: {
@@ -355,6 +362,8 @@ export type InvoiceData = {
   items: InvoiceItem[];
   subtotalCents: number;
   totalCents: number;
+  discountCents: number;
+  discountLabel?: string;
 
   billingMode: InvoiceBillingMode | null;
   notes: string;
@@ -367,8 +376,10 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
   const category =
     data.taglineRight.split("·").pop()?.trim().toUpperCase() ?? "";
   const clause = billingClause(data.billingMode);
-  const vat = vatCentsOf(data.subtotalCents, data.showVat, data.vatRate);
-  const grand = data.subtotalCents + vat;
+  const hasDiscount = data.discountCents > 0;
+  const netCents = data.subtotalCents - data.discountCents;
+  const vat = vatCentsOf(netCents, data.showVat, data.vatRate);
+  const grand = netCents + vat;
 
   return (
     <Document title={`Rechnung ${data.invoiceNumber}`} author={data.issuer.senderName}>
@@ -377,8 +388,21 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
         <View style={[styles.foldMark, { top: FOLD_1 }]} fixed />
         <View style={[styles.foldMark, { top: FOLD_2 }]} fixed />
 
-        {/* Header band */}
+        {/* Header band: navy card with a diagonal blue gradient behind the
+            wordmark. Print-safe (inset, no full bleed). */}
         <View style={styles.headerBand}>
+          <Svg style={styles.headerSvg} viewBox="0 0 800 100" preserveAspectRatio="none">
+            {/* lighter navy slab on the logo side */}
+            <Polygon points="0,0 400,0 320,100 0,100" fill={NAVY2} />
+            {/* bright brand stripe along the diagonal */}
+            <Polygon points="400,0 428,0 348,100 320,100" fill={BRAND} />
+            {/* faint second stripe for depth */}
+            <Polygon
+              points="150,0 174,0 94,100 70,100"
+              fill={BRAND}
+              fillOpacity={0.2}
+            />
+          </Svg>
           <View style={styles.brandRow}>
             {data.logoSrc && <Image src={data.logoSrc} style={styles.logo} />}
             <Text style={styles.brandName}>{data.issuer.brandName}</Text>
@@ -479,9 +503,27 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
           {/* Totals */}
           <View style={styles.totals}>
             <View style={styles.totalsBox}>
+              {hasDiscount ? (
+                <>
+                  <View style={styles.subRow}>
+                    <Text style={styles.subLabel}>Zwischensumme</Text>
+                    <Text style={styles.subValue}>
+                      {money(data.subtotalCents)}
+                    </Text>
+                  </View>
+                  <View style={styles.subRow}>
+                    <Text style={styles.subLabel}>
+                      {data.discountLabel ?? "Rabatt"}
+                    </Text>
+                    <Text style={[styles.subValue, { color: BRAND }]}>
+                      −{money(data.discountCents)}
+                    </Text>
+                  </View>
+                </>
+              ) : null}
               <View style={styles.subRow}>
                 <Text style={styles.subLabel}>Nettobetrag</Text>
-                <Text style={styles.subValue}>{money(data.subtotalCents)}</Text>
+                <Text style={styles.subValue}>{money(netCents)}</Text>
               </View>
               <View style={styles.subRow}>
                 <Text style={styles.subLabel}>
@@ -496,8 +538,12 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
             </View>
           </View>
 
+          {/* Flexible spacer: pins the notes block to a constant distance
+              above the footer regardless of table/notes length. */}
+          <View style={{ flexGrow: 1, minHeight: 16 }} />
+
           {/* Notes */}
-          <View style={styles.notes}>
+          <View style={styles.notes} wrap={false}>
             <Text style={styles.notesHeader}>Zahlung & Hinweise</Text>
             <Text>
               Bitte begleiche den Gesamtbetrag von{" "}

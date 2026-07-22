@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { loadIssuer } from "@/lib/invoice/issuer";
 import {
   invoiceTotalCents,
+  discountCentsOf,
   issuerAddress,
   type InvoiceState,
 } from "@/lib/invoice/types";
@@ -108,6 +109,12 @@ export async function POST(
     kind: li.kind,
   }));
   const subtotal = invoiceTotalCents(state.items);
+  const discountCents = discountCentsOf(subtotal, state.discount);
+  const discountLabel = state.discount
+    ? state.discount.kind === "percent"
+      ? `Rabatt (${state.discount.value} %)`
+      : state.discount.label?.trim() || "Rabatt"
+    : "Rabatt";
 
   const data: InvoiceData = {
     invoiceNumber: state.number,
@@ -125,7 +132,9 @@ export async function POST(
     orderRef: shortId(order.id),
     items,
     subtotalCents: subtotal,
-    totalCents: subtotal,
+    totalCents: subtotal - discountCents,
+    discountCents,
+    discountLabel,
     billingMode: state.billingMode,
     notes: state.notes,
     logoSrc: await loadPng("krileo-icon.png"),

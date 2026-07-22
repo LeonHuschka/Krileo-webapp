@@ -35,6 +35,7 @@ import {
   fmtMoney,
   invoiceTotalCents,
   vatCentsOf,
+  discountCentsOf,
   defaultTagline,
   type InvoiceState,
   type InvoiceBillingMode,
@@ -204,7 +205,9 @@ export function InvoiceButton({
       s ? { ...s, items: s.items.filter((it) => it.id !== id) } : s,
     );
 
-  const net = state ? invoiceTotalCents(state.items) : 0;
+  const sub = state ? invoiceTotalCents(state.items) : 0;
+  const disc = state ? discountCentsOf(sub, state.discount) : 0;
+  const net = sub - disc;
   const vat = state ? vatCentsOf(net, state.showVat, state.vatRate) : 0;
   const gross = net + vat;
 
@@ -559,6 +562,18 @@ export function InvoiceButton({
                     </div>
                   ))}
                   <div className="space-y-1 border-t border-border/60 pt-2 text-sm">
+                    {disc > 0 && (
+                      <>
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>Zwischensumme</span>
+                          <span>{fmtMoney(sub, state.currency)}</span>
+                        </div>
+                        <div className="flex justify-between text-xs text-primary">
+                          <span>Rabatt</span>
+                          <span>−{fmtMoney(disc, state.currency)}</span>
+                        </div>
+                      </>
+                    )}
                     {state.showVat && (
                       <>
                         <div className="flex justify-between text-xs text-muted-foreground">
@@ -577,6 +592,82 @@ export function InvoiceButton({
                         {fmtMoney(gross, state.currency)}
                       </span>
                     </div>
+                  </div>
+                </div>
+
+                {/* Discount / Rabatt */}
+                <div className="flex items-center justify-between gap-2 rounded-lg border border-border/60 bg-muted/10 p-2.5">
+                  <div className="min-w-0">
+                    <div className="text-sm">Rabatt</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      Wird nach der Zwischensumme abgezogen (Prozent oder Betrag).
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    {state.discount && (
+                      <div className="flex items-center gap-1">
+                        <select
+                          value={state.discount.kind}
+                          onChange={(e) =>
+                            patch({
+                              discount: {
+                                kind: e.target.value as "percent" | "amount",
+                                value: 0,
+                              },
+                            })
+                          }
+                          className="h-8 rounded-md border border-input bg-transparent px-1 text-sm"
+                        >
+                          <option value="percent">%</option>
+                          <option value="amount">{state.currency}</option>
+                        </select>
+                        <Input
+                          key={state.discount.kind}
+                          type="number"
+                          min={0}
+                          step={state.discount.kind === "percent" ? "1" : "0.01"}
+                          defaultValue={
+                            state.discount.kind === "amount"
+                              ? (state.discount.value / 100).toString()
+                              : state.discount.value.toString()
+                          }
+                          onBlur={(e) => {
+                            const n = Math.max(0, Number(e.target.value) || 0);
+                            const value =
+                              state.discount!.kind === "amount"
+                                ? Math.round(n * 100)
+                                : n;
+                            patch({
+                              discount: { ...state.discount!, value },
+                            });
+                          }}
+                          className="h-8 w-16 px-1 text-right text-sm"
+                        />
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        patch({
+                          discount: state.discount
+                            ? null
+                            : { kind: "percent", value: 0 },
+                        })
+                      }
+                      className={cn(
+                        "relative h-5 w-9 rounded-full transition-colors",
+                        state.discount
+                          ? "bg-primary"
+                          : "bg-muted-foreground/30",
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all",
+                          state.discount ? "left-4" : "left-0.5",
+                        )}
+                      />
+                    </button>
                   </div>
                 </div>
 

@@ -146,8 +146,8 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
     paddingBottom: 3,
     marginBottom: 7,
-    borderBottomWidth: 0.5,
-    borderBottomColor: "rgba(101,174,242,0.45)",
+    borderBottomWidth: 0.75,
+    borderBottomColor: "#3B7FC0",
   },
   recipientHeader: {
     fontSize: 7.5,

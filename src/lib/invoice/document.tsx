@@ -121,15 +121,7 @@ const styles = StyleSheet.create({
   },
   logoStack: { width: 58, height: 68 },
 
-  headBox: { position: "absolute", right: PAD, top: 26, alignItems: "flex-end" },
-  headDivider: {
-    position: "absolute",
-    top: 100,
-    left: PAD,
-    right: PAD,
-    height: 0.5,
-    backgroundColor: "rgba(255,255,255,0.16)",
-  },
+  headBox: { position: "absolute", right: PAD, top: 46, alignItems: "flex-end" },
   invoiceLabel: {
     fontSize: 8.5,
     color: ON_DARK_KICK,
@@ -155,7 +147,7 @@ const styles = StyleSheet.create({
     paddingBottom: 3,
     marginBottom: 7,
     borderBottomWidth: 0.5,
-    borderBottomColor: "rgba(255,255,255,0.22)",
+    borderBottomColor: "rgba(101,174,242,0.45)",
   },
   recipientHeader: {
     fontSize: 7.5,
@@ -199,8 +191,8 @@ const styles = StyleSheet.create({
   },
   issuerLine: { fontSize: 9, color: ON_DARK_TEXT, marginBottom: 1, textAlign: "right" },
 
-  // Kicker + title (top-left of the gradient)
-  titleBox: { position: "absolute", left: PAD, top: 26, width: 300 },
+  // Kicker + title (top-left of the gradient, aligned to the logo's foot)
+  titleBox: { position: "absolute", left: PAD, top: 46, width: 300 },
 
   // DIN fold marks (inset so they stay inside the printable area)
   foldMark: {
@@ -412,12 +404,9 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
   const vat = vatCentsOf(netCents, data.showVat, data.vatRate);
   const grand = netCents + vat;
 
-  // Return-address line (Absenderzeile) for the envelope window.
-  const senderLine = [
-    data.issuer.brandName,
-    data.issuer.gf,
-    ...data.issuerAddressLines.slice(0, 2),
-  ]
+  // Sender line above the recipient: brand · service · person (no address).
+  const senderCat = data.taglineRight.split("·").pop()?.trim() || "";
+  const senderLine = [`${data.issuer.brandName} Agentur`, senderCat, data.issuer.gf]
     .filter(Boolean)
     .join("  ·  ");
 
@@ -471,8 +460,6 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
               fillOpacity={0.14}
             />
           </Svg>
-          {/* Hairline separating the brand row from the address block */}
-          <View style={styles.headDivider} />
 
           {data.logoStackSrc ? (
             <View style={styles.logoWrap}>

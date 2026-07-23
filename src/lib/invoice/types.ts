@@ -65,7 +65,9 @@ export type IssuerSettings = {
   city: string; // PLZ & Ort
   country: string; // Land
   email: string;
+  email2?: string; // optional second email (footer)
   phone: string;
+  phone2?: string; // optional second phone (footer)
   gf: string; // name shown in the footer, "Leon Huschka"
   footerNote: string; // footer mark caption, "Freiberufliche Agentur"
   hourlyRateCents: number; // default hourly rate for "Arbeitszeit" positions
@@ -93,7 +95,9 @@ export const DEFAULT_ISSUER: IssuerSettings = {
   city: "72631 Aichtal",
   country: "Deutschland",
   email: "krileoworks@gmail.com",
+  email2: "office@krileo.de",
   phone: "+49 152 33511785",
+  phone2: "+49 157 35452304",
   gf: "Leon Huschka",
   footerNote: "Freiberufliche Agentur",
   hourlyRateCents: 9000,

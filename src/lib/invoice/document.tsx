@@ -11,6 +11,7 @@ import {
   Font,
   Svg,
   Path,
+  Polygon,
   Defs,
   LinearGradient,
   Stop,
@@ -87,7 +88,7 @@ const FOLD_2 = 210 * MM;
 
 const styles = StyleSheet.create({
   page: {
-    paddingBottom: 88,
+    paddingBottom: 97,
     fontSize: 10,
     color: FG,
     lineHeight: 1.45,
@@ -121,6 +122,14 @@ const styles = StyleSheet.create({
   logoStack: { width: 58, height: 68 },
 
   headBox: { position: "absolute", right: PAD, top: 26, alignItems: "flex-end" },
+  headDivider: {
+    position: "absolute",
+    top: 100,
+    left: PAD,
+    right: PAD,
+    height: 0.5,
+    backgroundColor: "rgba(255,255,255,0.16)",
+  },
   invoiceLabel: {
     fontSize: 8.5,
     color: ON_DARK_KICK,
@@ -137,7 +146,17 @@ const styles = StyleSheet.create({
   },
 
   // Recipient / issuer, now sitting on the gradient (light text)
-  recipientBox: { position: "absolute", left: PAD, top: 130, width: 250 },
+  recipientBox: { position: "absolute", left: PAD, top: 116, width: 250 },
+  // Sender line (Absenderzeile) shown above the recipient for the window.
+  senderLine: {
+    fontSize: 6.5,
+    color: ON_DARK_LABEL,
+    letterSpacing: 0.3,
+    paddingBottom: 3,
+    marginBottom: 7,
+    borderBottomWidth: 0.5,
+    borderBottomColor: "rgba(255,255,255,0.22)",
+  },
   recipientHeader: {
     fontSize: 7.5,
     color: ON_DARK_LABEL,
@@ -393,6 +412,15 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
   const vat = vatCentsOf(netCents, data.showVat, data.vatRate);
   const grand = netCents + vat;
 
+  // Return-address line (Absenderzeile) for the envelope window.
+  const senderLine = [
+    data.issuer.brandName,
+    data.issuer.gf,
+    ...data.issuerAddressLines.slice(0, 2),
+  ]
+    .filter(Boolean)
+    .join("  ·  ");
+
   // Header gradient shape: rounded top, diagonal bottom cut (left lower).
   const gradVB = `0 0 ${PAGE_W} ${HEADER_SPACE}`;
   const gradPath =
@@ -431,7 +459,20 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
               </LinearGradient>
             </Defs>
             <Path d={gradPath} fill="url(#hdr)" />
+            {/* Subtle geometric depth in the lower band */}
+            <Polygon
+              points={`330,120 ${PAGE_W},52 ${PAGE_W},${CUT_RIGHT} ${240},${CUT_LEFT}`}
+              fill="#3B7FC0"
+              fillOpacity={0.16}
+            />
+            <Polygon
+              points={`330,120 356,116 266,${CUT_LEFT} 240,${CUT_LEFT}`}
+              fill="#65AEF2"
+              fillOpacity={0.14}
+            />
           </Svg>
+          {/* Hairline separating the brand row from the address block */}
+          <View style={styles.headDivider} />
 
           {data.logoStackSrc ? (
             <View style={styles.logoWrap}>
@@ -445,6 +486,7 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
           </View>
 
           <View style={styles.recipientBox}>
+            <Text style={styles.senderLine}>{senderLine}</Text>
             <Text style={styles.recipientHeader}>Rechnungsempfänger</Text>
             <Text style={styles.recipientName}>{data.recipient.name}</Text>
             {data.recipient.company ? (
@@ -601,7 +643,7 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
             {data.notes.trim() ? (
               <Text style={{ marginTop: 5 }}>{data.notes.trim()}</Text>
             ) : null}
-            <Text style={{ marginTop: 5, color: FG }}>
+            <Text style={{ marginTop: 5 }}>
               Vielen Dank für die Zusammenarbeit.
             </Text>
           </View>
@@ -612,6 +654,9 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
           <View style={styles.footCell}>
             <Text style={styles.footStrong}>{data.issuer.gf}</Text>
             <Text style={styles.footLine}>{data.issuer.email}</Text>
+            {data.issuer.email2 ? (
+              <Text style={styles.footLine}>{data.issuer.email2}</Text>
+            ) : null}
           </View>
           <View style={styles.footCenterCell}>
             {data.logoSrc ? (
@@ -628,6 +673,11 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
             <Text style={[styles.footLine, styles.footRight]}>
               {data.issuer.phone}
             </Text>
+            {data.issuer.phone2 ? (
+              <Text style={[styles.footLine, styles.footRight]}>
+                {data.issuer.phone2}
+              </Text>
+            ) : null}
           </View>
         </View>
       </Page>

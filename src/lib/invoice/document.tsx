@@ -141,6 +141,7 @@ const styles = StyleSheet.create({
   recipientBox: { position: "absolute", left: PAD, top: 116, width: 250 },
   // Sender line (Absenderzeile) shown above the recipient for the window.
   senderLine: {
+    width: 85 * MM, // DIN 5008 Anschriftfeld / envelope window width
     fontSize: 6.5,
     color: ON_DARK_LABEL,
     letterSpacing: 0.3,

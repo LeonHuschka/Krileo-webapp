@@ -113,14 +113,14 @@ const styles = StyleSheet.create({
   },
   logoWrap: {
     position: "absolute",
-    top: 20,
+    top: 60,
     left: 0,
     right: 0,
     alignItems: "center",
   },
-  logoStack: { width: 50, height: 59 },
+  logoStack: { width: 58, height: 68 },
 
-  headBox: { position: "absolute", right: PAD, top: 34, alignItems: "flex-end" },
+  headBox: { position: "absolute", right: PAD, top: 26, alignItems: "flex-end" },
   invoiceLabel: {
     fontSize: 8.5,
     color: ON_DARK_KICK,
@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
   },
 
   // Recipient / issuer, now sitting on the gradient (light text)
-  recipientBox: { position: "absolute", left: PAD, top: 96, width: 250 },
+  recipientBox: { position: "absolute", left: PAD, top: 130, width: 250 },
   recipientHeader: {
     fontSize: 7.5,
     color: ON_DARK_LABEL,
@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
   issuerBox: {
     position: "absolute",
     right: PAD,
-    top: 96,
+    top: 130,
     width: 220,
     alignItems: "flex-end",
   },
@@ -180,8 +180,8 @@ const styles = StyleSheet.create({
   },
   issuerLine: { fontSize: 9, color: ON_DARK_TEXT, marginBottom: 1, textAlign: "right" },
 
-  // Kicker + title (inside the gradient, above the cut)
-  titleBox: { position: "absolute", left: PAD, top: 206, right: PAD },
+  // Kicker + title (top-left of the gradient)
+  titleBox: { position: "absolute", left: PAD, top: 26, width: 300 },
 
   // DIN fold marks (inset so they stay inside the printable area)
   foldMark: {
@@ -200,7 +200,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     ...w(600),
   },
-  title: { fontSize: 22, color: WHITE, ...w(700) },
+  title: { fontSize: 15, color: WHITE, ...w(700) },
 
   // Meta strip
   meta: {

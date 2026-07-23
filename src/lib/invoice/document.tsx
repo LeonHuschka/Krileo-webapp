@@ -113,7 +113,7 @@ const styles = StyleSheet.create({
   },
   logoWrap: {
     position: "absolute",
-    top: 60,
+    top: 22,
     left: 0,
     right: 0,
     alignItems: "center",
@@ -440,7 +440,7 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
           ) : null}
 
           <View style={styles.headBox}>
-            <Text style={styles.invoiceLabel}>RECHNUNG</Text>
+            <Text style={styles.invoiceLabel}>RECHNUNGSNUMMER</Text>
             <Text style={styles.invoiceNumber}>{data.invoiceNumber}</Text>
           </View>
 

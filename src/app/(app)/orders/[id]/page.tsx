@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getDeploymentStatusForUrl } from "@/lib/orders/vercel";
 import { OrderDetail } from "@/components/orders/order-detail";
+import { toClientAccess, type OrderAccess } from "@/lib/orders/access";
 import {
   statusToTab,
   ORDER_TAB_KEYS,
@@ -50,6 +51,12 @@ export default async function OrderDetailPage({
 
   if (!order) notFound();
 
+  // Client-safe access list: clear-text meta only, encrypted blob stays server-side.
+  const accessesRaw = Array.isArray(order.accesses)
+    ? (order.accesses as unknown as OrderAccess[])
+    : [];
+  const accesses = accessesRaw.map(toClientAccess);
+
   // Average project duration (created → last activity) over completed,
   // non-canceled orders — for the "vs. Ø" gauge in the Geliefert tab.
   const completed = (allOrders ?? []).filter(
@@ -90,7 +97,8 @@ export default async function OrderDetailPage({
       </Link>
 
       <OrderDetail
-        order={order}
+        order={{ ...order, accesses: null }}
+        accesses={accesses}
         members={members ?? []}
         contacts={contacts ?? []}
         deployment={deployment}

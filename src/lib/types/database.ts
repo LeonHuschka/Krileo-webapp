@@ -233,6 +233,7 @@ export type Database = {
           attachments: Attachment[] | null;
           telegram_review_chat_id: number | null;
           invoice: Json | null;
+          accesses: Json | null;
           position: number;
           created_at: string;
           updated_at: string;
@@ -264,6 +265,7 @@ export type Database = {
           attachments?: Attachment[] | null;
           telegram_review_chat_id?: number | null;
           invoice?: Json | null;
+          accesses?: Json | null;
           position?: number;
           created_at?: string;
           updated_at?: string;
@@ -295,6 +297,7 @@ export type Database = {
           attachments?: Attachment[] | null;
           telegram_review_chat_id?: number | null;
           invoice?: Json | null;
+          accesses?: Json | null;
           position?: number;
           created_at?: string;
           updated_at?: string;

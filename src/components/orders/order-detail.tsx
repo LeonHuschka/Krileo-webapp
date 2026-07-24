@@ -50,6 +50,8 @@ import { ReviewPanel } from "@/components/orders/review-panel";
 import { DevItemsPanel } from "@/components/orders/dev-items-panel";
 import { AttachmentsPanel } from "@/components/orders/attachments-panel";
 import { DeliveredPanel } from "@/components/orders/delivered-panel";
+import { AccessPanel } from "@/components/orders/access-panel";
+import type { AccessClient } from "@/lib/orders/access";
 import type {
   ContactRow,
   OrderEventRow,
@@ -254,6 +256,7 @@ function WorkPreview({
 
 export function OrderDetail({
   order,
+  accesses,
   members,
   contacts,
   deployment,
@@ -263,6 +266,7 @@ export function OrderDetail({
   defaultTab,
 }: {
   order: OrderRow;
+  accesses: AccessClient[];
   members: UserProfileRow[];
   contacts: ContactRow[];
   deployment?: DeploymentStatus | null;
@@ -494,7 +498,7 @@ export function OrderDetail({
 
   // The device preview lives inside each tab: full & slightly larger in Auftrag,
   // compact everywhere else (link field only shown when no link is set yet).
-  const previewArea = (compact: boolean) => {
+  const previewArea = (compact: boolean, rightSlot?: React.ReactNode) => {
     const hasLink = !!order.work_url;
     const linkField = (
       <div className="space-y-1.5">
@@ -522,23 +526,31 @@ export function OrderDetail({
     );
 
     if (compact) {
+      const device = hasLink ? (
+        <WorkPreview
+          url={order.work_url ?? ""}
+          size="compact"
+          desktopSrc={
+            order.preview_desktop_url ||
+            workThumbnailUrl(order.work_url ?? "", 800, "desktop")
+          }
+          mobileSrc={
+            order.preview_mobile_url ||
+            workThumbnailUrl(order.work_url ?? "", 420, "mobile")
+          }
+        />
+      ) : (
+        linkField
+      );
       return (
         <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
-          {hasLink ? (
-            <WorkPreview
-              url={order.work_url ?? ""}
-              size="compact"
-              desktopSrc={
-                order.preview_desktop_url ||
-                workThumbnailUrl(order.work_url ?? "", 800, "desktop")
-              }
-              mobileSrc={
-                order.preview_mobile_url ||
-                workThumbnailUrl(order.work_url ?? "", 420, "mobile")
-              }
-            />
+          {rightSlot ? (
+            <div className="grid items-center gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+              <div>{device}</div>
+              {rightSlot}
+            </div>
           ) : (
-            linkField
+            device
           )}
         </div>
       );
@@ -720,7 +732,10 @@ export function OrderDetail({
         </TabsContent>
 
         <TabsContent value="aktiv" className="space-y-4">
-          {previewArea(true)}
+          {previewArea(
+            true,
+            <AccessPanel orderId={order.id} accesses={accesses} />,
+          )}
           <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
             <DevItemsPanel
               orderId={order.id}

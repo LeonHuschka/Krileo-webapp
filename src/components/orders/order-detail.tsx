@@ -205,7 +205,7 @@ function WorkPreview({
   return (
     <div
       className={cn(
-        "relative mx-auto w-full",
+        "relative mx-auto w-full pb-5",
         size === "compact" ? "max-w-[520px]" : "max-w-[770px]",
       )}
     >
@@ -545,9 +545,12 @@ export function OrderDetail({
       return (
         <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
           {rightSlot ? (
-            <div className="grid items-center gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+            // Device stays centered at its original size (equal side columns);
+            // the access panel fills the free space on the right.
+            <div className="grid grid-cols-1 items-center gap-4 lg:grid-cols-[1fr_auto_1fr]">
+              <div className="hidden lg:block" />
               <div>{device}</div>
-              {rightSlot}
+              <div className="lg:justify-self-stretch">{rightSlot}</div>
             </div>
           ) : (
             device

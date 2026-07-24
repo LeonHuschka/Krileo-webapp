@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
   },
 
   // Recipient / issuer, now sitting on the gradient (light text)
-  recipientBox: { position: "absolute", left: PAD, top: 116, width: 250 },
+  recipientBox: { position: "absolute", left: PAD, top: 130, width: 250 },
   // Sender line (Absenderzeile) shown above the recipient for the window.
   senderLine: {
     width: 85 * MM, // DIN 5008 Anschriftfeld / envelope window width

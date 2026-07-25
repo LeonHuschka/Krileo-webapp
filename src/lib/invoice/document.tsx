@@ -327,19 +327,38 @@ const styles = StyleSheet.create({
   },
   bankLine: { fontSize: 9, color: FG, marginBottom: 1.5, ...w(500) },
 
-  // Bank block on the left, pay-by-QR on the right (matches the window area)
-  bankRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
+  // Bank block (left) · ODER · pay-by-QR (right)
+  bankRow: { flexDirection: "row", alignItems: "stretch", marginTop: 1 },
   bankCol: { flex: 1 },
-  qrBox: { width: 90, alignItems: "center", marginTop: 5 },
-  qrImg: { width: 80, height: 80 },
-  qrCaption: {
+  orDivider: {
+    width: 46,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 2,
+  },
+  orLine: { flexGrow: 1, width: 0.8, backgroundColor: HAIRLINE },
+  orText: {
+    fontSize: 7,
+    color: MUTED,
+    letterSpacing: 1.2,
+    marginVertical: 5,
+    ...w(600),
+  },
+  qrBox: { width: 122, alignItems: "center", justifyContent: "center" },
+  qrImg: { width: 58, height: 58 },
+  qrTitle: {
     fontSize: 6.5,
-    color: FAINT,
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
-    marginTop: 3,
+    color: FG,
+    letterSpacing: 0.4,
+    marginTop: 4,
     textAlign: "center",
     ...w(600),
+  },
+  qrMethods: {
+    fontSize: 6.5,
+    color: FAINT,
+    marginTop: 1.5,
+    textAlign: "center",
   },
 
   // Footer band
@@ -644,9 +663,19 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
                 ) : null}
               </View>
               {data.qrSrc ? (
+                <View style={styles.orDivider}>
+                  <View style={styles.orLine} />
+                  <Text style={styles.orText}>ODER</Text>
+                  <View style={styles.orLine} />
+                </View>
+              ) : null}
+              {data.qrSrc ? (
                 <View style={styles.qrBox}>
                   <Image src={data.qrSrc} style={styles.qrImg} />
-                  <Text style={styles.qrCaption}>Per QR bezahlen</Text>
+                  <Text style={styles.qrTitle}>Per QR bezahlen</Text>
+                  <Text style={styles.qrMethods}>
+                    Apple Pay · Google Pay · Karte
+                  </Text>
                 </View>
               ) : null}
             </View>

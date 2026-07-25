@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { promises as fs } from "fs";
 import path from "path";
 import { renderToBuffer } from "@react-pdf/renderer";
+import QRCode from "qrcode";
 import { createClient } from "@/lib/supabase/server";
 import { loadIssuer } from "@/lib/invoice/issuer";
 import {
@@ -139,6 +140,13 @@ export async function POST(
     notes: state.notes,
     logoSrc: await loadPng("krileo-icon.png"),
     logoStackSrc: await loadPng("krileo-logo.png"),
+    qrSrc: issuer.paymentUrl
+      ? await QRCode.toDataURL(issuer.paymentUrl, {
+          margin: 1,
+          width: 240,
+          errorCorrectionLevel: "M",
+        }).catch(() => undefined)
+      : undefined,
   };
 
   const buffer = await renderToBuffer(InvoiceDocument({ data }));

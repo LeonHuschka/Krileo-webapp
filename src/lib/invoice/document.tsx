@@ -79,8 +79,8 @@ const PAGE_W = 595.28; // A4 width in pt
 const GX = 0; // full-bleed: gradient touches the left/right paper edges
 const GY = 0; // full-bleed: gradient touches the top edge
 const G_RADIUS = 0; // square corners for the full-bleed band
-const CUT_LEFT = 284; // gradient bottom edge on the left (lower)
-const CUT_RIGHT = 246; // gradient bottom edge on the right (higher)
+const CUT_LEFT = 252; // gradient bottom edge on the left (lower)
+const CUT_RIGHT = 216; // gradient bottom edge on the right (higher)
 const HEADER_SPACE = CUT_LEFT + 14; // where flow content clears the gradient
 // DIN fold marks (inset so they stay printable).
 const FOLD_1 = 105 * MM;
@@ -327,6 +327,21 @@ const styles = StyleSheet.create({
   },
   bankLine: { fontSize: 9, color: FG, marginBottom: 1.5, ...w(500) },
 
+  // Bank block on the left, pay-by-QR on the right (matches the window area)
+  bankRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
+  bankCol: { flex: 1 },
+  qrBox: { width: 90, alignItems: "center", marginTop: 5 },
+  qrImg: { width: 80, height: 80 },
+  qrCaption: {
+    fontSize: 6.5,
+    color: FAINT,
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+    marginTop: 3,
+    textAlign: "center",
+    ...w(600),
+  },
+
   // Footer band
   footer: {
     position: "absolute",
@@ -393,6 +408,7 @@ export type InvoiceData = {
 
   logoSrc?: string; // small icon for the footer
   logoStackSrc?: string; // stacked wordmark for the header
+  qrSrc?: string; // pay-by-QR code (data URL), shown beside the bank block
 };
 
 export function InvoiceDocument({ data }: { data: InvoiceData }) {
@@ -611,18 +627,29 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
               Angabe der Rechnungsnummer{" "}
               <Text style={{ ...w(600), color: FG }}>{data.invoiceNumber}</Text>.
             </Text>
-            {data.issuer.paymentLines.length > 0 ? (
-              <View style={styles.bankBlock}>
-                <Text style={styles.bankLabel}>
-                  Bankverbindung · {data.issuer.paymentMethod}
-                </Text>
-                {data.issuer.paymentLines.map((l, i) => (
-                  <Text key={i} style={styles.bankLine}>
-                    {l}
-                  </Text>
-                ))}
+            {/* Bank block on the left, pay-by-QR on the right (window area). */}
+            <View style={styles.bankRow}>
+              <View style={styles.bankCol}>
+                {data.issuer.paymentLines.length > 0 ? (
+                  <View style={styles.bankBlock}>
+                    <Text style={styles.bankLabel}>
+                      Bankverbindung · {data.issuer.paymentMethod}
+                    </Text>
+                    {data.issuer.paymentLines.map((l, i) => (
+                      <Text key={i} style={styles.bankLine}>
+                        {l}
+                      </Text>
+                    ))}
+                  </View>
+                ) : null}
               </View>
-            ) : null}
+              {data.qrSrc ? (
+                <View style={styles.qrBox}>
+                  <Image src={data.qrSrc} style={styles.qrImg} />
+                  <Text style={styles.qrCaption}>Per QR bezahlen</Text>
+                </View>
+              ) : null}
+            </View>
             <Text style={{ marginTop: 4 }}>
               Reverse-Charge-Verfahren: Die Umsatzsteuer schuldet der
               Leistungsempfänger (§ 13b UStG). Alle Beträge in {data.currency}.

@@ -69,10 +69,11 @@ export type IssuerSettings = {
   phone: string;
   phone2?: string; // optional second phone (footer)
   gf: string; // name shown in the footer, "Leon Huschka"
-  footerNote: string; // footer mark caption, "Freiberufliche Agentur"
+  footerNote: string; // footer mark caption under the logo
   hourlyRateCents: number; // default hourly rate for "Arbeitszeit" positions
   paymentMethod: string; // "Banküberweisung", …
   paymentLines: string[]; // account details printed in the payment note
+  paymentUrl: string; // pay-by-QR target (e.g. Revolut link); empty = no QR
 };
 
 /** The issuer address as printable lines (Straße / Ort / Land). */
@@ -99,7 +100,7 @@ export const DEFAULT_ISSUER: IssuerSettings = {
   phone: "+49 152 33511785",
   phone2: "+49 157 35452304",
   gf: "Leon Huschka",
-  footerNote: "Freiberufliche Agentur",
+  footerNote: "Part of Duraska Studios LLC",
   hourlyRateCents: 9000,
   paymentMethod: "Banküberweisung",
   paymentLines: [
@@ -107,6 +108,7 @@ export const DEFAULT_ISSUER: IssuerSettings = {
     "IBAN: DE07 1001 0178 3002 7856 92",
     "BIC: REVODEB2",
   ],
+  paymentUrl: "",
 };
 
 /** Right-side footer tagline suggested from the order type (editable). */

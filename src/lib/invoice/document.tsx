@@ -327,10 +327,27 @@ const styles = StyleSheet.create({
   },
   bankLine: { fontSize: 9, color: FG, marginBottom: 1.5, ...w(500) },
 
-  // Bank block (left) · ODER · pay-by-QR (right), vertically centered
-  bankRow: { flexDirection: "row", alignItems: "center", marginTop: 3 },
-  orSpacer: { flexGrow: 1 },
-  orDivider: { flexDirection: "row", alignItems: "center", gap: 5 },
+  // Bank block (left) and pay-by-QR (right), top-aligned so their labels
+  // line up; the "ODER" is absolutely centered on the page (like the footer
+  // logo) and vertically centered in the row.
+  bankRow: {
+    position: "relative",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginTop: 3,
+  },
+  orDivider: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
+  },
   orLineH: { width: 14, height: 0.8, backgroundColor: HAIRLINE },
   orText: {
     fontSize: 7,
@@ -338,7 +355,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1.2,
     ...w(600),
   },
-  qrBox: { alignItems: "center" },
+  qrBox: { alignItems: "center", marginTop: 5 },
   qrLabel: {
     fontSize: 7,
     color: FAINT,
@@ -348,13 +365,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     ...w(600),
   },
-  qrImg: { width: 52, height: 52 },
-  qrMethods: {
-    fontSize: 6.5,
-    color: FAINT,
-    marginTop: 4,
-    textAlign: "center",
-  },
+  qrImg: { width: 44, height: 44 },
 
   // Footer band
   footer: {
@@ -656,22 +667,17 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
                 </View>
               ) : null}
               {data.qrSrc ? (
-                <>
-                  <View style={styles.orSpacer} />
-                  <View style={styles.orDivider}>
-                    <View style={styles.orLineH} />
-                    <Text style={styles.orText}>ODER</Text>
-                    <View style={styles.orLineH} />
-                  </View>
-                  <View style={styles.orSpacer} />
-                  <View style={styles.qrBox}>
-                    <Text style={styles.qrLabel}>Per QR-Code · Wallet</Text>
-                    <Image src={data.qrSrc} style={styles.qrImg} />
-                    <Text style={styles.qrMethods}>
-                      Apple Pay · Google Pay · Karte
-                    </Text>
-                  </View>
-                </>
+                <View style={styles.qrBox}>
+                  <Text style={styles.qrLabel}>Per QR-Code · Wallet</Text>
+                  <Image src={data.qrSrc} style={styles.qrImg} />
+                </View>
+              ) : null}
+              {data.qrSrc ? (
+                <View style={styles.orDivider}>
+                  <View style={styles.orLineH} />
+                  <Text style={styles.orText}>ODER</Text>
+                  <View style={styles.orLineH} />
+                </View>
               ) : null}
             </View>
             <Text style={{ marginTop: 4 }}>

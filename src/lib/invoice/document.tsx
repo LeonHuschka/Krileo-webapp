@@ -327,37 +327,32 @@ const styles = StyleSheet.create({
   },
   bankLine: { fontSize: 9, color: FG, marginBottom: 1.5, ...w(500) },
 
-  // Bank block (left) · ODER · pay-by-QR (right)
-  bankRow: { flexDirection: "row", alignItems: "stretch", marginTop: 1 },
-  bankCol: { flex: 1 },
-  orDivider: {
-    width: 46,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 2,
-  },
-  orLine: { flexGrow: 1, width: 0.8, backgroundColor: HAIRLINE },
+  // Bank block (left) · ODER · pay-by-QR (right), vertically centered
+  bankRow: { flexDirection: "row", alignItems: "center", marginTop: 3 },
+  orSpacer: { flexGrow: 1 },
+  orDivider: { flexDirection: "row", alignItems: "center", gap: 5 },
+  orLineH: { width: 14, height: 0.8, backgroundColor: HAIRLINE },
   orText: {
     fontSize: 7,
     color: MUTED,
     letterSpacing: 1.2,
-    marginVertical: 5,
     ...w(600),
   },
-  qrBox: { width: 122, alignItems: "center", justifyContent: "center" },
-  qrImg: { width: 58, height: 58 },
-  qrTitle: {
-    fontSize: 6.5,
-    color: FG,
-    letterSpacing: 0.4,
-    marginTop: 4,
+  qrBox: { alignItems: "center" },
+  qrLabel: {
+    fontSize: 7,
+    color: FAINT,
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+    marginBottom: 4,
     textAlign: "center",
     ...w(600),
   },
+  qrImg: { width: 52, height: 52 },
   qrMethods: {
     fontSize: 6.5,
     color: FAINT,
-    marginTop: 1.5,
+    marginTop: 4,
     textAlign: "center",
   },
 
@@ -648,35 +643,35 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
             </Text>
             {/* Bank block on the left, pay-by-QR on the right (window area). */}
             <View style={styles.bankRow}>
-              <View style={styles.bankCol}>
-                {data.issuer.paymentLines.length > 0 ? (
-                  <View style={styles.bankBlock}>
-                    <Text style={styles.bankLabel}>
-                      Bankverbindung · {data.issuer.paymentMethod}
+              {data.issuer.paymentLines.length > 0 ? (
+                <View style={styles.bankBlock}>
+                  <Text style={styles.bankLabel}>
+                    Bankverbindung · {data.issuer.paymentMethod}
+                  </Text>
+                  {data.issuer.paymentLines.map((l, i) => (
+                    <Text key={i} style={styles.bankLine}>
+                      {l}
                     </Text>
-                    {data.issuer.paymentLines.map((l, i) => (
-                      <Text key={i} style={styles.bankLine}>
-                        {l}
-                      </Text>
-                    ))}
-                  </View>
-                ) : null}
-              </View>
-              {data.qrSrc ? (
-                <View style={styles.orDivider}>
-                  <View style={styles.orLine} />
-                  <Text style={styles.orText}>ODER</Text>
-                  <View style={styles.orLine} />
+                  ))}
                 </View>
               ) : null}
               {data.qrSrc ? (
-                <View style={styles.qrBox}>
-                  <Image src={data.qrSrc} style={styles.qrImg} />
-                  <Text style={styles.qrTitle}>Per QR bezahlen</Text>
-                  <Text style={styles.qrMethods}>
-                    Apple Pay · Google Pay · Karte
-                  </Text>
-                </View>
+                <>
+                  <View style={styles.orSpacer} />
+                  <View style={styles.orDivider}>
+                    <View style={styles.orLineH} />
+                    <Text style={styles.orText}>ODER</Text>
+                    <View style={styles.orLineH} />
+                  </View>
+                  <View style={styles.orSpacer} />
+                  <View style={styles.qrBox}>
+                    <Text style={styles.qrLabel}>Per QR-Code · Wallet</Text>
+                    <Image src={data.qrSrc} style={styles.qrImg} />
+                    <Text style={styles.qrMethods}>
+                      Apple Pay · Google Pay · Karte
+                    </Text>
+                  </View>
+                </>
               ) : null}
             </View>
             <Text style={{ marginTop: 4 }}>

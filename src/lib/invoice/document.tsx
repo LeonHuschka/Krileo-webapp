@@ -360,7 +360,7 @@ const styles = StyleSheet.create({
   qrLabel: {
     fontSize: 7,
     color: FAINT,
-    letterSpacing: 0.6,
+    letterSpacing: 1.2,
     textTransform: "uppercase",
     marginBottom: 3,
     ...w(600),
@@ -672,9 +672,7 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
               {data.qrSrc ? (
                 <View style={styles.qrGroup}>
                   <View style={styles.qrLeft}>
-                    <Text style={styles.qrLabel}>
-                      Per Apple/Google Pay · Kreditkarte
-                    </Text>
+                    <Text style={styles.qrLabel}>Apple/Google Pay · Karte</Text>
                     <Text style={styles.qrStep}>
                       <Text style={styles.qrStepNum}>1</Text>  Scan QR-Code
                     </Text>

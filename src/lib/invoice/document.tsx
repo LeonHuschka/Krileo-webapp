@@ -355,18 +355,18 @@ const styles = StyleSheet.create({
     letterSpacing: 1.2,
     ...w(600),
   },
-  qrGroup: { marginTop: 5, flexDirection: "row", alignItems: "stretch", gap: 12 },
+  qrGroup: { marginTop: 5, flexDirection: "row", alignItems: "flex-start", gap: 12 },
   qrLeft: { justifyContent: "flex-start" },
   qrLabel: {
     fontSize: 7,
     color: FAINT,
     letterSpacing: 1.2,
     textTransform: "uppercase",
-    marginBottom: 5,
+    marginBottom: 3,
     ...w(600),
   },
-  qrSteps: { flexGrow: 1, justifyContent: "space-between", paddingVertical: 1 },
-  qrStep: { fontSize: 7.5, color: MUTED },
+  // Steps match the bank lines on the left: same size, weight and spacing.
+  qrStep: { fontSize: 9, color: FG, marginBottom: 2.5, ...w(500) },
   qrStepNum: { color: BRAND, ...w(700) },
   qrImg: { width: 60, height: 60 },
 
@@ -673,18 +673,15 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
                 <View style={styles.qrGroup}>
                   <View style={styles.qrLeft}>
                     <Text style={styles.qrLabel}>Per QR-Code · Wallet</Text>
-                    <View style={styles.qrSteps}>
-                      <Text style={styles.qrStep}>
-                        <Text style={styles.qrStepNum}>1</Text>  Scan QR-Code
-                      </Text>
-                      <Text style={styles.qrStep}>
-                        <Text style={styles.qrStepNum}>2</Text>  Betrag eingeben
-                      </Text>
-                      <Text style={styles.qrStep}>
-                        <Text style={styles.qrStepNum}>3</Text>  Apple Pay · Google
-                        Pay · Karte
-                      </Text>
-                    </View>
+                    <Text style={styles.qrStep}>
+                      <Text style={styles.qrStepNum}>1</Text>  Scan QR-Code
+                    </Text>
+                    <Text style={styles.qrStep}>
+                      <Text style={styles.qrStepNum}>2</Text>  Betrag eingeben
+                    </Text>
+                    <Text style={styles.qrStep}>
+                      <Text style={styles.qrStepNum}>3</Text>  Apple Pay · Google Pay · Karte
+                    </Text>
                   </View>
                   <Image src={data.qrSrc} style={styles.qrImg} />
                 </View>

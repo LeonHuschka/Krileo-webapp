@@ -325,7 +325,7 @@ const styles = StyleSheet.create({
     marginBottom: 3,
     ...w(600),
   },
-  bankLine: { fontSize: 9, color: FG, marginBottom: 1.5, ...w(500) },
+  bankLine: { fontSize: 9, color: FG, marginBottom: 2.5, ...w(500) },
 
   // Bank block (left) and pay-by-QR (right), top-aligned so their labels
   // line up; the "ODER" is absolutely centered on the page (like the footer
@@ -355,17 +355,20 @@ const styles = StyleSheet.create({
     letterSpacing: 1.2,
     ...w(600),
   },
-  qrBox: { alignItems: "center", marginTop: 5 },
+  qrGroup: { marginTop: 5 },
   qrLabel: {
     fontSize: 7,
     color: FAINT,
     letterSpacing: 1.2,
     textTransform: "uppercase",
-    marginBottom: 4,
-    textAlign: "center",
+    marginBottom: 3,
     ...w(600),
   },
-  qrImg: { width: 44, height: 44 },
+  qrRow: { flexDirection: "row", alignItems: "stretch", gap: 12 },
+  qrSteps: { justifyContent: "space-between", paddingVertical: 1 },
+  qrStep: { fontSize: 7.5, color: MUTED },
+  qrStepNum: { color: BRAND, ...w(700) },
+  qrImg: { width: 47, height: 47 },
 
   // Footer band
   footer: {
@@ -667,9 +670,23 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
                 </View>
               ) : null}
               {data.qrSrc ? (
-                <View style={styles.qrBox}>
+                <View style={styles.qrGroup}>
                   <Text style={styles.qrLabel}>Per QR-Code · Wallet</Text>
-                  <Image src={data.qrSrc} style={styles.qrImg} />
+                  <View style={styles.qrRow}>
+                    <View style={styles.qrSteps}>
+                      <Text style={styles.qrStep}>
+                        <Text style={styles.qrStepNum}>1</Text>  Scan QR-Code
+                      </Text>
+                      <Text style={styles.qrStep}>
+                        <Text style={styles.qrStepNum}>2</Text>  Betrag eingeben
+                      </Text>
+                      <Text style={styles.qrStep}>
+                        <Text style={styles.qrStepNum}>3</Text>  Apple Pay · Google
+                        Pay · Karte
+                      </Text>
+                    </View>
+                    <Image src={data.qrSrc} style={styles.qrImg} />
+                  </View>
                 </View>
               ) : null}
               {data.qrSrc ? (

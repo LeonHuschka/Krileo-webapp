@@ -695,8 +695,7 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
               ) : null}
             </View>
             <Text style={{ marginTop: 4 }}>
-              Reverse-Charge-Verfahren: Die Umsatzsteuer schuldet der
-              Leistungsempfänger (§ 13b UStG). Alle Beträge in {data.currency}.
+              Leistungszeitraum entspricht Rechnungsdatum.
             </Text>
             {clause ? <Text style={{ marginTop: 4 }}>{clause}</Text> : null}
             {data.notes.trim() ? (

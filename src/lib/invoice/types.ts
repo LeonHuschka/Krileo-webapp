@@ -100,7 +100,7 @@ export const DEFAULT_ISSUER: IssuerSettings = {
   phone: "+49 152 33511785",
   phone2: "+49 157 35452304",
   gf: "Leon Huschka",
-  footerNote: "Part of Duraska Studios LLC",
+  footerNote: "Design. Build. Automate.",
   hourlyRateCents: 9000,
   paymentMethod: "Banküberweisung",
   paymentLines: [

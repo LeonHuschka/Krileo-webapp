@@ -355,20 +355,20 @@ const styles = StyleSheet.create({
     letterSpacing: 1.2,
     ...w(600),
   },
-  qrGroup: { marginTop: 5 },
+  qrGroup: { marginTop: 5, flexDirection: "row", alignItems: "stretch", gap: 12 },
+  qrLeft: { justifyContent: "flex-start" },
   qrLabel: {
     fontSize: 7,
     color: FAINT,
     letterSpacing: 1.2,
     textTransform: "uppercase",
-    marginBottom: 3,
+    marginBottom: 5,
     ...w(600),
   },
-  qrRow: { flexDirection: "row", alignItems: "stretch", gap: 12 },
-  qrSteps: { justifyContent: "space-between", paddingVertical: 1 },
+  qrSteps: { flexGrow: 1, justifyContent: "space-between", paddingVertical: 1 },
   qrStep: { fontSize: 7.5, color: MUTED },
   qrStepNum: { color: BRAND, ...w(700) },
-  qrImg: { width: 47, height: 47 },
+  qrImg: { width: 60, height: 60 },
 
   // Footer band
   footer: {
@@ -671,8 +671,8 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
               ) : null}
               {data.qrSrc ? (
                 <View style={styles.qrGroup}>
-                  <Text style={styles.qrLabel}>Per QR-Code · Wallet</Text>
-                  <View style={styles.qrRow}>
+                  <View style={styles.qrLeft}>
+                    <Text style={styles.qrLabel}>Per QR-Code · Wallet</Text>
                     <View style={styles.qrSteps}>
                       <Text style={styles.qrStep}>
                         <Text style={styles.qrStepNum}>1</Text>  Scan QR-Code
@@ -685,8 +685,8 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
                         Pay · Karte
                       </Text>
                     </View>
-                    <Image src={data.qrSrc} style={styles.qrImg} />
                   </View>
+                  <Image src={data.qrSrc} style={styles.qrImg} />
                 </View>
               ) : null}
               {data.qrSrc ? (

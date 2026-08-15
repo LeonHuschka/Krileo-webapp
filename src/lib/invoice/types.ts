@@ -108,7 +108,7 @@ export const DEFAULT_ISSUER: IssuerSettings = {
     "IBAN: DE07 1001 0178 3002 7856 92",
     "BIC: REVODEB2",
   ],
-  paymentUrl: "https://checkout.revolut.com/pay/6dd304ee-9d6f-4c2a-ab82-eccff12101c4",
+  paymentUrl: "", // no pay-by-QR — bank transfer only
 };
 
 /** Right-side footer tagline suggested from the order type (editable). */

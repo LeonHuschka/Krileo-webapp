@@ -651,7 +651,7 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
             <Text>
               Bitte begleiche den Gesamtbetrag von{" "}
               <Text style={{ ...w(600), color: FG }}>{money(grand)}</Text>{" "}
-              innerhalb von 14 Tagen (NET 14, fällig am {DE(data.dueDate)}).
+              innerhalb von 8 Tagen (NET 8, fällig am {DE(data.dueDate)}).
             </Text>
             {/* Bank block on the left, pay-by-QR on the right (window area). */}
             <View style={styles.bankRow}>

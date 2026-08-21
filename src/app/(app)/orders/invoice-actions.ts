@@ -84,7 +84,7 @@ async function buildFreshDraft(
 
   const now = new Date();
   const due = new Date(now);
-  due.setDate(due.getDate() + 14);
+  due.setDate(due.getDate() + 8);
   const nowIso = now.toISOString();
 
   // Seed the editable issuer identity from Settings (name, degree, c/o address).

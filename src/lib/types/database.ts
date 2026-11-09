@@ -23,6 +23,8 @@ export type OrderType = "website" | "website_plus" | "automation" | "other";
 
 export type OrderPriority = "low" | "medium" | "high";
 
+export type OrderBillingCycle = "once" | "monthly";
+
 export type ContactStatus =
   | "cold"
   | "contacted"
@@ -234,6 +236,14 @@ export type Database = {
           telegram_review_chat_id: number | null;
           invoice: Json | null;
           accesses: Json | null;
+          billing_cycle: OrderBillingCycle;
+          monthly_cents: number | null;
+          contract_start: string | null;
+          paid_at: string | null;
+          payments: Json | null;
+          recurring_items: Json | null;
+          contract: Json | null;
+          invoice_history: Json | null;
           position: number;
           created_at: string;
           updated_at: string;
@@ -266,6 +276,14 @@ export type Database = {
           telegram_review_chat_id?: number | null;
           invoice?: Json | null;
           accesses?: Json | null;
+          billing_cycle?: OrderBillingCycle;
+          monthly_cents?: number | null;
+          contract_start?: string | null;
+          paid_at?: string | null;
+          payments?: Json | null;
+          recurring_items?: Json | null;
+          contract?: Json | null;
+          invoice_history?: Json | null;
           position?: number;
           created_at?: string;
           updated_at?: string;
@@ -298,6 +316,14 @@ export type Database = {
           telegram_review_chat_id?: number | null;
           invoice?: Json | null;
           accesses?: Json | null;
+          billing_cycle?: OrderBillingCycle;
+          monthly_cents?: number | null;
+          contract_start?: string | null;
+          paid_at?: string | null;
+          payments?: Json | null;
+          recurring_items?: Json | null;
+          contract?: Json | null;
+          invoice_history?: Json | null;
           position?: number;
           created_at?: string;
           updated_at?: string;

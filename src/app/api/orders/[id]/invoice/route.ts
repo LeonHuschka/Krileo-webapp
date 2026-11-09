@@ -137,6 +137,7 @@ export async function POST(
     discountCents,
     discountLabel,
     billingMode: state.billingMode,
+    period: state.period ?? null,
     notes: state.notes,
     logoSrc: await loadPng("krileo-icon.png"),
     logoStackSrc: await loadPng("krileo-logo.png"),

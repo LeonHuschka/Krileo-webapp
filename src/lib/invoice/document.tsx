@@ -17,6 +17,7 @@ import {
   Stop,
 } from "@react-pdf/renderer";
 import type { InvoiceItem } from "@/lib/invoice/parse";
+import { periodLabel } from "@/lib/orders/billing";
 import {
   fmtMoney,
   billingClause,
@@ -432,6 +433,7 @@ export type InvoiceData = {
   discountLabel?: string;
 
   billingMode: InvoiceBillingMode | null;
+  period?: string | null; // "YYYY-MM" → "Leistungszeitraum: November 2026"
   notes: string;
 
   logoSrc?: string; // small icon for the footer
@@ -693,7 +695,9 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
               ) : null}
             </View>
             <Text style={{ marginTop: 4 }}>
-              Leistungszeitraum entspricht Rechnungsdatum.
+              {data.period
+                ? `Leistungszeitraum: ${periodLabel(data.period)}.`
+                : "Leistungszeitraum entspricht Rechnungsdatum."}
             </Text>
             {clause ? <Text style={{ marginTop: 4 }}>{clause}</Text> : null}
             {data.notes.trim() ? (
@@ -740,3 +744,22 @@ export function InvoiceDocument({ data }: { data: InvoiceData }) {
     </Document>
   );
 }
+
+// Shared with the service-contract PDF so both documents look identical
+// (fonts, colours, footer). Importing this module also registers the fonts.
+export {
+  w as pdfWeight,
+  styles as invoiceStyles,
+  NAVY,
+  BRAND,
+  FG,
+  MUTED,
+  FAINT,
+  HAIRLINE,
+  PAD,
+  ON_DARK_LABEL,
+  ON_DARK_TEXT,
+  ON_DARK_KICK,
+  WHITE,
+  PAGE_W,
+};

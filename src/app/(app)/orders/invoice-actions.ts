@@ -6,6 +6,7 @@ import { generateInvoicePositionsLLM } from "@/lib/invoice/llm";
 import { buildInvoiceItems } from "@/lib/invoice/parse";
 import { defaultTagline, type InvoiceState } from "@/lib/invoice/types";
 import { loadIssuer } from "@/lib/invoice/issuer";
+import { addMonths, periodLabel, periodOf } from "@/lib/orders/billing";
 import type { Json, OrderType } from "@/lib/types/database";
 
 async function requireUser() {
@@ -21,6 +22,8 @@ const asJson = (s: InvoiceState) => s as unknown as Json;
 
 type OrderRow = {
   title: string;
+  billing_cycle?: "once" | "monthly";
+  monthly_cents?: number | null;
   order_type: OrderType;
   description: string | null;
   client_name: string | null;
@@ -28,13 +31,37 @@ type OrderRow = {
   value_cents: number | null;
 };
 
+/** LLM-drafted line items for a one-time project (falls back to templates). */
+async function projectItems(order: OrderRow) {
+  const llm = await generateInvoicePositionsLLM({
+    title: order.title,
+    orderType: order.order_type,
+    description: order.description,
+  });
+  return buildInvoiceItems(
+    order.description,
+    order.title,
+    order.value_cents ?? null,
+    order.order_type,
+    llm,
+  ).map((b) => ({
+    id: crypto.randomUUID(),
+    description: b.description,
+    quantity: b.quantity,
+    unitCents: b.unitCents,
+  }));
+}
+
 /** Build a fresh draft for an order (recipient, LLM line items, defaults).
  *  Reuses `keepNumber` if given, else allocates the next sequential number. */
 async function buildFreshDraft(
   supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
   order: OrderRow,
   keepNumber: string | null,
+  period: string | null = null,
 ): Promise<InvoiceState> {
+  const monthly = order.billing_cycle === "monthly";
+  const servicePeriod = monthly ? (period ?? periodOf()) : null;
   // Recipient from the linked contact, else the order's client name.
   const recipient: InvoiceState["recipient"] = {
     name: order.client_name ?? "Kunde",
@@ -55,25 +82,17 @@ async function buildFreshDraft(
     }
   }
 
-  // First-draft line items (LLM positions → clean split; falls back to templates).
-  const llm = await generateInvoicePositionsLLM({
-    title: order.title,
-    orderType: order.order_type,
-    description: order.description,
-  });
-  const built = buildInvoiceItems(
-    order.description,
-    order.title,
-    order.value_cents ?? null,
-    order.order_type,
-    llm,
-  );
-  const items = built.map((b) => ({
-    id: crypto.randomUUID(),
-    description: b.description,
-    quantity: b.quantity,
-    unitCents: b.unitCents,
-  }));
+  // Service contracts bill one flat monthly position; projects get LLM positions.
+  const items = monthly
+    ? [
+        {
+          id: crypto.randomUUID(),
+          description: `Servicepauschale ${periodLabel(servicePeriod!)}`,
+          quantity: 1,
+          unitCents: order.monthly_cents ?? 0,
+        },
+      ]
+    : await projectItems(order);
 
   const year = new Date().getFullYear();
   let number = keepNumber;
@@ -108,7 +127,8 @@ async function buildFreshDraft(
     recipient,
     items,
     discount: null,
-    billingMode: null,
+    billingMode: monthly ? "service" : null,
+    period: servicePeriod,
     notes: "",
     createdAt: nowIso,
     updatedAt: nowIso,
@@ -147,7 +167,12 @@ export async function regenerateInvoiceDraft(
   if (!order) throw new Error("Auftrag nicht gefunden");
 
   const prev = order.invoice as unknown as InvoiceState | null;
-  const state = await buildFreshDraft(supabase, order, prev?.number ?? null);
+  const state = await buildFreshDraft(
+    supabase,
+    order,
+    prev?.number ?? null,
+    prev?.period ?? null,
+  );
   await supabase.from("orders").update({ invoice: asJson(state) }).eq("id", orderId);
   revalidatePath(`/orders/${orderId}`);
   return state;
@@ -182,4 +207,49 @@ export async function markInvoiceDownloaded(orderId: string) {
   };
   await supabase.from("orders").update({ invoice: asJson(next) }).eq("id", orderId);
   revalidatePath(`/orders/${orderId}`);
+}
+
+/** Monthly service contracts: archive the current invoice and start the next
+ *  month's invoice (new number, flat fee for the following service month). */
+export async function startNextMonthlyInvoice(orderId: string): Promise<InvoiceState> {
+  const { supabase } = await requireUser();
+  const { data: order } = await supabase
+    .from("orders")
+    .select("*")
+    .eq("id", orderId)
+    .maybeSingle();
+  if (!order) throw new Error("Auftrag nicht gefunden");
+
+  const prev = order.invoice as unknown as InvoiceState | null;
+  const history = Array.isArray(order.invoice_history)
+    ? (order.invoice_history as unknown as InvoiceState[])
+    : [];
+  const nextPeriod = prev?.period ? addMonths(prev.period, 1) : periodOf();
+  const fresh = await buildFreshDraft(supabase, order, null, nextPeriod);
+  // Keep the hand-edited recipient and issuer identity from the last invoice.
+  const state: InvoiceState = prev
+    ? {
+        ...fresh,
+        recipient: prev.recipient,
+        issuerName: prev.issuerName,
+        issuerDegree: prev.issuerDegree,
+        issuerStreet: prev.issuerStreet,
+        issuerCity: prev.issuerCity,
+        issuerCountry: prev.issuerCountry,
+        showVat: prev.showVat,
+        vatRate: prev.vatRate,
+        taglineRight: prev.taglineRight,
+      }
+    : fresh;
+
+  const { error } = await supabase
+    .from("orders")
+    .update({
+      invoice: asJson(state),
+      invoice_history: (prev ? [...history, prev] : history) as unknown as Json,
+    })
+    .eq("id", orderId);
+  if (error) throw new Error(error.message);
+  revalidatePath(`/orders/${orderId}`);
+  return state;
 }

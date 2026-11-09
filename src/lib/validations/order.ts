@@ -22,6 +22,9 @@ export const orderCreateSchema = z.object({
   assigned_to: z.string().uuid().optional().nullable(),
   description: z.string().max(5000).optional().nullable(),
   work_url: z.string().url().max(2000).optional().nullable().or(z.literal("")),
+  billing_cycle: z.enum(["once", "monthly"]).optional(),
+  monthly_cents: z.number().int().min(0).optional().nullable(),
+  contract_start: z.string().optional().nullable(),
 });
 
 // tech_brief / review are structured JSON managed by their own flows, not the

@@ -62,13 +62,26 @@ export function CreateOrderDialog({
       assigned_to: null,
       description: "",
       work_url: "",
+      billing_cycle: "once",
+      monthly_cents: null,
+      contract_start: null,
     },
   });
+  const monthly = form.watch("billing_cycle") === "monthly";
 
   function onSubmit(values: OrderCreateData) {
     startTransition(async () => {
       try {
-        await createOrder(values);
+        await createOrder(
+          values.billing_cycle === "monthly"
+            ? {
+                ...values,
+                value_cents: null,
+                // Billing starts with the current month by default.
+                contract_start: `${new Date().toISOString().slice(0, 7)}-01`,
+              }
+            : { ...values, monthly_cents: null },
+        );
         toast.success("Auftrag angelegt");
         setOpen(false);
         form.reset();
@@ -186,21 +199,47 @@ export function CreateOrderDialog({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="value">Wert (€)</Label>
+              <Label htmlFor="value">{monthly ? "Monatlich (€)" : "Wert (€)"}</Label>
               <Input
+                key={monthly ? "m" : "o"}
                 id="value"
                 type="number"
                 min={0}
                 step={1}
-                placeholder="3500"
+                placeholder={monthly ? "490" : "3500"}
                 onChange={(e) => {
                   const n = e.target.valueAsNumber;
                   form.setValue(
-                    "value_cents",
+                    monthly ? "monthly_cents" : "value_cents",
                     Number.isFinite(n) ? Math.round(n * 100) : null,
                   );
                 }}
               />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Abrechnung</Label>
+            <div className="grid grid-cols-2 gap-1.5 rounded-lg border border-border/60 bg-muted/20 p-1">
+              {(
+                [
+                  ["once", "Einmaliges Projekt"],
+                  ["monthly", "Laufend · monatlich (Service)"],
+                ] as const
+              ).map(([v, label]) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => form.setValue("billing_cycle", v)}
+                  className={
+                    (form.watch("billing_cycle") ?? "once") === v
+                      ? "rounded-md bg-primary/15 px-2 py-1.5 text-xs font-medium text-foreground"
+                      : "rounded-md px-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
+                  }
+                >
+                  {label}
+                </button>
+              ))}
             </div>
           </div>
 

@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   RotateCcw,
   Clock,
+  Repeat,
 } from "lucide-react";
 import {
   Dialog,
@@ -30,7 +31,9 @@ import {
   regenerateInvoiceDraft,
   saveInvoiceDraft,
   markInvoiceDownloaded,
+  startNextMonthlyInvoice,
 } from "@/app/(app)/orders/invoice-actions";
+import { addMonths, periodLabel } from "@/lib/orders/billing";
 import {
   fmtMoney,
   invoiceTotalCents,
@@ -50,10 +53,13 @@ export function InvoiceButton({
   orderId,
   orderType,
   initialInvoice,
+  monthly = false,
 }: {
   orderId: string;
   orderType: OrderType;
   initialInvoice: InvoiceState | null;
+  /** Running service contract → monthly invoices with a service period. */
+  monthly?: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -115,6 +121,27 @@ export function InvoiceButton({
       } finally {
         setLoading(false);
       }
+    }
+  }
+
+  async function nextMonth() {
+    if (!state) return;
+    const label = state.period ? periodLabel(addMonths(state.period, 1)) : "den aktuellen Monat";
+    if (
+      !window.confirm(
+        `Aktuelle Rechnung ${state.number} archivieren und eine neue Rechnung für ${label} anlegen?`,
+      )
+    )
+      return;
+    setLoading(true);
+    try {
+      setState(await startNextMonthlyInvoice(orderId));
+      router.refresh();
+      toast.success("Neue Monatsrechnung angelegt");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Fehler");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -247,6 +274,18 @@ export function InvoiceButton({
               )}
             </DialogTitle>
             <div className="flex items-center gap-2">
+              {monthly && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={nextMonth}
+                  disabled={!state || loading}
+                  className="gap-1.5"
+                  title="Diese Rechnung archivieren und die nächste Monatsrechnung anlegen"
+                >
+                  <Repeat className="h-3.5 w-3.5" /> Nächste Monatsrechnung
+                </Button>
+              )}
               <Button
                 size="sm"
                 variant="outline"
@@ -275,8 +314,11 @@ export function InvoiceButton({
             </div>
           ) : (
             <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
-              {/* Form */}
-              <div className="min-h-0 space-y-5 overflow-y-auto border-r border-border/60 p-5">
+              {/* Form — keyed by number so a new monthly invoice remounts the inputs */}
+              <div
+                key={state.number}
+                className="min-h-0 space-y-5 overflow-y-auto border-r border-border/60 p-5"
+              >
                 {/* Meta */}
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="Rechnungsnummer">
@@ -323,6 +365,16 @@ export function InvoiceButton({
                       className="h-8"
                     />
                   </Field>
+                  {(monthly || state.period) && (
+                    <Field label="Leistungsmonat">
+                      <Input
+                        type="month"
+                        value={state.period ?? ""}
+                        onChange={(e) => patch({ period: e.target.value || null })}
+                        className="h-8"
+                      />
+                    </Field>
+                  )}
                 </div>
 
                 {/* Issuer (per invoice, seeded from settings) */}

@@ -36,7 +36,14 @@ function emptyToNull<T extends Record<string, unknown>>(obj: T): T {
 
 export async function createOrder(input: OrderCreateData) {
   const { supabase, user } = await requireUser();
-  const data = orderCreateSchema.parse(emptyToNull(input));
+  const parsed = orderCreateSchema.parse(emptyToNull(input));
+  // Only send billing columns for service contracts, so classic orders keep
+  // working on a database without the billing migration.
+  const { billing_cycle, monthly_cents, contract_start, ...base } = parsed;
+  const data =
+    billing_cycle === "monthly"
+      ? { ...base, billing_cycle, monthly_cents, contract_start }
+      : base;
 
   const { data: maxRow } = await supabase
     .from("orders")

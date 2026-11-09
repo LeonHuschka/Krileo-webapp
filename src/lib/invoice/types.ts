@@ -49,6 +49,7 @@ export type InvoiceState = {
   items: InvoiceLineItem[];
   discount?: InvoiceDiscount | null; // optional Rabatt after the subtotal
   billingMode: InvoiceBillingMode | null;
+  period?: string | null; // service month "YYYY-MM" for monthly invoices
   notes: string; // extra free-text note printed under the table
   createdAt: string;
   updatedAt: string;

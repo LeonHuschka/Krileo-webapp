@@ -62,6 +62,16 @@ import type {
 } from "@/lib/types/database";
 import { ReviewSuggestions } from "@/components/orders/review-suggestions";
 import { InvoiceButton } from "@/components/orders/invoice-editor";
+import { ContractButton } from "@/components/orders/contract-editor";
+import { BillingCard } from "@/components/orders/billing-card";
+import { MonthlyTasksPanel } from "@/components/orders/monthly-tasks-panel";
+import type { ContractState } from "@/lib/contract/types";
+import {
+  PAY_STATE_UI,
+  fmtEuro,
+  payStateOf,
+  recurringItemsOf,
+} from "@/lib/orders/billing";
 import type { InvoiceState } from "@/lib/invoice/types";
 import type { DeploymentStatus, DeploymentState } from "@/lib/orders/vercel";
 import { ORDER_TABS, statusToTab, type OrderTabKey } from "@/lib/orders/tabs";
@@ -607,6 +617,8 @@ export function OrderDetail({
     );
   };
 
+  const payState = payStateOf(order).state;
+
   // Header (title + badges + actions) — only rendered inside the Auftrag tab.
   const header = (
     <div className="flex flex-wrap items-start justify-between gap-3">
@@ -632,6 +644,20 @@ export function OrderDetail({
               <Badge variant="secondary">
                 {ORDER_TYPES.find((t) => t.value === order.order_type)?.label}
               </Badge>
+              {order.billing_cycle === "monthly" && (
+                <Badge
+                  variant="outline"
+                  className="border-violet-500/40 bg-violet-500/10 text-violet-300"
+                >
+                  Laufend
+                  {order.monthly_cents ? ` · ${fmtEuro(order.monthly_cents)}/Monat` : ""}
+                </Badge>
+              )}
+              {payState !== "none" && (
+                <Badge variant="outline" className={PAY_STATE_UI[payState].cls}>
+                  {PAY_STATE_UI[payState].label}
+                </Badge>
+              )}
               {order.priority !== "medium" && (
                 <Badge variant="secondary" className="capitalize">
                   {order.priority === "high" ? "Hoch" : "Niedrig"}
@@ -643,9 +669,18 @@ export function OrderDetail({
             </div>
           </div>
           <div className="flex items-center gap-1">
+            {order.billing_cycle === "monthly" && (
+              <ContractButton
+                orderId={order.id}
+                initialContract={
+                  (order.contract as unknown as ContractState | null) ?? null
+                }
+              />
+            )}
             <InvoiceButton
               orderId={order.id}
               orderType={order.order_type}
+              monthly={order.billing_cycle === "monthly"}
               initialInvoice={
                 (order.invoice as unknown as InvoiceState | null) ?? null
               }
@@ -730,6 +765,7 @@ export function OrderDetail({
                 </CardHeader>
                 <CardContent>{detailsGrid}</CardContent>
               </Card>
+              <BillingCard order={order} />
             </div>
           </div>
         </TabsContent>
@@ -738,6 +774,12 @@ export function OrderDetail({
           {previewArea(
             true,
             <AccessPanel orderId={order.id} accesses={accesses} />,
+          )}
+          {order.billing_cycle === "monthly" && (
+            <MonthlyTasksPanel
+              orderId={order.id}
+              initialItems={recurringItemsOf(order)}
+            />
           )}
           <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
             <DevItemsPanel

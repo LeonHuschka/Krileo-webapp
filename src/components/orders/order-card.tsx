@@ -17,6 +17,7 @@ import {
   openReviewCount,
 } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import { PAY_STATE_UI, payStateOf } from "@/lib/orders/billing";
 
 export type CardDeployment = {
   state: DeploymentState;
@@ -42,6 +43,8 @@ function formatValue(cents: number | null) {
   }).format(cents / 100);
 }
 
+const canceled_ = (o: OrderRow) => !!o.canceled_at;
+
 export function OrderCard({
   order,
   assignee,
@@ -55,7 +58,13 @@ export function OrderCard({
 }) {
   const typeLabel =
     ORDER_TYPES.find((t) => t.value === order.order_type)?.label ?? "—";
-  const value = formatValue(order.value_cents);
+  const monthly = order.billing_cycle === "monthly";
+  const value = monthly
+    ? order.monthly_cents != null
+      ? `${formatValue(order.monthly_cents)}/Mon.`
+      : null
+    : formatValue(order.value_cents);
+  const payState = canceled_(order) ? "none" : payStateOf(order).state;
   const statusCol = ORDER_STATUS_COLUMN[order.status];
   // Priority is only surfaced when it's been manually set away from "mittel".
   const showPriority = order.priority !== "medium";
@@ -167,15 +176,33 @@ export function OrderCard({
 
       {/* Type + value */}
       <div className="flex items-center justify-between gap-2">
-        <Badge
-          variant="outline"
-          className={cn(
-            "border text-[10px] font-medium",
-            ORDER_TYPE_COLORS[order.order_type],
+        <div className="flex min-w-0 flex-wrap items-center gap-1">
+          <Badge
+            variant="outline"
+            className={cn(
+              "border text-[10px] font-medium",
+              ORDER_TYPE_COLORS[order.order_type],
+            )}
+          >
+            {typeLabel}
+          </Badge>
+          {monthly && (
+            <Badge
+              variant="outline"
+              className="border-violet-500/40 bg-violet-500/10 text-[10px] font-medium text-violet-300"
+            >
+              Laufend
+            </Badge>
           )}
-        >
-          {typeLabel}
-        </Badge>
+          {payState !== "none" && (
+            <Badge
+              variant="outline"
+              className={cn("text-[10px] font-semibold", PAY_STATE_UI[payState].cls)}
+            >
+              {PAY_STATE_UI[payState].label}
+            </Badge>
+          )}
+        </div>
         {value && (
           <span
             className={cn(

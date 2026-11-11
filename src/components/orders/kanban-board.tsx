@@ -8,6 +8,8 @@ import {
   useSensor,
   useSensors,
   closestCorners,
+  pointerWithin,
+  type CollisionDetection,
   type DragStartEvent,
   type DragOverEvent,
   type DragEndEvent,
@@ -152,6 +154,16 @@ function DroppableColumn({
     </div>
   );
 }
+
+/** Prefer whatever is under the pointer (a card, or an empty column), and only
+ *  fall back to corner distance when the pointer is between droppables.
+ *  Plain closestCorners measures to the corners of each column; an empty
+ *  column stretches the full board height, so a card in the neighbouring
+ *  column always "won" and empty stages could never receive a drop. */
+const pointerFirst: CollisionDetection = (args) => {
+  const hits = pointerWithin(args);
+  return hits.length > 0 ? hits : closestCorners(args);
+};
 
 export function OrdersKanban({
   orders,
@@ -343,7 +355,7 @@ export function OrdersKanban({
       <div className="hidden md:block">
         <DndContext
           sensors={sensors}
-          collisionDetection={closestCorners}
+          collisionDetection={pointerFirst}
           onDragStart={handleDragStart}
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}

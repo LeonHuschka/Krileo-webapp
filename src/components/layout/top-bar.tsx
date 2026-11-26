@@ -1,6 +1,8 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
+import { WorkspaceTabs } from "@/components/layout/workspace-tabs";
 import { useRouter } from "next/navigation";
 import {
   DropdownMenu,
@@ -37,21 +39,21 @@ export function TopBar({ user }: { user: UserProfileRow }) {
   }
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-border bg-background px-4 md:px-6">
-      <div className="md:hidden">
-        <div className="flex items-center gap-2">
+    <header className="sticky top-0 z-40 flex h-16 items-center justify-between gap-3 bg-background/70 px-3 backdrop-blur md:px-4">
+      <div className="flex min-w-0 items-center gap-3">
+        <Link href="/" className="flex shrink-0 items-center gap-2">
           <Image
             src="/krileo-icon.png"
             alt="Krileo"
             width={32}
             height={32}
-            className="h-8 w-8"
+            className="h-8 w-8 drop-shadow-[0_0_12px_hsl(207_100%_60%/0.45)]"
             priority
           />
-          <span className="font-semibold">Krileo</span>
-        </div>
+          <span className="hidden font-semibold tracking-tight lg:inline">Krileo</span>
+        </Link>
+        <WorkspaceTabs />
       </div>
-      <div className="hidden md:block" />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="gap-2 px-2">

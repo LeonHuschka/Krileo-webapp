@@ -119,3 +119,24 @@
       0 8px 24px -12px hsl(207 100% 58% / 0.4);
   }
 }
+
+/* Social Media workspace – glass look (after the Duraska content hub) */
+@layer components {
+  .glass-pill {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(20px) saturate(170%);
+  }
+  .glass-pill-active {
+    background: #fff;
+    color: #171717;
+    box-shadow: 0 6px 20px -6px rgba(255, 255, 255, 0.55);
+  }
+  .glass-card {
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 10px 40px -20px rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(32px);
+  }
+}

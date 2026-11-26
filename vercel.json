@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/cold-mail",
       "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/content-research",
+      "schedule": "0 5 * * *"
     }
   ]
 }

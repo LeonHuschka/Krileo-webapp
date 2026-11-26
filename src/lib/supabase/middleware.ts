@@ -10,6 +10,13 @@ const MACHINE_ROUTES = [
   "/api/smartlead/webhook",
   "/api/cron",
   "/api/telegram",
+  // Content pipeline: link pages for the team (/d/<token>) and the video
+  // editor (/va/<token>) check their own token, no Krileo login.
+  "/d/",
+  "/va/",
+  // Video preview images: checks login or link token itself.
+  "/api/content/thumb",
+  "/api/content/file",
 ];
 
 export async function updateSession(request: NextRequest) {

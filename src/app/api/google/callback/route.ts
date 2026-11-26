@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { exchangeCodeAndSave } from "@/lib/google/auth";
+import { DRIVE_STATE_PREFIX, exchangeDriveCode } from "@/lib/content/drive";
 
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
@@ -8,25 +9,29 @@ export async function GET(req: NextRequest) {
   const cookieState = req.cookies.get("google_oauth_state")?.value;
   const error = url.searchParams.get("error");
 
-  const settingsUrl = new URL("/settings", url.origin);
+  // Content pipeline: Drive connection started from /content/einstellungen.
+  const isDrive = !!state?.startsWith(DRIVE_STATE_PREFIX);
+  const settingsUrl = new URL(isDrive ? "/social/einstellungen" : "/settings", url.origin);
+  const flag = isDrive ? "drive" : "google";
 
   if (error) {
-    settingsUrl.searchParams.set("google", "error");
+    settingsUrl.searchParams.set(flag, "error");
     settingsUrl.searchParams.set("msg", error);
     return NextResponse.redirect(settingsUrl);
   }
 
   if (!code || !state || !cookieState || state !== cookieState) {
-    settingsUrl.searchParams.set("google", "error");
+    settingsUrl.searchParams.set(flag, "error");
     settingsUrl.searchParams.set("msg", "state_mismatch");
     return NextResponse.redirect(settingsUrl);
   }
 
   try {
-    await exchangeCodeAndSave(code);
-    settingsUrl.searchParams.set("google", "connected");
+    if (isDrive) await exchangeDriveCode(code);
+    else await exchangeCodeAndSave(code);
+    settingsUrl.searchParams.set(flag, "connected");
   } catch (err) {
-    settingsUrl.searchParams.set("google", "error");
+    settingsUrl.searchParams.set(flag, "error");
     settingsUrl.searchParams.set(
       "msg",
       err instanceof Error ? err.message : "exchange_failed",
